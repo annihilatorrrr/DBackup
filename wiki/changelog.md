@@ -35,6 +35,7 @@ All notable changes to DBackup are documented here.
 
 ### 🐛 Bug Fixes
 
+- **Redis Database Selector** — The Redis adapter configuration incorrectly showed a multi-select `DatabasePicker` (designed for MySQL/PostgreSQL "select which databases to back up"). Redis backups always dump all 16 databases via `redis-cli --rdb`, so the selector has been replaced with a 0–15 dropdown for selecting the connection default database (`SELECT` command). Database 0 is labeled "Default (0)"
 - **Pending Icon Color** — Database icon in the "Latest Jobs" dashboard widget was incorrectly shown in red for `Pending` executions. Pending jobs now display a yellow icon, consistent with the yellow `Pending` status badge
 - **API Trigger — Bash Script Error Handling** — The generated Bash script now checks whether the API returned `success: true` before attempting to parse `.data.status`. Previously, a missing `history:read` permission on the API key caused a silent `null` status, leading to "Unknown status: null" and immediate exit
 - **API Trigger — Missing Permission Documentation** — The API Trigger dialog stated only `jobs:execute` was required to use the polling workflow. The status polling endpoint (`GET /api/executions/{id}`) also requires `history:read` — both permissions are now clearly listed in the dialog description, Overview tab, and generated scripts
@@ -53,6 +54,7 @@ All notable changes to DBackup are documented here.
 - Updated `src/components/settings/notification-settings.tsx` — Added "Updates" category with `ArrowUpCircle` icon; added "Repeat reminder" `<Select>` dropdown (Disabled / 6h / 12h / 24h / 2d / 7d / 14d) for events with `supportsReminder`
 - Updated `src/components/layout/sidebar.tsx` — Replaced orange animated indicators with muted blue styling: `ArrowUpCircle` icon in footer, 2px blue dot on avatar, blue-tinted dropdown menu item
 - Updated `src/app/actions/notification-settings.ts` — Added `update_available` test payload for the test notification button
+- Updated `src/components/adapter/form-sections.tsx` — Added `RedisDatabaseSelect` component (0–15 dropdown with `db-` prefixed values to work around Radix UI treating `"0"` as falsy); set `isDatabase={adapter.id !== 'redis'}` to hide `DatabasePicker` for Redis; excluded `'database'` key from the generic `FieldList` for Redis adapters
 
 ## v0.9.9-beta - Storage Alerts, Notification Logs & Restore Improvements
 *Released: February 22, 2026*
