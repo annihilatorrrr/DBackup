@@ -10,11 +10,15 @@ export async function register() {
         const { reloadRateLimits } = await import('@/lib/rate-limit');
         await reloadRateLimits();
 
-        // 3. Initialize scheduler (cron jobs)
+        // 3. Recover stale executions from previous crash/hard-kill
+        const { recoverStaleExecutions } = await import('@/lib/execution-recovery');
+        await recoverStaleExecutions();
+
+        // 4. Initialize scheduler (cron jobs)
         const { scheduler } = await import('@/lib/scheduler');
         await scheduler.init();
 
-        // 4. Register graceful shutdown handlers
+        // 5. Register graceful shutdown handlers
         const { registerShutdownHandlers } = await import('@/lib/shutdown');
         registerShutdownHandlers();
     }

@@ -54,6 +54,7 @@ export function LatestJobs({ data }: LatestJobsProps) {
             filteredData.map((job) => {
               const isRunning = job.status === "Running";
               const isSuccess = job.status === "Success";
+              const isPending = job.status === "Pending";
 
               return (
                 <Link
@@ -64,7 +65,7 @@ export function LatestJobs({ data }: LatestJobsProps) {
                   <div className="flex items-center justify-between hover:bg-muted/50 px-2 py-2.5 -mx-2 rounded-md transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
                       <TypeBadge type={job.type} />
-                      <SourceIcon sourceType={job.sourceType} isRunning={isRunning} isSuccess={isSuccess} />
+                      <SourceIcon sourceType={job.sourceType} isRunning={isRunning} isSuccess={isSuccess} isPending={isPending} />
                       <div className="min-w-0">
                         <p className="text-sm font-medium leading-none truncate">
                           {job.jobName}
@@ -118,17 +119,21 @@ function SourceIcon({
   sourceType,
   isRunning,
   isSuccess,
+  isPending,
 }: {
   sourceType: string | null;
   isRunning: boolean;
   isSuccess: boolean;
+  isPending: boolean;
 }) {
   const className = `h-4 w-4 shrink-0 ${
     isRunning
       ? "text-blue-500"
       : isSuccess
         ? "text-green-500"
-        : "text-red-500"
+        : isPending
+          ? "text-yellow-500"
+          : "text-red-500"
   }`;
 
   if (isRunning) return <Loader2 className={`${className} animate-spin`} />;

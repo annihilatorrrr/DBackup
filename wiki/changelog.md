@@ -2,6 +2,35 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.0.0 - First Stable Release
+*Released: February 23, 2026*
+
+🎉 **DBackup 1.0.0 — the first stable release.** This version stabilizes the platform after the extensive beta phase, ships quality-of-life fixes for the API trigger workflow, hardens job status tracking with stale execution recovery, and polishes the dashboard UI.
+
+### 🐛 Bug Fixes
+
+- **Pending Icon Color** — Database icon in the "Latest Jobs" dashboard widget was incorrectly shown in red for `Pending` executions. Pending jobs now display a yellow icon, consistent with the yellow `Pending` status badge
+- **API Trigger — Bash Script Error Handling** — The generated Bash script now checks whether the API returned `success: true` before attempting to parse `.data.status`. Previously, a missing `history:read` permission on the API key caused a silent `null` status, leading to "Unknown status: null" and immediate exit
+- **API Trigger — Missing Permission Documentation** — The API Trigger dialog stated only `jobs:execute` was required to use the polling workflow. The status polling endpoint (`GET /api/executions/{id}`) also requires `history:read` — both permissions are now clearly listed in the dialog description, Overview tab, and generated scripts
+- **API Trigger — cURL Placeholder Clarity** — The "Poll Execution Status" and "Poll with Logs" cURL examples used a bare `EXECUTION_ID` placeholder without explanation. The placeholder is now formatted as `{EXECUTION_ID}` and each example includes an explicit hint: *"Replace `{EXECUTION_ID}` with the `executionId` from the trigger response"*
+
+### ✨ New Features
+
+#### 🔄 Stale Execution Recovery on Startup
+- **Crash Recovery** — When the application is hard-killed (SIGKILL, power loss, OOM) while a backup or restore is running, the affected executions remain stuck in `Running` or `Pending` state indefinitely
+- **Automatic Detection** — On every application startup, DBackup now scans for executions in `Running` or `Pending` state and marks them as `Failed`
+- **Audit Log Entry** — A log entry is appended to each recovered execution explaining the cause:
+  - Running → *"Execution was interrupted by an unexpected application shutdown"*
+  - Pending → *"Execution was cancelled because the application shut down before it could start"*
+- **Queue Safety** — Recovery runs before the scheduler initializes, ensuring the queue starts clean without stale `Running` entries blocking slot allocation
+- **Non-Blocking** — Individual recovery failures are logged and skipped without aborting the startup sequence
+
+### 🔧 Technical Changes
+- New `src/lib/execution-recovery.ts` — `recoverStaleExecutions()` function; queries executions with `Running` or `Pending` status, updates them to `Failed` with `endedAt` and an explanatory log entry appended to the existing logs JSON
+- Updated `src/instrumentation.ts` — Added `recoverStaleExecutions()` as startup step 3 (between rate limit reload and scheduler init)
+- Updated `src/components/dashboard/widgets/latest-jobs.tsx` — `SourceIcon` component now receives `isPending` prop; color logic extended to `text-yellow-500` for `Pending` status (previously fell through to `text-red-500`)
+- Updated `src/components/dashboard/jobs/api-trigger-dialog.tsx` — Dialog description and Overview tab now list `jobs:execute` + `history:read` as required permissions; cURL poll examples use `{EXECUTION_ID}` placeholder with descriptive hint text; Bash script adds `success` field check before parsing status
+
 ## v0.9.9-beta - Storage Alerts, Notification Logs & Restore Improvements
 *Released: February 22, 2026*
 

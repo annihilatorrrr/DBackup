@@ -236,10 +236,10 @@ export function ApiTriggerDialog({ jobId, jobName, open, onOpenChange }: ApiTrig
     const triggerCurl = `curl -X POST "${apiEndpoint}" \\
   -H "Authorization: Bearer dbackup_YOUR_API_KEY"`
 
-    const pollCurl = `curl "${baseUrl}/api/executions/EXECUTION_ID" \\
+    const pollCurl = `curl "${baseUrl}/api/executions/{EXECUTION_ID}" \\
   -H "Authorization: Bearer dbackup_YOUR_API_KEY"`
 
-    const pollWithLogsCurl = `curl "${baseUrl}/api/executions/EXECUTION_ID?includeLogs=true" \\
+    const pollWithLogsCurl = `curl "${baseUrl}/api/executions/{EXECUTION_ID}?includeLogs=true" \\
   -H "Authorization: Bearer dbackup_YOUR_API_KEY"`
 
     // ── Bash ──
@@ -268,6 +268,14 @@ echo "Execution started: \${EXECUTION_ID}"
 while true; do
   STATUS_RESPONSE=$(curl -s "\${BASE_URL}/api/executions/\${EXECUTION_ID}" \\
     -H "Authorization: Bearer \${API_KEY}")
+
+  # Check for API errors (e.g., missing permissions)
+  SUCCESS=$(echo "\${STATUS_RESPONSE}" | jq -r '.success')
+  if [ "\${SUCCESS}" != "true" ]; then
+    ERROR=$(echo "\${STATUS_RESPONSE}" | jq -r '.error // "Unknown API error"')
+    echo "API error: \${ERROR}"
+    exit 1
+  fi
 
   STATUS=$(echo "\${STATUS_RESPONSE}" | jq -r '.data.status')
   PROGRESS=$(echo "\${STATUS_RESPONSE}" | jq -r '.data.progress // "N/A"')
@@ -559,7 +567,7 @@ trigger_backup:
                         API Trigger
                     </DialogTitle>
                     <DialogDescription>
-                        Trigger <span className="font-medium">{jobName}</span> via API. Create an API key under Access Management → API Keys with the <code className="text-xs bg-muted px-1 rounded">jobs:execute</code> permission.
+                        Trigger <span className="font-medium">{jobName}</span> via API. Create an API key under Access Management → API Keys with the <code className="text-xs bg-muted px-1 rounded">jobs:execute</code> and <code className="text-xs bg-muted px-1 rounded">history:read</code> permissions.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -599,10 +607,10 @@ trigger_backup:
                                 <h4 className="text-sm font-medium mb-2">Authentication</h4>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <OverviewItem label="Header" value="Authorization: Bearer dbackup_..." />
-                                    <OverviewItem label="Permission" value="jobs:execute" />
+                                    <OverviewItem label="Permissions" value="jobs:execute, history:read" />
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-2">
-                                    Create an API key under <span className="font-medium">Access Management → API Keys</span> with the <code className="bg-muted px-1 rounded">jobs:execute</code> permission.
+                                    Create an API key under <span className="font-medium">Access Management → API Keys</span> with the <code className="bg-muted px-1 rounded">jobs:execute</code> and <code className="bg-muted px-1 rounded">history:read</code> permissions.
                                 </p>
                             </div>
 
@@ -642,14 +650,14 @@ trigger_backup:
                             <h4 className="text-sm font-medium mb-2">Poll Execution Status</h4>
                             <CopyBlock code={pollCurl} language="bash" label="bash" />
                             <p className="text-xs text-muted-foreground mt-1.5">
-                                Returns status (<code className="bg-muted px-1 rounded">Pending</code>, <code className="bg-muted px-1 rounded">Running</code>, <code className="bg-muted px-1 rounded">Success</code>, <code className="bg-muted px-1 rounded">Failed</code>), progress, and stage.
+                                Replace <code className="bg-muted px-1 rounded">{'{EXECUTION_ID}'}</code> with the <code className="bg-muted px-1 rounded">executionId</code> from the trigger response. Returns status (<code className="bg-muted px-1 rounded">Pending</code>, <code className="bg-muted px-1 rounded">Running</code>, <code className="bg-muted px-1 rounded">Success</code>, <code className="bg-muted px-1 rounded">Failed</code>), progress, and stage.
                             </p>
                         </div>
                         <div>
                             <h4 className="text-sm font-medium mb-2">Poll with Logs</h4>
                             <CopyBlock code={pollWithLogsCurl} language="bash" label="bash" />
                             <p className="text-xs text-muted-foreground mt-1.5">
-                                Add <code className="bg-muted px-1 rounded">?includeLogs=true</code> to include execution log entries.
+                                Replace <code className="bg-muted px-1 rounded">{'{EXECUTION_ID}'}</code> and add <code className="bg-muted px-1 rounded">?includeLogs=true</code> to include execution log entries.
                             </p>
                         </div>
                     </TabsContent>
