@@ -70,6 +70,7 @@ export const EVENT_DEFINITIONS: NotificationEventDefinition[] = [
     description: "Storage size changed significantly between snapshots.",
     category: "storage",
     defaultEnabled: true,
+    supportsReminder: true,
   },
   {
     id: NOTIFICATION_EVENTS.STORAGE_LIMIT_WARNING,
@@ -77,6 +78,7 @@ export const EVENT_DEFINITIONS: NotificationEventDefinition[] = [
     description: "Storage usage is approaching the configured size limit.",
     category: "storage",
     defaultEnabled: true,
+    supportsReminder: true,
   },
   {
     id: NOTIFICATION_EVENTS.STORAGE_MISSING_BACKUP,
@@ -84,6 +86,17 @@ export const EVENT_DEFINITIONS: NotificationEventDefinition[] = [
     description: "No new backup was created within the expected time window.",
     category: "storage",
     defaultEnabled: true,
+    supportsReminder: true,
+  },
+
+  // ── Update Events ────────────────────────────────────────────
+  {
+    id: NOTIFICATION_EVENTS.UPDATE_AVAILABLE,
+    name: "Update Available",
+    description: "A new version of DBackup is available.",
+    category: "updates",
+    defaultEnabled: true,
+    supportsReminder: true,
   },
 ];
 

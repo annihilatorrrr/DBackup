@@ -37,9 +37,8 @@ export const updateService = {
 
       // 2. Fetch tags from GitLab Registry API
       // We use the public API since it's a public repository
-      // Increased per_page to 20 to catch stable versions if many dev tags exist
       const response = await fetch(
-        `https://gitlab.com/api/v4/projects/${GITLAB_PROJECT_ID}/registry/repositories/${REGISTRY_ID}/tags?per_page=20&order_by=updated_at&sort=desc`,
+        `https://gitlab.com/api/v4/projects/${GITLAB_PROJECT_ID}/registry/repositories/${REGISTRY_ID}/tags?per_page=100&order_by=name&sort=desc`,
         { next: { revalidate: 3600 } } // Cache for 1 hour
       );
 

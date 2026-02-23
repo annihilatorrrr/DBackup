@@ -20,6 +20,7 @@ import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { wrapError } from "@/lib/errors";
 import { notify } from "@/services/system-notification-service";
+import { getNotificationConfig } from "@/services/system-notification-service";
 import { NOTIFICATION_EVENTS } from "@/lib/notifications/types";
 import type { StorageVolumeEntry } from "@/services/dashboard-service";
 
@@ -73,7 +74,7 @@ export interface StorageAlertStates {
   missingBackup: AlertTypeState;
 }
 
-/** Cooldown period between repeated notifications for the same active condition (24 hours) */
+/** Default cooldown period between repeated notifications for the same active condition (24 hours) */
 export const ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 function defaultAlertTypeState(): AlertTypeState {
@@ -92,11 +93,15 @@ export function defaultAlertStates(): StorageAlertStates {
 /**
  * Determine whether a notification should be sent for the given alert state.
  * Returns true if the alert is newly active or the cooldown period has elapsed.
+ * @param cooldownMs Custom cooldown in ms. 0 = reminders disabled (only first notification). undefined = default 24h.
  */
-function shouldNotify(state: AlertTypeState): boolean {
+function shouldNotify(state: AlertTypeState, cooldownMs?: number): boolean {
   if (!state.active) return true;
   if (!state.lastNotifiedAt) return true;
-  return Date.now() - new Date(state.lastNotifiedAt).getTime() >= ALERT_COOLDOWN_MS;
+  // cooldownMs === 0 means reminders are disabled — only notify on first occurrence
+  if (cooldownMs === 0) return false;
+  const effectiveCooldown = cooldownMs ?? ALERT_COOLDOWN_MS;
+  return Date.now() - new Date(state.lastNotifiedAt).getTime() >= effectiveCooldown;
 }
 
 // ── Config Persistence ─────────────────────────────────────────
@@ -195,6 +200,19 @@ export async function saveAlertStates(
 export async function checkStorageAlerts(
   entries: StorageVolumeEntry[]
 ): Promise<void> {
+  // Load notification config once to get per-event reminder intervals
+  let reminderCooldowns: Record<string, number> = {};
+  try {
+    const notifConfig = await getNotificationConfig();
+    for (const [eventId, eventCfg] of Object.entries(notifConfig.events)) {
+      if (eventCfg.reminderIntervalHours && eventCfg.reminderIntervalHours > 0) {
+        reminderCooldowns[eventId] = eventCfg.reminderIntervalHours * 60 * 60 * 1000;
+      }
+    }
+  } catch {
+    // Fall back to defaults if config can't be loaded
+  }
+
   for (const entry of entries) {
     if (!entry.configId) continue;
 
@@ -214,20 +232,20 @@ export async function checkStorageAlerts(
       const snapshot = JSON.stringify(states);
 
       if (config.usageSpikeEnabled) {
-        await checkUsageSpike(entry, config, states);
+        await checkUsageSpike(entry, config, states, reminderCooldowns[NOTIFICATION_EVENTS.STORAGE_USAGE_SPIKE]);
       } else if (states.usageSpike.active) {
         // Reset state when alert type is disabled
         states.usageSpike = defaultAlertTypeState();
       }
 
       if (config.storageLimitEnabled) {
-        await checkStorageLimit(entry, config, states);
+        await checkStorageLimit(entry, config, states, reminderCooldowns[NOTIFICATION_EVENTS.STORAGE_LIMIT_WARNING]);
       } else if (states.storageLimit.active) {
         states.storageLimit = defaultAlertTypeState();
       }
 
       if (config.missingBackupEnabled) {
-        await checkMissingBackup(entry, config, states);
+        await checkMissingBackup(entry, config, states, reminderCooldowns[NOTIFICATION_EVENTS.STORAGE_MISSING_BACKUP]);
       } else if (states.missingBackup.active) {
         states.missingBackup = defaultAlertTypeState();
       }
@@ -253,7 +271,8 @@ export async function checkStorageAlerts(
 async function checkUsageSpike(
   entry: StorageVolumeEntry,
   config: StorageAlertConfig,
-  states: StorageAlertStates
+  states: StorageAlertStates,
+  cooldownMs?: number
 ): Promise<void> {
   // Get the previous snapshot (second most recent)
   const previousSnapshots = await prisma.storageSnapshot.findMany({
@@ -276,7 +295,7 @@ async function checkUsageSpike(
     ((currentSize - previousSize) / previousSize) * 100;
 
   if (Math.abs(changePercent) >= config.usageSpikeThresholdPercent) {
-    if (shouldNotify(states.usageSpike)) {
+    if (shouldNotify(states.usageSpike, cooldownMs)) {
       log.info("Storage usage spike detected", {
         storageName: entry.name,
         previousSize,
@@ -309,7 +328,8 @@ async function checkUsageSpike(
 async function checkStorageLimit(
   entry: StorageVolumeEntry,
   config: StorageAlertConfig,
-  states: StorageAlertStates
+  states: StorageAlertStates,
+  cooldownMs?: number
 ): Promise<void> {
   if (config.storageLimitBytes <= 0) return;
 
@@ -318,7 +338,7 @@ async function checkStorageLimit(
 
   // Alert when usage is at or above 90% of the limit
   if (usagePercent >= 90) {
-    if (shouldNotify(states.storageLimit)) {
+    if (shouldNotify(states.storageLimit, cooldownMs)) {
       log.info("Storage limit warning triggered", {
         storageName: entry.name,
         currentSize: entry.size,
@@ -351,7 +371,8 @@ async function checkStorageLimit(
 async function checkMissingBackup(
   entry: StorageVolumeEntry,
   config: StorageAlertConfig,
-  states: StorageAlertStates
+  states: StorageAlertStates,
+  cooldownMs?: number
 ): Promise<void> {
   if (config.missingBackupHours <= 0) return;
 
@@ -386,7 +407,7 @@ async function checkMissingBackup(
     (Date.now() - lastChangeAt.getTime()) / (1000 * 60 * 60);
 
   if (hoursSinceLastBackup >= config.missingBackupHours) {
-    if (shouldNotify(states.missingBackup)) {
+    if (shouldNotify(states.missingBackup, cooldownMs)) {
       log.info("Missing backup alert triggered", {
         storageName: entry.name,
         hoursSinceLastBackup: Math.round(hoursSinceLastBackup),

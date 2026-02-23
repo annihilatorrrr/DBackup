@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, Database, HardDrive, FolderOpen, CalendarClock, History, Settings, Bell, ChevronsUpDown, LogOut, Moon, Sun, Monitor, Users, User, Lock, BookOpen, SearchCode, Rocket } from "lucide-react"
+import { LayoutDashboard, Database, HardDrive, FolderOpen, CalendarClock, History, Settings, Bell, ChevronsUpDown, LogOut, Moon, Sun, Monitor, Users, User, Lock, BookOpen, SearchCode, Rocket, ArrowUpCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useSession, signOut } from "@/lib/auth-client"
@@ -172,10 +172,10 @@ export function Sidebar({ permissions = [], isSuperAdmin = false, updateAvailabl
                     {updateAvailable && (
                          <button
                             onClick={() => window.open('https://gitlab.com/Skyfay/dbackup/-/releases', '_blank')}
-                            className="text-orange-500 font-medium flex items-center gap-1 animate-pulse hover:text-orange-400 cursor-pointer bg-transparent border-0 p-0"
+                            className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 cursor-pointer bg-transparent border-0 p-0"
                         >
-                            <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
-                            Update available
+                            <ArrowUpCircle className="h-3 w-3" />
+                            <span>Update available</span>
                          </button>
                     )}
                 </div>
@@ -199,10 +199,7 @@ export function Sidebar({ permissions = [], isSuperAdmin = false, updateAvailabl
                                         <AvatarFallback className="rounded-lg">{getInitials(session.user.name)}</AvatarFallback>
                                     </Avatar>
                                     {updateAvailable && isSuperAdmin && (
-                                        <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-                                            <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
-                                        </span>
+                                        <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-blue-500" />
                                     )}
                                 </div>
                                 <div className="grid flex-1 text-left text-sm leading-tight">
@@ -226,7 +223,7 @@ export function Sidebar({ permissions = [], isSuperAdmin = false, updateAvailabl
                                             <AvatarFallback className="rounded-lg">{getInitials(session.user.name)}</AvatarFallback>
                                         </Avatar>
                                         {updateAvailable && isSuperAdmin && (
-                                            <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-orange-500 border-2 border-background" />
+                                            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-blue-500" />
                                         )}
                                     </div>
                                     <div className="grid flex-1 text-left text-sm leading-tight">
@@ -238,9 +235,9 @@ export function Sidebar({ permissions = [], isSuperAdmin = false, updateAvailabl
                             <DropdownMenuSeparator />
                              <DropdownMenuGroup>
                                 {updateAvailable && isSuperAdmin && (
-                                    <DropdownMenuItem className="text-orange-600 focus:text-orange-600 font-medium" onClick={() => window.open('https://gitlab.com/Skyfay/dbackup/-/releases', '_blank')}>
+                                    <DropdownMenuItem className="text-blue-500 focus:text-blue-500" onClick={() => window.open('https://gitlab.com/Skyfay/dbackup/-/releases', '_blank')}>
                                         <div className="flex items-center w-full">
-                                            <Bell className="mr-2 h-4 w-4 text-orange-500" />
+                                            <ArrowUpCircle className="mr-2 h-4 w-4" />
                                             <span>Update available {latestVersion ? `(${latestVersion})` : ''}</span>
                                         </div>
                                     </DropdownMenuItem>

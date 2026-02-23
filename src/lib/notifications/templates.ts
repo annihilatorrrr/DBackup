@@ -19,6 +19,7 @@ import {
   StorageUsageSpikeData,
   StorageLimitWarningData,
   StorageMissingBackupData,
+  UpdateAvailableData,
 } from "./types";
 
 // ── Individual Template Functions ──────────────────────────────
@@ -311,6 +312,26 @@ function storageMissingBackupTemplate(
   };
 }
 
+function updateAvailableTemplate(
+  data: UpdateAvailableData
+): NotificationPayload {
+  return {
+    title: "Update Available",
+    message: `A new version of DBackup is available: ${data.latestVersion} (current: ${data.currentVersion}).`,
+    fields: [
+      { name: "Latest Version", value: data.latestVersion, inline: true },
+      { name: "Current Version", value: data.currentVersion, inline: true },
+      ...(data.releaseUrl
+        ? [{ name: "Release Notes", value: data.releaseUrl, inline: false }]
+        : []),
+      { name: "Time", value: data.timestamp, inline: true },
+    ],
+    color: "#3b82f6", // blue
+    success: true,
+    badge: "Update",
+  };
+}
+
 // ── Template Dispatcher ────────────────────────────────────────
 
 /**
@@ -344,6 +365,8 @@ export function renderTemplate(
       return storageLimitWarningTemplate(event.data);
     case NOTIFICATION_EVENTS.STORAGE_MISSING_BACKUP:
       return storageMissingBackupTemplate(event.data);
+    case NOTIFICATION_EVENTS.UPDATE_AVAILABLE:
+      return updateAvailableTemplate(event.data);
     default:
       // Fallback for unknown events
       return {

@@ -3,16 +3,9 @@
 All notable changes to DBackup are documented here.
 
 ## v1.0.0 - First Stable Release
-*Released: February 23, 2026*
+*Release: In Progress*
 
-🎉 **DBackup 1.0.0 — the first stable release.** This version stabilizes the platform after the extensive beta phase, ships quality-of-life fixes for the API trigger workflow, hardens job status tracking with stale execution recovery, and polishes the dashboard UI.
-
-### 🐛 Bug Fixes
-
-- **Pending Icon Color** — Database icon in the "Latest Jobs" dashboard widget was incorrectly shown in red for `Pending` executions. Pending jobs now display a yellow icon, consistent with the yellow `Pending` status badge
-- **API Trigger — Bash Script Error Handling** — The generated Bash script now checks whether the API returned `success: true` before attempting to parse `.data.status`. Previously, a missing `history:read` permission on the API key caused a silent `null` status, leading to "Unknown status: null" and immediate exit
-- **API Trigger — Missing Permission Documentation** — The API Trigger dialog stated only `jobs:execute` was required to use the polling workflow. The status polling endpoint (`GET /api/executions/{id}`) also requires `history:read` — both permissions are now clearly listed in the dialog description, Overview tab, and generated scripts
-- **API Trigger — cURL Placeholder Clarity** — The "Poll Execution Status" and "Poll with Logs" cURL examples used a bare `EXECUTION_ID` placeholder without explanation. The placeholder is now formatted as `{EXECUTION_ID}` and each example includes an explicit hint: *"Replace `{EXECUTION_ID}` with the `executionId` from the trigger response"*
+🎉 **DBackup 1.0.0 — the first stable release.** This version stabilizes the platform after the extensive beta phase, ships quality-of-life fixes for the API trigger workflow, hardens job status tracking with stale execution recovery, adds update notifications with configurable reminder intervals, and polishes the dashboard UI.
 
 ### ✨ New Features
 
@@ -25,11 +18,41 @@ All notable changes to DBackup are documented here.
 - **Queue Safety** — Recovery runs before the scheduler initializes, ensuring the queue starts clean without stale `Running` entries blocking slot allocation
 - **Non-Blocking** — Individual recovery failures are logged and skipped without aborting the startup sequence
 
+#### 🔔 Update Available Notification
+- **New Notification Event** — "Update Available" is now a registered system notification event under a new **Updates** category in Settings → Notifications. When enabled, DBackup sends a notification through configured channels (Email, Discord, etc.) whenever a new version is detected
+- **Deduplication** — Notifications are deduplicated: a notification is sent immediately when a new version is first detected, and re-sent only after the configured reminder interval (default: 7 days). When the app is updated to the latest version, the state resets automatically for future update cycles
+- **Test Notification** — A "Test" button is available in notification settings to preview the update notification on all configured channels
+
+#### ⏰ Configurable Reminder Intervals
+- **Per-Event Reminder Settings** — Notification events that support reminders (storage alerts, update available) now show a "Repeat reminder" dropdown in Settings → Notifications, allowing users to choose how often a persistent condition triggers re-notifications
+- **Interval Options** — Disabled, Every 6h, Every 12h, Every 24h (default), Every 2 days, Every 7 days, Every 14 days
+- **Disable Reminders** — Selecting "Disabled" sends only the initial notification when a condition first becomes active — no repeated reminders while the condition persists
+- **Applies to Storage Alerts** — Storage Usage Spike, Storage Limit Warning, and Missing Backup alerts now respect the configured reminder interval instead of the previous hardcoded 24-hour cooldown
+
+### 🎨 UI Improvements
+
+- **Update Indicator Redesign** — Replaced the orange pulsing update indicator in the sidebar with a muted, non-animated design: subtle `ArrowUpCircle` icon in the version footer, small blue dot on the avatar badge, and blue-tinted "Update available" entry in the user dropdown — consistent with the overall dark/minimal design language
+
+### 🐛 Bug Fixes
+
+- **Pending Icon Color** — Database icon in the "Latest Jobs" dashboard widget was incorrectly shown in red for `Pending` executions. Pending jobs now display a yellow icon, consistent with the yellow `Pending` status badge
+- **API Trigger — Bash Script Error Handling** — The generated Bash script now checks whether the API returned `success: true` before attempting to parse `.data.status`. Previously, a missing `history:read` permission on the API key caused a silent `null` status, leading to "Unknown status: null" and immediate exit
+- **API Trigger — Missing Permission Documentation** — The API Trigger dialog stated only `jobs:execute` was required to use the polling workflow. The status polling endpoint (`GET /api/executions/{id}`) also requires `history:read` — both permissions are now clearly listed in the dialog description, Overview tab, and generated scripts
+- **API Trigger — cURL Placeholder Clarity** — The "Poll Execution Status" and "Poll with Logs" cURL examples used a bare `EXECUTION_ID` placeholder without explanation. The placeholder is now formatted as `{EXECUTION_ID}` and each example includes an explicit hint: *"Replace `{EXECUTION_ID}` with the `executionId` from the trigger response"*
+
 ### 🔧 Technical Changes
 - New `src/lib/execution-recovery.ts` — `recoverStaleExecutions()` function; queries executions with `Running` or `Pending` status, updates them to `Failed` with `endedAt` and an explanatory log entry appended to the existing logs JSON
 - Updated `src/instrumentation.ts` — Added `recoverStaleExecutions()` as startup step 3 (between rate limit reload and scheduler init)
 - Updated `src/components/dashboard/widgets/latest-jobs.tsx` — `SourceIcon` component now receives `isPending` prop; color logic extended to `text-yellow-500` for `Pending` status (previously fell through to `text-red-500`)
 - Updated `src/components/dashboard/jobs/api-trigger-dialog.tsx` — Dialog description and Overview tab now list `jobs:execute` + `history:read` as required permissions; cURL poll examples use `{EXECUTION_ID}` placeholder with descriptive hint text; Bash script adds `success` field check before parsing status
+- Updated `src/lib/notifications/types.ts` — Added `UPDATE_AVAILABLE` event constant, `UpdateAvailableData` interface, `supportsReminder` flag on `NotificationEventDefinition`, and `reminderIntervalHours` field on per-event notification config
+- Updated `src/lib/notifications/events.ts` — Added `UPDATE_AVAILABLE` event definition under new `"updates"` category with `supportsReminder: true`; added `supportsReminder: true` to all three storage alert events
+- Updated `src/lib/notifications/templates.ts` — New `updateAvailableTemplate()` with version info, release URL, and blue "Update" badge; added case to `renderTemplate()` dispatcher
+- Updated `src/services/system-task-service.ts` — `runCheckForUpdates()` now dispatches update notifications with deduplication state stored in `SystemSetting` key `update.notification.state`; tracks `lastNotifiedVersion` and `lastNotifiedAt` to prevent duplicate sends; resets state when app is up to date
+- Updated `src/services/storage-alert-service.ts` — `shouldNotify()` now accepts optional `cooldownMs` parameter; loads per-event `reminderIntervalHours` from notification config; `cooldownMs === 0` disables reminders (only initial notification fires)
+- Updated `src/components/settings/notification-settings.tsx` — Added "Updates" category with `ArrowUpCircle` icon; added "Repeat reminder" `<Select>` dropdown (Disabled / 6h / 12h / 24h / 2d / 7d / 14d) for events with `supportsReminder`
+- Updated `src/components/layout/sidebar.tsx` — Replaced orange animated indicators with muted blue styling: `ArrowUpCircle` icon in footer, 2px blue dot on avatar, blue-tinted dropdown menu item
+- Updated `src/app/actions/notification-settings.ts` — Added `update_available` test payload for the test notification button
 
 ## v0.9.9-beta - Storage Alerts, Notification Logs & Restore Improvements
 *Released: February 22, 2026*

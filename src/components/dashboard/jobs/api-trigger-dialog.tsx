@@ -576,13 +576,13 @@ trigger_backup:
                 <Tabs defaultValue="overview" className="mt-1">
                     <TabsList className="w-full flex-wrap h-auto gap-1 p-1">
                         <TabsTrigger value="overview">Overview</TabsTrigger>
-                        <Separator orientation="vertical" className="h-4" />
+                        <div className="w-px h-4 bg-border shrink-0" />
                         <TabsTrigger value="curl">cURL</TabsTrigger>
                         <TabsTrigger value="bash">Bash</TabsTrigger>
                         <TabsTrigger value="python">Python</TabsTrigger>
                         <TabsTrigger value="typescript">TypeScript</TabsTrigger>
                         <TabsTrigger value="go">Go</TabsTrigger>
-                        <Separator orientation="vertical" className="h-4" />
+                        <div className="w-px h-4 bg-border shrink-0" />
                         <TabsTrigger value="github">GitHub Actions</TabsTrigger>
                         <TabsTrigger value="gitlab">GitLab CI</TabsTrigger>
                         <TabsTrigger value="ansible">Ansible</TabsTrigger>

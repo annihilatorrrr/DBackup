@@ -6,6 +6,10 @@ import { decryptConfig } from "@/lib/crypto";
 import { updateService } from "./update-service";
 import { healthCheckService } from "./healthcheck-service";
 import { auditService } from "./audit-service";
+import { notify } from "@/services/system-notification-service";
+import { NOTIFICATION_EVENTS } from "@/lib/notifications/types";
+import { getNotificationConfig } from "@/services/system-notification-service";
+import { getEventDefinition } from "@/lib/notifications/events";
 import { PERMISSIONS } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { wrapError } from "@/lib/errors";
@@ -276,15 +280,6 @@ export class SystemTaskService {
     private async runCheckForUpdates() {
         log.debug("Checking for updates");
         try {
-            // The update service handles the "checkForUpdates" setting check internally in recent changes,
-            // but we might want to skip logic if not needed. However, since this is a system task,
-            // the user might have scheduled it.
-            // The service call is lightweight (one API call if enabled).
-            // We mainly call it to refresh the cache if Next.js cache is used, or simply to log output.
-
-            // NOTE: Since the Sidebar checks on every render (with cache), this task is primarily
-            // useful if we later implement *notifications* for updates (e.g. email).
-            // For now, we simply execute it.
             const result = await updateService.checkForUpdates();
 
             if (result.updateAvailable) {
@@ -292,12 +287,105 @@ export class SystemTaskService {
                     latestVersion: result.latestVersion,
                     currentVersion: result.currentVersion
                 });
-                // Future: Send notification?
+
+                // Send notification with deduplication
+                await this.notifyUpdateAvailable(result.latestVersion, result.currentVersion);
             } else {
                 log.debug("Application is up to date", { currentVersion: result.currentVersion });
+
+                // Reset notification state when no longer outdated
+                await this.resetUpdateNotificationState();
             }
         } catch (error: unknown) {
             log.error("Update check failed", {}, wrapError(error));
+        }
+    }
+
+    /**
+     * Send update notification with deduplication.
+     * - Sends immediately when a new version is first detected
+     * - Re-sends after the configured reminder interval (or default 7 days) while still outdated
+     * - Does NOT re-send if the same version was already notified within the interval
+     */
+    private async notifyUpdateAvailable(latestVersion: string, currentVersion: string) {
+        const STATE_KEY = "update.notification.state";
+
+        try {
+            // Load existing state
+            const row = await prisma.systemSetting.findUnique({ where: { key: STATE_KEY } });
+            const state: { lastNotifiedVersion: string | null; lastNotifiedAt: string | null } =
+                row ? JSON.parse(row.value) : { lastNotifiedVersion: null, lastNotifiedAt: null };
+
+            // Determine reminder interval from notification config
+            const config = await getNotificationConfig();
+            const eventConfig = config.events[NOTIFICATION_EVENTS.UPDATE_AVAILABLE];
+            const eventDef = getEventDefinition(NOTIFICATION_EVENTS.UPDATE_AVAILABLE);
+
+            // Default reminder: 7 days (168 hours)
+            const DEFAULT_REMINDER_HOURS = 168;
+            let reminderMs = DEFAULT_REMINDER_HOURS * 60 * 60 * 1000;
+            let reminderDisabled = false;
+
+            if (eventDef?.supportsReminder && eventConfig?.reminderIntervalHours !== undefined && eventConfig.reminderIntervalHours !== null) {
+                if (eventConfig.reminderIntervalHours === 0) {
+                    reminderDisabled = true;
+                } else {
+                    reminderMs = eventConfig.reminderIntervalHours * 60 * 60 * 1000;
+                }
+            }
+
+            // Decide if we should notify
+            const isNewVersion = state.lastNotifiedVersion !== latestVersion;
+            const cooldownElapsed = !reminderDisabled && (!state.lastNotifiedAt ||
+                (Date.now() - new Date(state.lastNotifiedAt).getTime() >= reminderMs));
+
+            if (!isNewVersion && !cooldownElapsed) {
+                log.debug("Skipping update notification (already notified, cooldown active)", {
+                    lastNotifiedVersion: state.lastNotifiedVersion,
+                    lastNotifiedAt: state.lastNotifiedAt,
+                });
+                return;
+            }
+
+            // Dispatch notification
+            await notify({
+                eventType: NOTIFICATION_EVENTS.UPDATE_AVAILABLE,
+                data: {
+                    latestVersion,
+                    currentVersion,
+                    releaseUrl: "https://gitlab.com/Skyfay/dbackup/-/releases",
+                    timestamp: new Date().toISOString(),
+                },
+            });
+
+            // Update state
+            const newState = {
+                lastNotifiedVersion: latestVersion,
+                lastNotifiedAt: new Date().toISOString(),
+            };
+            await prisma.systemSetting.upsert({
+                where: { key: STATE_KEY },
+                update: { value: JSON.stringify(newState) },
+                create: {
+                    key: STATE_KEY,
+                    value: JSON.stringify(newState),
+                    description: "Update notification deduplication state",
+                },
+            });
+
+            log.info("Update notification sent", { latestVersion, isNewVersion });
+        } catch (error: unknown) {
+            log.error("Failed to send update notification", {}, wrapError(error));
+        }
+    }
+
+    /** Reset update notification state when the app is up to date (allows re-notification for future updates) */
+    private async resetUpdateNotificationState() {
+        const STATE_KEY = "update.notification.state";
+        try {
+            await prisma.systemSetting.deleteMany({ where: { key: STATE_KEY } });
+        } catch {
+            // Ignore - state might not exist
         }
     }
 

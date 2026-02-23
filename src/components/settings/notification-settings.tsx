@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bell, ChevronsUpDown, Mail, Send, Shield, Database, RotateCcw, Monitor, HardDrive } from "lucide-react";
+import { Bell, ChevronsUpDown, Mail, Send, Shield, Database, RotateCcw, Monitor, HardDrive, ArrowUpCircle, Clock } from "lucide-react";
 import {
   getNotificationSettings,
   updateNotificationSettings,
@@ -75,6 +75,11 @@ const CATEGORY_META: Record<string, { label: string; icon: React.ReactNode; desc
     label: "Storage",
     icon: <HardDrive className="h-4 w-4" />,
     description: "Storage monitoring and alert events.",
+  },
+  updates: {
+    label: "Updates",
+    icon: <ArrowUpCircle className="h-4 w-4" />,
+    description: "Application update notifications.",
   },
 };
 
@@ -204,6 +209,26 @@ export function NotificationSettings() {
         events: {
           ...config.events,
           [eventId]: { ...eventConfig, notifyUser: mode },
+        },
+      });
+    },
+    [config, persistConfig]
+  );
+
+  // ── Reminder interval toggle ─────────────────────────────────
+
+  const changeReminderInterval = useCallback(
+    (eventId: string, hours: number | null) => {
+      if (!config) return;
+      const eventConfig = config.events[eventId] || {
+        enabled: true,
+        channels: null,
+      };
+      persistConfig({
+        ...config,
+        events: {
+          ...config.events,
+          [eventId]: { ...eventConfig, reminderIntervalHours: hours },
         },
       });
     },
@@ -503,6 +528,43 @@ export function NotificationSettings() {
                                   Admin &amp; User
                                 </SelectItem>
                                 <SelectItem value="only">User only</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+
+                        {/* Reminder interval for recurring alert events */}
+                        {isEnabled && eventDef.supportsReminder && (
+                          <div className="flex items-center gap-2 pt-1">
+                            <Clock className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">
+                              Repeat reminder:
+                            </span>
+                            <Select
+                              value={
+                                eventConfig?.reminderIntervalHours === 0
+                                  ? "off"
+                                  : String(eventConfig?.reminderIntervalHours ?? "default")
+                              }
+                              onValueChange={(val) =>
+                                changeReminderInterval(
+                                  eventDef.id,
+                                  val === "default" ? null : val === "off" ? 0 : Number(val)
+                                )
+                              }
+                            >
+                              <SelectTrigger className="h-7 w-38 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="off">Disabled</SelectItem>
+                                <SelectItem value="default">Default (24h)</SelectItem>
+                                <SelectItem value="6">Every 6h</SelectItem>
+                                <SelectItem value="12">Every 12h</SelectItem>
+                                <SelectItem value="24">Every 24h</SelectItem>
+                                <SelectItem value="48">Every 2 days</SelectItem>
+                                <SelectItem value="168">Every 7 days</SelectItem>
+                                <SelectItem value="336">Every 14 days</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>

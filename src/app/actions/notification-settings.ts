@@ -192,6 +192,15 @@ function buildTestData(eventType: string): any {
         timestamp: now,
       },
     },
+    update_available: {
+      eventType: "update_available",
+      data: {
+        latestVersion: "99.0.0",
+        currentVersion: "1.0.0",
+        releaseUrl: "https://gitlab.com/Skyfay/dbackup/-/releases",
+        timestamp: now,
+      },
+    },
   };
 
   return testPayloads[eventType] ?? null;
