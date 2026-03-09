@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,9 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Lock, History, ChevronsUpDown, Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Lock, History, ChevronsUpDown, Plus, Trash2, ChevronDown, ChevronRight, Database } from "lucide-react";
 import { SchedulePicker } from "./schedule-picker";
 import { AdapterIcon } from "@/components/adapter/adapter-icon";
+import { DatabasePicker } from "@/components/adapter/database-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -59,6 +60,7 @@ export interface JobData {
     schedule: string;
     enabled: boolean;
     sourceId: string;
+    databases?: string;
     encryptionProfileId?: string;
     compression: string;
     notificationEvents?: string;
@@ -85,6 +87,7 @@ const jobSchema = z.object({
     name: z.string().min(1, "Name is required"),
     schedule: z.string().min(1, "Cron schedule is required"),
     sourceId: z.string().min(1, "Source is required"),
+    databases: z.array(z.string()).default([]),
     destinations: z.array(destinationSchema).min(1, "At least one destination is required"),
     encryptionProfileId: z.string().optional(),
     compression: z.enum(["NONE", "GZIP", "BROTLI"]).default("NONE"),
@@ -106,6 +109,7 @@ interface JobFormProps {
         schedule: string;
         enabled: boolean;
         sourceId: string;
+        databases?: string;
         encryptionProfileId?: string;
         compression: string;
         notificationEvents?: string;
@@ -131,6 +135,18 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
     const [sourceOpen, setSourceOpen] = useState(false);
     const [notifyOpen, setNotifyOpen] = useState(false);
     const [expandedDests, setExpandedDests] = useState<Set<number>>(new Set());
+    const [availableDatabases, setAvailableDatabases] = useState<string[]>([]);
+    const [isLoadingDbs, setIsLoadingDbs] = useState(false);
+    const [isDbListOpen, setIsDbListOpen] = useState(false);
+
+    // Parse initial databases from JSON string
+    const parseInitialDatabases = (): string[] => {
+        if (!initialData?.databases) return [];
+        try {
+            const parsed = JSON.parse(initialData.databases);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch { return []; }
+    };
 
     const defaultDestinations = initialData?.destinations?.length
         ? initialData.destinations.map(d => ({
@@ -145,6 +161,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
             name: initialData?.name || "",
             schedule: initialData?.schedule || "0 0 * * *",
             sourceId: initialData?.sourceId || "",
+            databases: parseInitialDatabases(),
             destinations: defaultDestinations,
             encryptionProfileId: initialData?.encryptionProfileId || "no-encryption",
             compression: (initialData?.compression as "NONE" | "GZIP" | "BROTLI") || "NONE",
@@ -168,6 +185,41 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
         });
     };
 
+    // Determine whether to show database picker based on selected source adapter
+    const selectedSourceId = form.watch("sourceId");
+    const selectedSource = sources.find(s => s.id === selectedSourceId);
+    const showDatabasePicker = selectedSource && !["sqlite", "redis"].includes(selectedSource.adapterId);
+
+    const fetchDatabases = useCallback(async () => {
+        if (!selectedSourceId) return;
+        setIsLoadingDbs(true);
+        try {
+            const res = await fetch(`/api/adapters/${encodeURIComponent(selectedSourceId)}/databases`);
+            const data = await res.json();
+            if (data.success && Array.isArray(data.databases)) {
+                setAvailableDatabases(data.databases);
+                setIsDbListOpen(true);
+
+                // Remove any selected databases that no longer exist on server
+                const currentDbs = form.getValues("databases") || [];
+                if (currentDbs.length > 0) {
+                    const valid = currentDbs.filter((db: string) => data.databases.includes(db));
+                    if (valid.length !== currentDbs.length) {
+                        form.setValue("databases", valid, { shouldDirty: true });
+                        toast.warning(`Removed ${currentDbs.length - valid.length} unavailable database(s)`);
+                    }
+                }
+                toast.success(`Loaded ${data.databases.length} databases`);
+            } else {
+                toast.error(data.error || "Failed to load databases");
+            }
+        } catch {
+            toast.error("Failed to fetch databases");
+        } finally {
+            setIsLoadingDbs(false);
+        }
+    }, [selectedSourceId, form]);
+
     const onSubmit = async (data: z.infer<typeof jobSchema>) => {
          try {
             const url = initialData ? `/api/jobs/${initialData.id}` : '/api/jobs';
@@ -176,6 +228,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
             const payload = {
                 ...data,
                 encryptionProfileId: data.encryptionProfileId === "no-encryption" ? "" : data.encryptionProfileId,
+                databases: data.databases || [],
                 destinations: data.destinations.map((d, i) => ({
                     configId: d.configId,
                     priority: i,
@@ -261,8 +314,14 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                                                                 value={s.name}
                                                                 key={s.id}
                                                                 onSelect={() => {
+                                                                    const prevSourceId = form.getValues("sourceId");
                                                                     form.setValue("sourceId", s.id);
                                                                     setSourceOpen(false);
+                                                                    // Reset databases when source changes
+                                                                    if (prevSourceId !== s.id) {
+                                                                        form.setValue("databases", []);
+                                                                        setAvailableDatabases([]);
+                                                                    }
                                                                 }}
                                                                 className={cn(field.value === s.id && "bg-accent")}
                                                             >
@@ -295,6 +354,33 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                                 </FormItem>
                             )} />
                         </div>
+
+                        {/* Database Picker (hidden for SQLite/Redis) */}
+                        {showDatabasePicker && (
+                            <FormField control={form.control} name="databases" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="flex items-center gap-2">
+                                        <Database className="h-3 w-3" />
+                                        Databases
+                                    </FormLabel>
+                                    <FormControl>
+                                        <DatabasePicker
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                            availableDatabases={availableDatabases}
+                                            isLoading={isLoadingDbs}
+                                            onLoad={fetchDatabases}
+                                            isOpen={isDbListOpen}
+                                            setIsOpen={setIsDbListOpen}
+                                        />
+                                    </FormControl>
+                                    <FormDescription>
+                                        Select specific databases to back up. Leave empty to back up all databases.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                        )}
 
                         <FormField control={form.control} name="schedule" render={({ field }) => (
                             <FormItem>

@@ -26,7 +26,7 @@ describe('Step 05 - Per-Destination Retention', () => {
             name: `Test_Job_2026-01-0${i + 1}.sql`,
             path: `/Test Job/Test_Job_2026-01-0${i + 1}.sql`,
             size: 1000,
-            modifiedAt: new Date(2026, 0, i + 1),
+            lastModified: new Date(2026, 0, i + 1),
         }));
     }
 

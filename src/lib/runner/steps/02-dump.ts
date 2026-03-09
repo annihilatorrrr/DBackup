@@ -31,6 +31,18 @@ export async function stepExecuteDump(ctx: RunnerContext) {
     // Inject adapterId as type for Dialect selection (e.g. 'mariadb')
     sourceConfig.type = job.source.adapterId;
 
+    // Inject databases from Job if configured (takes precedence over source config)
+    const jobDatabases: string[] = (() => {
+        try {
+            const parsed = JSON.parse(job.databases || "[]");
+            return Array.isArray(parsed) ? parsed : [];
+        } catch { return []; }
+    })();
+    if (jobDatabases.length > 0) {
+        sourceConfig.database = jobDatabases;
+        ctx.log(`Using ${jobDatabases.length} database(s) from job config: ${jobDatabases.join(', ')}`);
+    }
+
     try {
         const dbVal = sourceConfig.database;
         const options = sourceConfig.options || "";

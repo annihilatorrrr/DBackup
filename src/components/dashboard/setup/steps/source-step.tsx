@@ -64,12 +64,7 @@ export function SourceStep({ adapters, wizardData, onUpdate, onNext, onPrev }: S
 
     const {
         detectedVersion,
-        availableDatabases,
-        isLoadingDbs,
-        isDbListOpen,
-        setIsDbListOpen,
         testConnection,
-        fetchDatabases,
     } = useAdapterConnection({
         adapterId: selectedAdapter?.id || "",
         form: form as unknown as ReturnType<typeof useForm>,
@@ -260,11 +255,6 @@ export function SourceStep({ adapters, wizardData, onUpdate, onNext, onPrev }: S
                             <DatabaseFormContent
                                 adapter={selectedAdapter}
                                 detectedVersion={detectedVersion}
-                                availableDatabases={availableDatabases}
-                                isLoadingDbs={isLoadingDbs}
-                                onLoadDbs={() => fetchDatabases(form.getValues().config)}
-                                isDbListOpen={isDbListOpen}
-                                setIsDbListOpen={setIsDbListOpen}
                             />
 
                             {/* Actions */}

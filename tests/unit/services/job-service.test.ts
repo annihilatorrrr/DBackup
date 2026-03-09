@@ -51,6 +51,7 @@ describe('JobService', () => {
                     name: input.name,
                     schedule: input.schedule,
                     sourceId: input.sourceId,
+                    databases: "[]",
                     enabled: input.enabled,
                     encryptionProfileId: null,
                     compression: "NONE",

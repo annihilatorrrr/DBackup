@@ -39,6 +39,13 @@ All notable changes to DBackup are documented here.
 - **Duplicate Prevention** — The destination selector prevents selecting the same storage destination twice within a single job
 - **Adapter Icons in Job Table** — The Jobs list now shows adapter brand icons (Dropbox, S3, Local, etc.) alongside destination and source names for quick visual identification
 
+#### 🗄️ Database Selection in Job Configuration
+- **Moved to Job** — Database selection has been moved from the Source (adapter) configuration to the Job form. Sources now define only *how to connect* (host, port, credentials), while the Job controls *what to back up* (which databases, schedule, destinations). This provides a clean separation: one Source can be reused by multiple Jobs with different database selections
+- **DatabasePicker in Job Form** — The General tab of the job form now includes a multi-select `DatabasePicker` below the Source selector. Click "Load Databases" to fetch the list from the server, then select specific databases to back up
+- **Empty = All** — When no databases are selected, the backup includes all databases — matching the previous default behavior. Existing jobs with databases configured in their Source continue to work unchanged
+- **SQLite & Redis Excluded** — The picker is hidden for SQLite (single file, no database selection) and Redis (database index is a connection parameter, not a backup selection)
+- **New API Endpoint** — `GET /api/adapters/{id}/databases` fetches the available database list for any saved Source configuration, used by the DatabasePicker in the job form
+
 ### 🎨 UI Improvements
 
 - **Update Indicator Redesign** — Replaced the orange pulsing update indicator in the sidebar with a muted, non-animated design: subtle `ArrowUpCircle` icon in the version footer, small blue dot on the avatar badge, and blue-tinted "Update available" entry in the user dropdown — consistent with the overall dark/minimal design language
@@ -50,6 +57,8 @@ All notable changes to DBackup are documented here.
 - **Job Form — General Tab Layout** — Reorganized the General tab: Source and Active Status are now side by side in the top row, with the Schedule Picker spanning full width below — giving the schedule controls more room and reducing vertical stacking
 - **Job Form — 4-Tab Layout** — Restructured the job form into four tabs: General (source, status, schedule), Destinations (multi-destination list with per-destination retention), Security (encryption, compression), and Notify (notification channels and event filter)
 - **Job Form — Destination ScrollArea** — Added a scrollable container for the destinations list with a 400px max height, preventing the form from growing excessively when many destinations are configured
+- **Job Form — Database Selection** — New `DatabasePicker` section in the General tab between Source/Active Status and Schedule. Shows only when a non-SQLite/Redis source is selected. Includes "Load Databases" button that fetches available databases from the server via the new API endpoint
+- **Source Form — Database Field Removed** — The `database` text field has been removed from the Configuration tab of database source forms (MySQL, PostgreSQL, MongoDB, MSSQL). Database selection is now exclusively done in the Job form. Redis retains its 0–15 connection database dropdown
 
 ### 🐛 Bug Fixes
 
@@ -91,7 +100,17 @@ All notable changes to DBackup are documented here.
 - Updated `src/components/settings/notification-settings.tsx` — Added "Updates" category with `ArrowUpCircle` icon; added "Repeat reminder" `<Select>` dropdown (Disabled / 6h / 12h / 24h / 2d / 7d / 14d) for events with `supportsReminder`
 - Updated `src/components/layout/sidebar.tsx` — Replaced orange animated indicators with muted blue styling: `ArrowUpCircle` icon in footer, 2px blue dot on avatar, blue-tinted dropdown menu item
 - Updated `src/app/actions/notification-settings.ts` — Added `update_available` test payload for the test notification button
-- Updated `src/components/adapter/form-sections.tsx` — Added `RedisDatabaseSelect` component (0–15 dropdown with `db-` prefixed values to work around Radix UI treating `"0"` as falsy); set `isDatabase={adapter.id !== 'redis'}` to hide `DatabasePicker` for Redis; excluded `'database'` key from the generic `FieldList` for Redis adapters
+- Updated `src/components/adapter/form-sections.tsx` — Added `RedisDatabaseSelect` component (0–15 dropdown with `db-` prefixed values to work around Radix UI treating `"0"` as falsy); removed `'database'` key from Configuration tab `FieldList` — database selection moved to Job form; Redis retains its own `RedisDatabaseSelect` dropdown
+- New `prisma/migrations/20260310000000_move_database_selection_to_job/migration.sql` — Adds `databases` TEXT column (default `'[]'`) to `Job` table
+- Updated `prisma/schema.prisma` — Added `databases String @default("[]")` to `Job` model; stores JSON array of database names to back up
+- Updated `src/services/job-service.ts` — Added `databases?: string[]` to `CreateJobInput`/`UpdateJobInput`; `createJob` serializes with `JSON.stringify(databases || [])`; `updateJob` conditionally includes databases when provided
+- New `src/app/api/adapters/[id]/databases/route.ts` — `GET` handler loads `AdapterConfig` by ID, decrypts config, calls `adapter.getDatabases(config)`, returns `{ success, databases }`. Requires `PERMISSIONS.SOURCES.READ`
+- Updated `src/app/api/jobs/route.ts` and `src/app/api/jobs/[id]/route.ts` — POST/PUT accept `databases` array; passes to job service
+- Updated `src/lib/runner/steps/02-dump.ts` — Parses `job.databases` JSON; if non-empty, injects into `sourceConfig.database` before calling `adapter.dump()`. Falls back to source config's own `database` field when job databases is empty (backwards compatible)
+- Updated `src/components/dashboard/jobs/job-form.tsx` — Added `databases` to `JobData` interface, form schema (`z.array(z.string()).default([])`), and submit payload; added `DatabasePicker` section in General tab with `fetchDatabases` callback using new API endpoint; source change resets database selection; picker hidden for SQLite/Redis via `adapterId` check
+- Updated `src/components/adapter/form-sections.tsx` — Removed `'database'` from Configuration tab `FieldList` keys (no longer shown for MySQL, PostgreSQL, MongoDB, MSSQL)
+- Updated `src/components/adapter/adapter-form.tsx` — Removed database-picker related props from `DatabaseFormContent` call
+- Updated `src/components/dashboard/setup/steps/source-step.tsx` — Removed database-picker related props from `DatabaseFormContent` call
 
 ## v0.9.9-beta - Storage Alerts, Notification Logs & Restore Improvements
 *Released: February 22, 2026*

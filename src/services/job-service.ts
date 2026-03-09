@@ -11,6 +11,7 @@ export interface CreateJobInput {
     name: string;
     schedule: string;
     sourceId: string;
+    databases?: string[];
     destinations: DestinationInput[];
     notificationIds?: string[];
     encryptionProfileId?: string;
@@ -23,6 +24,7 @@ export interface UpdateJobInput {
     name?: string;
     schedule?: string;
     sourceId?: string;
+    databases?: string[];
     destinations?: DestinationInput[];
     notificationIds?: string[];
     encryptionProfileId?: string;
@@ -65,13 +67,14 @@ export class JobService {
     }
 
     async createJob(input: CreateJobInput) {
-        const { name, schedule, sourceId, destinations, notificationIds, enabled, encryptionProfileId, compression, notificationEvents } = input;
+        const { name, schedule, sourceId, databases, destinations, notificationIds, enabled, encryptionProfileId, compression, notificationEvents } = input;
 
         const newJob = await prisma.job.create({
             data: {
                 name,
                 schedule,
                 sourceId,
+                databases: JSON.stringify(databases || []),
                 enabled: enabled !== undefined ? enabled : true,
                 encryptionProfileId: encryptionProfileId || null,
                 compression: compression || "NONE",
@@ -96,7 +99,7 @@ export class JobService {
     }
 
     async updateJob(id: string, input: UpdateJobInput) {
-        const { name, schedule, sourceId, destinations, notificationIds, enabled, encryptionProfileId, compression, notificationEvents } = input;
+        const { name, schedule, sourceId, databases, destinations, notificationIds, enabled, encryptionProfileId, compression, notificationEvents } = input;
 
         const updatedJob = await prisma.$transaction(async (tx) => {
             // Update destinations if provided
@@ -121,6 +124,7 @@ export class JobService {
                     schedule,
                     enabled,
                     sourceId,
+                    databases: databases !== undefined ? JSON.stringify(databases) : undefined,
                     compression,
                     notificationEvents,
                     encryptionProfileId: encryptionProfileId === "" ? null : encryptionProfileId,

@@ -42,21 +42,11 @@ import { AdapterConfig } from "./types";
 interface SectionProps {
     adapter: AdapterDefinition;
     detectedVersion?: string | null;
-    availableDatabases: string[];
-    isLoadingDbs: boolean;
-    onLoadDbs: () => void;
-    isDbListOpen: boolean;
-    setIsDbListOpen: (open: boolean) => void;
 }
 
 export function DatabaseFormContent({
     adapter,
     detectedVersion,
-    availableDatabases,
-    isLoadingDbs,
-    onLoadDbs,
-    isDbListOpen,
-    setIsDbListOpen
 }: SectionProps) {
     const { watch } = useFormContext();
     const mode = watch("config.mode");
@@ -147,12 +137,6 @@ export function DatabaseFormContent({
                 <FieldList
                     keys={['uri', 'host', 'port', 'user', 'username', 'password']}
                     adapter={adapter}
-                    isDatabase={true}
-                    availableDatabases={availableDatabases}
-                    isLoadingDbs={isLoadingDbs}
-                    onLoadDbs={onLoadDbs}
-                    isDbListOpen={isDbListOpen}
-                    setIsDbListOpen={setIsDbListOpen}
                 />
             </TabsContent>
 
@@ -170,20 +154,13 @@ export function DatabaseFormContent({
                 )}
                 <FieldList
                     keys={[
-                        ...(adapter.id !== 'redis' ? ['database'] : []),
                         'authenticationDatabase', 'options', 'disableSsl',
                         // MSSQL-specific
                         'encrypt', 'trustServerCertificate', 'requestTimeout',
-                        // Redis-specific
+                        // Redis-specific (database is handled by RedisDatabaseSelect above)
                         'mode', 'tls', 'sentinelMasterName', 'sentinelNodes',
                     ]}
                     adapter={adapter}
-                    isDatabase={adapter.id !== 'redis'}
-                    availableDatabases={availableDatabases}
-                    isLoadingDbs={isLoadingDbs}
-                    onLoadDbs={onLoadDbs}
-                    isDbListOpen={isDbListOpen}
-                    setIsDbListOpen={setIsDbListOpen}
                 />
             </TabsContent>
 

@@ -74,12 +74,7 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
         pendingSubmission,
         setPendingSubmission,
         detectedVersion,
-        availableDatabases,
-        isLoadingDbs,
-        isDbListOpen,
-        setIsDbListOpen,
         testConnection,
-        fetchDatabases
     } = useAdapterConnection({
         adapterId: selectedAdapterId,
         form,
@@ -273,11 +268,6 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
                     <DatabaseFormContent
                         adapter={selectedAdapter}
                         detectedVersion={detectedVersion}
-                        availableDatabases={availableDatabases}
-                        isLoadingDbs={isLoadingDbs}
-                        onLoadDbs={() => fetchDatabases(form.getValues().config)}
-                        isDbListOpen={isDbListOpen}
-                        setIsDbListOpen={setIsDbListOpen}
                     />
                 )}
 
