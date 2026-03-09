@@ -42,6 +42,14 @@ All notable changes to DBackup are documented here.
 ### 🎨 UI Improvements
 
 - **Update Indicator Redesign** — Replaced the orange pulsing update indicator in the sidebar with a muted, non-animated design: subtle `ArrowUpCircle` icon in the version footer, small blue dot on the avatar badge, and blue-tinted "Update available" entry in the user dropdown — consistent with the overall dark/minimal design language
+- **Job Form — Dual-Mode Schedule Picker** — Replaced the plain cron text input with a new `SchedulePicker` component that offers two modes, toggled via a compact pill switch in the header:
+  - **Simple Mode** — Frequency selector (Hourly / Daily / Weekly / Monthly) as pill buttons, with contextual dropdowns for day-of-week, day-of-month, hour, and minute. A human-readable description in the header summarizes the selection (e.g., "Runs every Monday at 14:30")
+  - **Cron Mode** — Raw cron expression input with monospace font for power users, identical to the previous behavior
+  - **Auto-Detection** — Existing cron values are automatically parsed into Simple Mode when they match a supported pattern; complex expressions default to Cron Mode
+  - **User Time Format** — The schedule description respects the user's configured time format (12h/24h) and timezone from their profile settings, using the same `formatInTimeZone` logic as `DateDisplay`
+- **Job Form — General Tab Layout** — Reorganized the General tab: Source and Active Status are now side by side in the top row, with the Schedule Picker spanning full width below — giving the schedule controls more room and reducing vertical stacking
+- **Job Form — 4-Tab Layout** — Restructured the job form into four tabs: General (source, status, schedule), Destinations (multi-destination list with per-destination retention), Security (encryption, compression), and Notify (notification channels and event filter)
+- **Job Form — Destination ScrollArea** — Added a scrollable container for the destinations list with a 400px max height, preventing the form from growing excessively when many destinations are configured
 
 ### 🐛 Bug Fixes
 
@@ -62,7 +70,8 @@ All notable changes to DBackup are documented here.
 - Updated `src/lib/runner/steps/04-completion.ts` — Builds `destinationResults` array in execution metadata; handles "Partial" status in notification logic
 - Updated `src/lib/runner.ts` — Added `destinations: []` to context initialization; preserves "Partial" status set by upload step
 - Updated `src/app/api/jobs/route.ts` and `src/app/api/jobs/[id]/route.ts` — POST/PUT accept `destinations` array; validates non-empty; maps with `configId`, `priority`, `retention`
-- Updated `src/components/dashboard/jobs/job-form.tsx` — Complete rewrite: `useFieldArray` for multi-destination list; per-destination `RetentionConfig` component; `DestinationRow` with combobox + collapsible retention; 3 tabs (General, Security, Notify)
+- Updated `src/components/dashboard/jobs/job-form.tsx` — Complete rewrite: `useFieldArray` for multi-destination list; per-destination `RetentionConfig` component; `DestinationRow` with combobox + collapsible retention; 4 tabs (General, Destinations, Security, Notify); General tab reorganized with Source + Active Status in top row, `SchedulePicker` on full width below; Destinations list wrapped in `ScrollArea` with 400px max height
+- New `src/components/dashboard/jobs/schedule-picker.tsx` — Dual-mode schedule configuration component: Simple Mode with frequency pill buttons (Hourly/Daily/Weekly/Monthly) and contextual time/day selects; Cron Mode with raw expression input; card-style layout with header showing human-readable description and compact mode toggle; auto-parses existing cron values into Simple Mode; respects user's time format and timezone via `useSession` + `formatInTimeZone`
 - Updated `src/app/dashboard/jobs/jobs-client.tsx` — Destination column shows names with adapter icons from `config` relation instead of IDs; source column enhanced with adapter icon
 - Updated `src/components/dashboard/widgets/storage-status.tsx` — Queries via `job.destinations[].configId`; includes "Partial" status executions
 - Updated `src/components/dashboard/widgets/recent-activity.tsx` — Include changed to `destinations: { include: { config: true } }`

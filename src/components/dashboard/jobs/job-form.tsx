@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Lock, History, ChevronsUpDown, Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { SchedulePicker } from "./schedule-picker";
 import { AdapterIcon } from "@/components/adapter/adapter-icon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -224,7 +225,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                         <TabsTrigger value="notifications">Notify</TabsTrigger>
                     </TabsList>
 
-                    {/* TAB 1: GENERAL (Source, Destinations, Schedule) */}
+                    {/* TAB 1: GENERAL (Source, Active Status, Schedule) */}
                     <TabsContent value="config" className="space-y-4 pt-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField control={form.control} name="sourceId" render={({ field }) => (
@@ -278,21 +279,8 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                                 </FormItem>
                             )} />
 
-                            <div className="space-y-2">
-                                <FormField control={form.control} name="schedule" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Schedule (Cron)</FormLabel>
-                                        <FormControl><Input placeholder="0 0 * * *" {...field} /></FormControl>
-                                        <FormDescription>Min Hour Day Month Weekday</FormDescription>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                            </div>
-                        </div>
-
-                        <div>
                             <FormField control={form.control} name="enabled" render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="flex flex-col">
                                     <FormLabel>Active Status</FormLabel>
                                     <div className="flex h-10 items-center justify-between rounded-md border border-input bg-transparent px-3 py-2">
                                         <span className="text-sm text-muted-foreground">
@@ -307,6 +295,16 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                                 </FormItem>
                             )} />
                         </div>
+
+                        <FormField control={form.control} name="schedule" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Schedule</FormLabel>
+                                <FormControl>
+                                    <SchedulePicker value={field.value} onChange={field.onChange} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
 
                     </TabsContent>
 
