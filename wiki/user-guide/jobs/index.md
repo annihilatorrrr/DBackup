@@ -6,10 +6,10 @@ Backup jobs are the core of DBackup. They connect a database source to a storage
 
 A job defines:
 - **What** to backup (source database)
-- **Where** to store it (destination)
+- **Where** to store it (one or more destinations)
 - **When** to run (schedule)
 - **How** to process (compression, encryption)
-- **How long** to keep (retention)
+- **How long** to keep (retention per destination)
 
 ## Creating a Job
 
@@ -24,7 +24,7 @@ A job defines:
 | :--- | :--- |
 | **Name** | Descriptive name (e.g., "Daily MySQL Backup") |
 | **Source** | Database connection to backup |
-| **Destination** | Storage location for backups |
+| **Destinations** | One or more storage locations for backups (see [Multi-Destination](#multi-destination) below) |
 | **Enabled** | Toggle job on/off |
 
 ### Compression
@@ -51,7 +51,7 @@ Automate backups with cron expressions. See [Scheduling](/user-guide/jobs/schedu
 
 ### Retention
 
-Automatically clean up old backups. See [Retention Policies](/user-guide/jobs/retention).
+Automatically clean up old backups. Retention is configured **per destination** — each destination can have its own retention policy. See [Retention Policies](/user-guide/jobs/retention).
 
 ### Notifications
 
@@ -60,6 +60,35 @@ Get alerts when backups complete:
 1. Create a [Notification](/user-guide/features/notifications) first
 2. Select notification in job settings
 3. Choose trigger: Success, Failure, or Both
+
+## Multi-Destination
+
+A job can upload to **multiple storage destinations** simultaneously — ideal for implementing the 3-2-1 backup rule.
+
+### Adding Destinations
+
+1. In the job form, click **Add Destination**
+2. Select a storage adapter from the dropdown
+3. Repeat to add more destinations
+4. Drag to reorder upload priority
+
+### Per-Destination Retention
+
+Each destination has its own retention configuration:
+- Expand a destination row to reveal the retention settings
+- Choose None, Simple, or Smart (GFS) independently per destination
+- Example: keep 30 daily backups locally, but only 12 monthly in S3
+
+### Upload Behavior
+
+- The database dump runs **once** — the resulting file is uploaded to each destination sequentially
+- Destinations are processed in priority order (top to bottom)
+- If one destination fails, the others still continue
+- The same storage adapter cannot be selected twice in one job
+
+### Partial Success
+
+If some destinations succeed and others fail, the execution is marked as **Partial** (see [Job Status](#job-status)).
 
 ## Job Actions
 
@@ -95,7 +124,8 @@ Remove the job permanently:
 | 🟢 **Active** | Enabled and scheduled |
 | ⚪ **Disabled** | Not running on schedule |
 | 🔵 **Running** | Currently executing |
-| 🔴 **Failed** | Last run failed |
+| � **Partial** | Some destinations succeeded, others failed |
+| �🔴 **Failed** | Last run failed |
 
 ## Execution Monitoring
 
@@ -165,25 +195,31 @@ When a job runs, it goes through these steps:
    └── Fetch job config
    └── Decrypt credentials
    └── Validate source connection
+   └── Resolve all destination adapters
 
 2. Dump
    └── Execute database dump
    └── Apply compression (if enabled)
    └── Apply encryption (if enabled)
 
-3. Upload
-   └── Transfer to destination
-   └── Create metadata file
+3. Upload (Fan-Out)
+   └── For each destination (by priority):
+       └── Transfer backup file
+       └── Create metadata file
+       └── Verify checksum (local storage)
+   └── Evaluate results → Partial if mixed
 
 4. Completion
    └── Cleanup temp files
+   └── Record per-destination results
    └── Update execution status
    └── Send notifications
 
-5. Retention (if configured)
-   └── List existing backups
-   └── Apply retention policy
-   └── Delete expired backups
+5. Retention (per destination)
+   └── For each destination (successful uploads only):
+       └── List existing backups
+       └── Apply that destination's retention policy
+       └── Delete expired backups
 ```
 
 ## Troubleshooting

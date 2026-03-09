@@ -34,23 +34,25 @@ export async function POST(req: NextRequest) {
         checkPermissionWithContext(ctx, PERMISSIONS.JOBS.WRITE);
 
         const body = await req.json();
-        const { name, schedule, sourceId, destinationId, notificationIds, enabled, encryptionProfileId, compression, retention, notificationEvents } = body;
+        const { name, schedule, sourceId, destinations, notificationIds, enabled, encryptionProfileId, compression, notificationEvents } = body;
 
-
-        if (!name || !schedule || !sourceId || !destinationId) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+        if (!name || !schedule || !sourceId || !destinations || !Array.isArray(destinations) || destinations.length === 0) {
+            return NextResponse.json({ error: "Missing required fields (name, schedule, sourceId, destinations)" }, { status: 400 });
         }
 
         const newJob = await jobService.createJob({
             name,
             schedule,
             sourceId,
-            destinationId,
+            destinations: destinations.map((d: { configId: string; priority?: number; retention?: any }, i: number) => ({
+                configId: d.configId,
+                priority: d.priority ?? i,
+                retention: d.retention ? JSON.stringify(d.retention) : "{}"
+            })),
             notificationIds,
             enabled,
             encryptionProfileId,
             compression,
-            retention: retention ? JSON.stringify(retention) : "{}",
             notificationEvents
         });
 

@@ -301,7 +301,7 @@ export async function refreshStorageStatsCache(): Promise<StorageVolumeEntry[]> 
         where: {
           status: "Success",
           size: { not: null },
-          job: { destinationId: adapterConfig.id },
+          job: { destinations: { some: { configId: adapterConfig.id } } },
         },
         select: { size: true },
       });
@@ -363,7 +363,7 @@ async function getStorageVolumeFromDB(): Promise<StorageVolumeEntry[]> {
       where: {
         status: "Success",
         size: { not: null },
-        job: { destinationId: adapterConfig.id },
+        job: { destinations: { some: { configId: adapterConfig.id } } },
       },
       select: { size: true },
     });
@@ -420,7 +420,7 @@ export async function getLatestJobs(limit: number = 7): Promise<LatestJobEntry[]
       job: {
         include: {
           source: true,
-          destination: true,
+          destinations: { include: { config: true } },
         },
       },
     },

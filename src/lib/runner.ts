@@ -75,6 +75,7 @@ export async function performExecution(executionId: string, jobId: string) {
     let ctx = {
         execution: initialExe!,
         job: initialExe!.job!,
+        destinations: [],
         log: (msg: string, level: LogLevel = 'info', type: LogType = 'general', details?: string) => {
              const entry: LogEntry = {
                  timestamp: new Date().toISOString(),
@@ -185,7 +186,8 @@ export async function performExecution(executionId: string, jobId: string) {
         updateProgress,
         status: "Running",
         startedAt: new Date(),
-        execution: initialExe as any
+        execution: initialExe as any,
+        destinations: []
     };
 
     try {
@@ -207,8 +209,11 @@ export async function performExecution(executionId: string, jobId: string) {
         await stepRetention(ctx);
 
         updateProgress(100, "Completed");
-        ctx.status = "Success";
-        logEntry("Job completed successfully");
+        // Upload step may have set status to "Partial" — preserve it
+        if (ctx.status === "Running") {
+            ctx.status = "Success";
+        }
+        logEntry(ctx.status === "Partial" ? "Job completed with partial success" : "Job completed successfully");
 
         // Final flush
         await flushLogs(executionId, true);

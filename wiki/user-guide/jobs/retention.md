@@ -12,6 +12,26 @@ Retention policies prevent unlimited storage growth by automatically deleting ol
 | **Simple** | Keep last N backups | Fixed rotation |
 | **Smart (GVS)** | Grandfather-Father-Son | Long-term archival |
 
+## Per-Destination Retention
+
+Retention is configured **individually for each destination** within a job. This means a single job can have different retention strategies per storage location.
+
+### Example
+
+| Destination | Mode | Configuration |
+| :--- | :--- | :--- |
+| Local NAS | Simple | Keep last 30 |
+| AWS S3 | Smart (GFS) | Daily: 7, Weekly: 4, Monthly: 12 |
+| Dropbox | None | Keep all |
+
+### Configuration
+
+In the job form, expand each destination row to configure its retention:
+1. Click the expand arrow on a destination
+2. Select the retention mode (None / Simple / Smart)
+3. Configure mode-specific settings
+4. Each destination saves its retention independently
+
 ## Simple Retention
 
 Keep a fixed number of recent backups.
@@ -142,18 +162,18 @@ Keeps ~12 backups over 1 year.
 
 ## Retention Execution
 
-Retention runs as the **final step** of each backup job:
+Retention runs as the **final step** of each backup job, applied **per destination**:
 
-1. Backup completes successfully
-2. List all backups for this job
+1. Backup upload completes for a destination
+2. List all backups for this job in that specific destination
 3. Read metadata (check lock status)
-4. Apply retention policy
+4. Apply that destination's retention policy
 5. Delete expired backups
+6. Repeat for each remaining destination
 
-### Failure Handling
-
-- If backup fails: retention **does not run**
-- This prevents deleting old backups when new backup failed
+::: tip Skipped on Failure
+Retention is skipped for any destination where the upload failed. This prevents deleting old backups when the new backup didn't arrive.
+:::
 
 ## Compliance Considerations
 

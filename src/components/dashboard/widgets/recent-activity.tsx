@@ -14,7 +14,7 @@ export async function RecentActivity() {
             job: {
                 include: {
                     source: true,
-                    destination: true
+                    destinations: { include: { config: true } }
                 }
             }
         }

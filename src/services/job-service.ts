@@ -1,15 +1,20 @@
 import prisma from "@/lib/prisma";
 import { scheduler } from "@/lib/scheduler";
 
+export interface DestinationInput {
+    configId: string;
+    priority: number;
+    retention: string; // JSON RetentionConfiguration
+}
+
 export interface CreateJobInput {
     name: string;
     schedule: string;
     sourceId: string;
-    destinationId: string;
+    destinations: DestinationInput[];
     notificationIds?: string[];
     encryptionProfileId?: string;
     compression?: string;
-    retention?: string;
     enabled?: boolean;
     notificationEvents?: string;
 }
@@ -18,24 +23,28 @@ export interface UpdateJobInput {
     name?: string;
     schedule?: string;
     sourceId?: string;
-    destinationId?: string;
+    destinations?: DestinationInput[];
     notificationIds?: string[];
     encryptionProfileId?: string;
     compression?: string;
-    retention?: string;
     enabled?: boolean;
     notificationEvents?: string;
 }
 
+const jobInclude = {
+    source: true,
+    destinations: {
+        include: { config: true },
+        orderBy: { priority: 'asc' as const }
+    },
+    notifications: true,
+    encryptionProfile: { select: { id: true, name: true } }
+};
+
 export class JobService {
     async getJobs() {
         return prisma.job.findMany({
-            include: {
-                source: true,
-                destination: true,
-                notifications: true,
-                encryptionProfile: { select: { id: true, name: true } }
-            },
+            include: jobInclude,
             orderBy: { createdAt: 'desc' }
         });
     }
@@ -45,7 +54,10 @@ export class JobService {
             where: { id },
             include: {
                 source: true,
-                destination: true,
+                destinations: {
+                    include: { config: true },
+                    orderBy: { priority: 'asc' }
+                },
                 notifications: true,
                 encryptionProfile: true
             }
@@ -53,61 +65,72 @@ export class JobService {
     }
 
     async createJob(input: CreateJobInput) {
-        const { name, schedule, sourceId, destinationId, notificationIds, enabled, encryptionProfileId, compression, retention, notificationEvents } = input;
+        const { name, schedule, sourceId, destinations, notificationIds, enabled, encryptionProfileId, compression, notificationEvents } = input;
 
         const newJob = await prisma.job.create({
             data: {
                 name,
                 schedule,
                 sourceId,
-                destinationId,
                 enabled: enabled !== undefined ? enabled : true,
                 encryptionProfileId: encryptionProfileId || null,
                 compression: compression || "NONE",
-                retention: retention || "{}",
                 notificationEvents: notificationEvents || "ALWAYS",
                 notifications: {
                     connect: notificationIds?.map((id) => ({ id })) || []
+                },
+                destinations: {
+                    create: destinations.map((d) => ({
+                        configId: d.configId,
+                        priority: d.priority,
+                        retention: d.retention || "{}"
+                    }))
                 }
             },
-            include: {
-                source: true,
-                destination: true,
-                notifications: true,
-            }
+            include: jobInclude
         });
 
-        // Trigger scheduler refresh to pick up the new job
         await scheduler.refresh();
 
         return newJob;
     }
 
     async updateJob(id: string, input: UpdateJobInput) {
-        const { name, schedule, sourceId, destinationId, notificationIds, enabled, encryptionProfileId, compression, retention, notificationEvents } = input;
+        const { name, schedule, sourceId, destinations, notificationIds, enabled, encryptionProfileId, compression, notificationEvents } = input;
 
-        const updatedJob = await prisma.job.update({
-            where: { id },
-            data: {
-                name,
-                schedule,
-                enabled,
-                sourceId,
-                destinationId,
-                compression,
-                retention,
-                notificationEvents,
-                encryptionProfileId: encryptionProfileId === "" ? null : encryptionProfileId,
-                notifications: {
-                    set: [], // Clear existing relations
-                    connect: notificationIds?.map((id) => ({ id })) || []
-                }
-            },
-            include: {
-                source: true,
-                destination: true,
-                notifications: true,
+        const updatedJob = await prisma.$transaction(async (tx) => {
+            // Update destinations if provided
+            if (destinations) {
+                // Remove existing destinations
+                await tx.jobDestination.deleteMany({ where: { jobId: id } });
+                // Create new ones
+                await tx.jobDestination.createMany({
+                    data: destinations.map((d) => ({
+                        jobId: id,
+                        configId: d.configId,
+                        priority: d.priority,
+                        retention: d.retention || "{}"
+                    }))
+                });
             }
+
+            return tx.job.update({
+                where: { id },
+                data: {
+                    name,
+                    schedule,
+                    enabled,
+                    sourceId,
+                    compression,
+                    notificationEvents,
+                    encryptionProfileId: encryptionProfileId === "" ? null : encryptionProfileId,
+                    notifications: {
+                        set: [],
+                        connect: notificationIds?.map((id) => ({ id })) || []
+                    }
+                },
+                include: jobInclude
+            });
         });
 
         await scheduler.refresh();

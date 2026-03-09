@@ -38,18 +38,21 @@ export async function PUT(
     const params = await props.params;
     try {
         const body = await req.json();
-        const { name, schedule, sourceId, destinationId, notificationIds, enabled, encryptionProfileId, compression, retention, notificationEvents } = body;
+        const { name, schedule, sourceId, destinations, notificationIds, enabled, encryptionProfileId, compression, notificationEvents } = body;
 
         const updatedJob = await jobService.updateJob(params.id, {
             name,
             schedule,
             enabled,
             sourceId,
-            destinationId,
+            destinations: destinations ? destinations.map((d: { configId: string; priority?: number; retention?: any }, i: number) => ({
+                configId: d.configId,
+                priority: d.priority ?? i,
+                retention: d.retention ? JSON.stringify(d.retention) : "{}"
+            })) : undefined,
             notificationIds,
             encryptionProfileId,
             compression,
-            retention: retention ? JSON.stringify(retention) : undefined,
             notificationEvents
         });
 

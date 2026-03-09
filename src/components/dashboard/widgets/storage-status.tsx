@@ -22,39 +22,29 @@ export async function StorageStatus() {
         );
     }
 
-    // 2. Aggregate stats per adapter (requires manual grouping usually or raw query,
-    //    but let's do simple post-processing for flexibility if volume isn't huge)
-    //    Ideally: Execution table doesn't link directly to Storage Adapter ID, it links to Job -> Destination.
-    //    But we have `path` in Execution.
-    //    Actually, Execution belongs to Job. Job has Destination. Destination is AdapterConfig.
-    //    So we can group by job.destinationId.
-
-    // Group executions by destination ID to sum up sizes
-
-    // Note: This logic assumes executions are linked to jobs that still exist.
-    // If a job is deleted, the execution loses the link to destinationId via Job relation.
-    // For a robust status, we might only show active destinations.
+    // Aggregate stats per storage adapter via JobDestination join table
 
     const stats = new Map<string, { size: number, count: number }>();
 
-    // Initialize map
     storageAdapters.forEach(ad => {
         stats.set(ad.id, { size: 0, count: 0 });
     });
 
-    // Fetch executions with job info
+    // Fetch executions with job destinations
     const executions = await prisma.execution.findMany({
-        where: { status: "Success", size: { not: null } },
-        select: { size: true, job: { select: { destinationId: true } } }
+        where: { status: { in: ["Success", "Partial"] }, size: { not: null } },
+        select: { size: true, job: { select: { destinations: { select: { configId: true } } } } }
     });
 
     executions.forEach(ex => {
-        if (ex.job && ex.job.destinationId && stats.has(ex.job.destinationId)) {
-            const current = stats.get(ex.job.destinationId)!;
-            // Convert BigInt to number for display aggregation
-            const size = ex.size ? Number(ex.size) : 0;
-            current.size += size;
-            current.count += 1;
+        if (!ex.job) return;
+        const size = ex.size ? Number(ex.size) : 0;
+        for (const dest of ex.job.destinations) {
+            if (stats.has(dest.configId)) {
+                const current = stats.get(dest.configId)!;
+                current.size += size;
+                current.count += 1;
+            }
         }
     });
 

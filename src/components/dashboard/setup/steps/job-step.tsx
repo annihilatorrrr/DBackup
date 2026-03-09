@@ -82,16 +82,19 @@ export function JobStep({ wizardData, onUpdate, onNext, onPrev }: JobStepProps) 
                 name: data.name,
                 schedule: data.schedule,
                 sourceId: wizardData.sourceId,
-                destinationId: wizardData.destinationId,
+                destinations: [{
+                    configId: wizardData.destinationId,
+                    priority: 0,
+                    retention: {
+                        mode: "SIMPLE",
+                        simple: { keepCount: 10 },
+                    },
+                }],
                 encryptionProfileId: wizardData.encryptionProfileId || "",
                 compression: data.compression,
                 enabled: data.enabled,
                 notificationIds: wizardData.notificationIds,
                 notificationEvents: data.notificationEvents,
-                retention: JSON.stringify({
-                    mode: "SIMPLE",
-                    simple: { keepCount: 10 },
-                }),
             };
 
             const res = await fetch("/api/jobs", {

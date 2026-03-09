@@ -1,4 +1,4 @@
-import { RunnerContext } from "../types";
+import { RunnerContext, DestinationContext } from "../types";
 import { decryptConfig } from "@/lib/crypto";
 import path from "path";
 import fs from "fs/promises";
@@ -14,12 +14,10 @@ import { calculateFileChecksum, verifyFileChecksum } from "@/lib/checksum";
 import { getTempDir } from "@/lib/temp-dir";
 
 export async function stepUpload(ctx: RunnerContext) {
-    if (!ctx.job || !ctx.destAdapter || !ctx.tempFile) throw new Error("Context not ready for upload");
+    if (!ctx.job || ctx.destinations.length === 0 || !ctx.tempFile) throw new Error("Context not ready for upload");
 
     const job = ctx.job;
-    // Cast job to any because Prisma Client types might lag slightly in IDE or strict checks
     const compression = (job as any).compression as CompressionType;
-    const destAdapter = ctx.destAdapter;
 
     // Determine Action Label for UI
     const actions: string[] = [];
@@ -27,31 +25,20 @@ export async function stepUpload(ctx: RunnerContext) {
     if (job.encryptionProfileId) actions.push("Encrypting");
     const processingLabel = actions.length > 0 ? actions.join(" & ") : "Processing";
 
-    // Set Initial Stage
-    // If we have transformations, we start with "Encrypting/Compressing".
-    // Otherwise we go straight to "Uploading Backup".
     if (actions.length > 0) {
         ctx.updateProgress(0, processingLabel + "...");
     } else {
         ctx.updateProgress(0, "Uploading Backup...");
     }
 
-    ctx.log(`Starting Upload to ${job.destination.name} (${job.destination.type})...`);
-
-    // --- PIPELINE CONSTRUCTION ---
-    // We construct a pipeline: Source -> [Compression] -> [Encryption] -> NewTempFile
-
+    // --- PIPELINE CONSTRUCTION (once, shared across all destinations) ---
     let currentFile = ctx.tempFile;
     const transformStreams: any[] = [];
 
-
-    // 0. Progress Monitor for Local Processing
     const sourceSize = statSync(ctx.tempFile).size;
     const progressMonitor = new ProgressMonitorStream(sourceSize, (processed, total, percent) => {
         ctx.updateProgress(percent, `${processingLabel} (${formatBytes(processed)} / ${formatBytes(total)})`);
     });
-    // Add monitor FIRST
-    // Only if we actually have transforms. If no compression/encryption, we skip local processing.
 
     // 1. Compression Step
     let compressionMeta: CompressionType | undefined = undefined;
@@ -86,7 +73,7 @@ export async function stepUpload(ctx: RunnerContext) {
                 profileId: job.encryptionProfileId,
                 algorithm: 'aes-256-gcm',
                 iv: iv.toString('hex'),
-                authTag: '' // Will be filled after stream
+                authTag: ''
             };
 
         } catch (error: unknown) {
@@ -97,10 +84,7 @@ export async function stepUpload(ctx: RunnerContext) {
 
     // EXECUTE PIPELINE
     if (transformStreams.length > 0) {
-        // Reuse the already set stage "Encrypting..." or "Compressing..."
         ctx.log(`Processing pipeline -> ${path.basename(currentFile)}`);
-
-        // Inject Progress Monitor at the start
         transformStreams.unshift(progressMonitor);
 
         try {
@@ -112,15 +96,12 @@ export async function stepUpload(ctx: RunnerContext) {
                 createWriteStream(currentFile)
             ]);
 
-            // Cleanup old file
             await fs.unlink(inputFile);
             ctx.tempFile = currentFile;
 
-            // Update dump size to final file size (after compression/encryption)
             ctx.dumpSize = statSync(currentFile).size;
             ctx.log(`Pipeline complete. Final size: ${formatBytes(ctx.dumpSize)}`);
 
-            // Finalize Metadata
             if (encryptionMeta && getAuthTagCallback) {
                 encryptionMeta.authTag = getAuthTagCallback().toString('hex');
                 ctx.log("Encryption successful (AuthTag generated).");
@@ -135,107 +116,126 @@ export async function stepUpload(ctx: RunnerContext) {
     ctx.log("Calculating SHA-256 checksum...");
     const checksum = await calculateFileChecksum(ctx.tempFile);
     ctx.log(`Checksum: ${checksum}`);
-    // --- END CHECKSUM ---
 
-    const destConfig = decryptConfig(JSON.parse(job.destination.config));
+    // --- METADATA SIDECAR (created once, uploaded to each destination) ---
+    const metadata: BackupMetadata = {
+        version: 1,
+        jobId: job.id,
+        jobName: job.name,
+        sourceName: job.source.name,
+        sourceType: job.source.adapterId,
+        sourceId: job.source.id,
+        databases: {
+            count: typeof ctx.metadata?.count === 'number' ? ctx.metadata.count : 0,
+            names: Array.isArray(ctx.metadata?.names) ? ctx.metadata.names : undefined
+        },
+        engineVersion: ctx.metadata?.engineVersion,
+        engineEdition: ctx.metadata?.engineEdition,
+        timestamp: new Date().toISOString(),
+        originalFileName: path.basename(ctx.tempFile),
+        compression: compressionMeta,
+        encryption: encryptionMeta,
+        checksum,
+        multiDb: ctx.metadata?.multiDb
+    };
 
-    // Define remote path (Standard: JobName/FileName)
-    // We let the adapter configuration determine the root (via pathPrefix or basePath)
+    const metaPath = ctx.tempFile + ".meta.json";
+    await fs.writeFile(metaPath, JSON.stringify(metadata, null, 2));
+
+    // --- SEQUENTIAL UPLOAD TO ALL DESTINATIONS ---
     const remotePath = `${job.name}/${path.basename(ctx.tempFile)}`;
-    ctx.finalRemotePath = remotePath;
+    const totalDests = ctx.destinations.length;
 
-    // Create and upload metadata sidecar
-    try {
-        const metadata: BackupMetadata = {
-            version: 1,
-            jobId: job.id,
-            jobName: job.name,
-            sourceName: job.source.name,
-            sourceType: job.source.adapterId,
-            sourceId: job.source.id,
-            databases: {
-                count: typeof ctx.metadata?.count === 'number' ? ctx.metadata.count : 0,
-                names: Array.isArray(ctx.metadata?.names) ? ctx.metadata.names : undefined
-            },
-            engineVersion: ctx.metadata?.engineVersion,
-            engineEdition: ctx.metadata?.engineEdition,
-            timestamp: new Date().toISOString(),
-            originalFileName: path.basename(ctx.tempFile),
-            compression: compressionMeta,
-            encryption: encryptionMeta,
-            checksum,
-            // Add Multi-DB TAR metadata if present
-            multiDb: ctx.metadata?.multiDb
+    ctx.updateProgress(0, "Uploading Backup...");
+
+    for (let i = 0; i < totalDests; i++) {
+        const dest = ctx.destinations[i];
+        const destLabel = `[${dest.configName}]`;
+        const destProgress = (percent: number) => {
+            // Distribute progress across destinations
+            const basePercent = (i / totalDests) * 100;
+            const slicePercent = (percent / totalDests);
+            ctx.updateProgress(Math.round(basePercent + slicePercent), `Uploading to ${dest.configName} (${percent}%)`);
         };
 
-        const metaPath = ctx.tempFile + ".meta.json";
-        await fs.writeFile(metaPath, JSON.stringify(metadata, null, 2));
+        ctx.log(`${destLabel} Starting upload...`);
 
-        // Switch stage to Uploading before starting metadata upload
-        // This ensures "Preparing destination" logs for metadata appear in the Upload group
-        ctx.updateProgress(0, "Uploading Backup...");
-
-        ctx.log(`Uploading metadata sidecar: ${path.basename(metaPath)}`);
-        // We upload to the same path but with .meta.json appended
-        // e.g. /backups/Job/file.sql.meta.json
-        await destAdapter.upload(
-            destConfig,
-            metaPath,
-            remotePath + ".meta.json",
-            undefined,
-            (msg, level, type, details) => ctx.log(msg, level, type, details)
-        );
-
-        // Try to delete temp metadata file
-        await fs.unlink(metaPath).catch(() => {});
-
-    } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : String(e);
-        ctx.log(`Warning: Failed to generate/upload metadata: ${message}`);
-    }
-
-    // Main Upload
-    // We update progress but keep the stage name "Uploading Backup..."
-    const uploadSuccess = await destAdapter.upload(destConfig, ctx.tempFile, remotePath, (percent) => {
-        ctx.updateProgress(percent, `Uploading Backup (${percent}%)`);
-    }, (msg, level, type, details) => ctx.log(msg, level, type, details));
-
-    if (!uploadSuccess) {
-        throw new Error("Upload failed (adapter returned false).");
-    }
-
-    ctx.log(`Upload complete: ${remotePath}`);
-
-    // --- POST-UPLOAD CHECKSUM VERIFICATION ---
-    // Only perform re-download verification for local storage.
-    // Remote storage (S3, SFTP, etc.) already has transport-level integrity
-    // (S3 Content-MD5/CRC32C, SSH layer checksums) and re-downloading a
-    // multi-GB backup just to verify would be prohibitively slow and expensive.
-    const isLocalStorage = job.destination.adapterId === "local-filesystem";
-
-    if (isLocalStorage) {
         try {
-            ctx.log("Verifying upload integrity (local storage)...");
-            const verifyPath = path.join(getTempDir(), `verify_${Date.now()}_${path.basename(ctx.tempFile)}`);
+            // Upload metadata sidecar
+            ctx.log(`${destLabel} Uploading metadata sidecar...`);
+            await dest.adapter.upload(
+                dest.config,
+                metaPath,
+                remotePath + ".meta.json",
+                undefined,
+                (msg, level, type, details) => ctx.log(`${destLabel} ${msg}`, level, type, details)
+            );
 
-            const downloadOk = await destAdapter.download(destConfig, remotePath, verifyPath);
-            if (downloadOk) {
-                const result = await verifyFileChecksum(verifyPath, checksum);
-                if (result.valid) {
-                    ctx.log("Integrity check passed ✓ (SHA-256 match)");
-                } else {
-                    ctx.log(`WARNING: Integrity check FAILED! Expected: ${result.expected}, Got: ${result.actual}`, 'warning');
-                }
-                await fs.unlink(verifyPath).catch(() => {});
-            } else {
-                ctx.log("Skipped integrity verification (download failed)", 'warning');
+            // Upload main backup file
+            const uploadSuccess = await dest.adapter.upload(
+                dest.config,
+                ctx.tempFile,
+                remotePath,
+                destProgress,
+                (msg, level, type, details) => ctx.log(`${destLabel} ${msg}`, level, type, details)
+            );
+
+            if (!uploadSuccess) {
+                throw new Error("Adapter returned false");
             }
+
+            dest.uploadResult = { success: true, path: remotePath };
+            ctx.log(`${destLabel} Upload complete: ${remotePath}`);
+
+            // Post-upload verification for local storage
+            if (dest.adapterId === "local-filesystem") {
+                try {
+                    ctx.log(`${destLabel} Verifying upload integrity...`);
+                    const verifyPath = path.join(getTempDir(), `verify_${Date.now()}_${path.basename(ctx.tempFile)}`);
+                    const downloadOk = await dest.adapter.download(dest.config, remotePath, verifyPath);
+                    if (downloadOk) {
+                        const result = await verifyFileChecksum(verifyPath, checksum);
+                        if (result.valid) {
+                            ctx.log(`${destLabel} Integrity check passed ✓`);
+                        } else {
+                            ctx.log(`${destLabel} WARNING: Integrity check FAILED! Expected: ${result.expected}, Got: ${result.actual}`, 'warning');
+                        }
+                        await fs.unlink(verifyPath).catch(() => {});
+                    }
+                } catch (e: unknown) {
+                    const message = e instanceof Error ? e.message : String(e);
+                    ctx.log(`${destLabel} Integrity verification skipped: ${message}`, 'warning');
+                }
+            }
+
         } catch (e: unknown) {
             const message = e instanceof Error ? e.message : String(e);
-            ctx.log(`Integrity verification skipped: ${message}`, 'warning');
+            dest.uploadResult = { success: false, error: message };
+            ctx.log(`${destLabel} Upload FAILED: ${message}`, 'error');
         }
-    } else {
-        ctx.log("Post-upload verification skipped (remote storage uses transport-level integrity)");
     }
-    // --- END VERIFICATION ---
+
+    // Cleanup temp metadata file
+    await fs.unlink(metaPath).catch(() => {});
+
+    // --- EVALUATE RESULTS ---
+    const successCount = ctx.destinations.filter(d => d.uploadResult?.success).length;
+    const failCount = ctx.destinations.filter(d => d.uploadResult && !d.uploadResult.success).length;
+
+    // Set finalRemotePath to first successful upload (backward compat)
+    const firstSuccess = ctx.destinations.find(d => d.uploadResult?.success);
+    if (firstSuccess) {
+        ctx.finalRemotePath = firstSuccess.uploadResult!.path;
+    }
+
+    if (successCount === 0) {
+        throw new Error(`All ${failCount} destination upload(s) failed`);
+    }
+
+    if (failCount > 0) {
+        ctx.status = "Partial";
+        ctx.log(`Upload summary: ${successCount}/${totalDests} successful, ${failCount} failed`, 'warning');
+    } else {
+        ctx.log(`Upload summary: All ${successCount} destination(s) successful`);
+    }
 }

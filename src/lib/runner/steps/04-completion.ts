@@ -26,21 +26,36 @@ export async function stepCleanup(ctx: RunnerContext) {
 export async function stepFinalize(ctx: RunnerContext) {
     if (!ctx.execution) return;
 
+    // Build per-destination results for metadata
+    const destinationResults = ctx.destinations.map(d => ({
+        configId: d.configId,
+        name: d.configName,
+        adapterId: d.adapterId,
+        path: d.uploadResult?.path,
+        status: d.uploadResult?.success ? "success" : (d.uploadResult ? "failed" : "skipped"),
+        error: d.uploadResult?.error,
+    }));
+
+    const executionMetadata = {
+        ...ctx.metadata,
+        destinations: destinationResults,
+    };
+
     // 1. Update Execution Record
     await prisma.execution.update({
         where: { id: ctx.execution.id },
         data: {
             status: ctx.status,
             endedAt: new Date(),
-            logs: JSON.stringify(ctx.logs), // Should be serialized JSON
+            logs: JSON.stringify(ctx.logs),
             size: ctx.dumpSize,
             path: ctx.finalRemotePath,
-            metadata: ctx.metadata ? JSON.stringify(ctx.metadata) : null
+            metadata: JSON.stringify(executionMetadata)
         }
     });
 
     // 2. Refresh storage statistics cache (non-blocking)
-    if (ctx.status === "Success") {
+    if (ctx.status === "Success" || ctx.status === "Partial") {
         import("@/services/dashboard-service").then(({ refreshStorageStatsCache }) => {
             refreshStorageStatsCache().catch((e) => {
                 log.warn("Failed to refresh storage stats cache after backup", {}, e instanceof Error ? e : undefined);
@@ -52,10 +67,13 @@ export async function stepFinalize(ctx: RunnerContext) {
     if (ctx.job && ctx.job.notifications && ctx.job.notifications.length > 0) {
         const condition = ctx.job.notificationEvents || "ALWAYS";
         const isSuccess = ctx.status === "Success";
+        const isPartial = ctx.status === "Partial";
         const shouldNotify =
             condition === "ALWAYS" ||
             (condition === "SUCCESS_ONLY" && isSuccess) ||
-            (condition === "FAILURE_ONLY" && !isSuccess);
+            (condition === "FAILURE_ONLY" && !isSuccess && !isPartial) ||
+            // Partial counts as notable — notify on both ALWAYS and FAILURE_ONLY
+            (condition === "FAILURE_ONLY" && isPartial);
 
         if (!shouldNotify) {
             ctx.log(`Skipping notifications. Condition: ${condition}, Status: ${ctx.status}`);
@@ -68,10 +86,17 @@ export async function stepFinalize(ctx: RunnerContext) {
 
                     if (notifyAdapter) {
                         const channelConfig = decryptConfig(JSON.parse(channel.config));
-                        const isSuccess = ctx.status === "Success";
                         const eventType = isSuccess
                             ? NOTIFICATION_EVENTS.BACKUP_SUCCESS
-                            : NOTIFICATION_EVENTS.BACKUP_FAILURE;
+                            : isPartial
+                                ? NOTIFICATION_EVENTS.BACKUP_SUCCESS // Partial uses success event with modified message
+                                : NOTIFICATION_EVENTS.BACKUP_FAILURE;
+
+                        // Build destination summary for notification
+                        const destSummary = ctx.destinations.map(d => {
+                            const status = d.uploadResult?.success ? "✓" : "✗";
+                            return `${status} ${d.configName}`;
+                        }).join(", ");
 
                         const payload = renderTemplate({
                             eventType,
@@ -80,9 +105,11 @@ export async function stepFinalize(ctx: RunnerContext) {
                                 sourceName: ctx.job.source?.name,
                                 duration: new Date().getTime() - ctx.startedAt.getTime(),
                                 size: ctx.dumpSize ? Number(ctx.dumpSize) : undefined,
-                                error: !isSuccess ? ctx.logs.find(l => l.level === 'error')?.message : undefined,
+                                error: !isSuccess && !isPartial ? ctx.logs.find(l => l.level === 'error')?.message : undefined,
                                 executionId: ctx.execution?.id,
                                 timestamp: new Date().toISOString(),
+                                // Add destination info as extra context
+                                ...(isPartial ? { error: `Partial upload: ${destSummary}` } : {}),
                             },
                         });
 

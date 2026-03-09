@@ -1,8 +1,10 @@
 import prisma from "@/lib/prisma";
-import { RunnerContext } from "../types";
+import { RunnerContext, DestinationContext } from "../types";
 import { registry } from "@/lib/core/registry";
 import { DatabaseAdapter, StorageAdapter } from "@/lib/core/interfaces";
 import { registerAdapters } from "@/lib/adapters";
+import { decryptConfig } from "@/lib/crypto";
+import { RetentionConfiguration } from "@/lib/core/retention";
 
 // Ensure adapters are loaded
 registerAdapters();
@@ -15,8 +17,11 @@ export async function stepInitialize(ctx: RunnerContext) {
         where: { id: ctx.jobId },
         include: {
             source: true,
-            destination: true,
-            notifications: true // Note: Check if relation name matches schema in your project
+            destinations: {
+                include: { config: true },
+                orderBy: { priority: 'asc' }
+            },
+            notifications: true
         }
     });
 
@@ -24,14 +29,17 @@ export async function stepInitialize(ctx: RunnerContext) {
         throw new Error(`Job ${ctx.jobId} not found`);
     }
 
-    if (!job.source || !job.destination) {
-        throw new Error(`Job ${ctx.jobId} is missing source or destination linkage`);
+    if (!job.source) {
+        throw new Error(`Job ${ctx.jobId} is missing source linkage`);
     }
 
-    ctx.job = job as any; // Cast for now, types aligned in interface
+    if (!job.destinations || job.destinations.length === 0) {
+        throw new Error(`Job ${ctx.jobId} has no destinations configured`);
+    }
+
+    ctx.job = job as any;
 
     // 2. Create Execution Record
-    // Check if execution already provided (e.g. from Queue)
     if (!ctx.execution) {
         const execution = await prisma.execution.create({
             data: {
@@ -44,15 +52,45 @@ export async function stepInitialize(ctx: RunnerContext) {
         ctx.execution = execution;
     }
 
-    // 3. Resolve Adapters
+    // 3. Resolve Source Adapter
     const sourceAdapter = registry.get(job.source.adapterId) as DatabaseAdapter;
-    const destAdapter = registry.get(job.destination.adapterId) as StorageAdapter;
-
     if (!sourceAdapter) throw new Error(`Source adapter '${job.source.adapterId}' not found`);
-    if (!destAdapter) throw new Error(`Destination adapter '${job.destination.adapterId}' not found`);
-
     ctx.sourceAdapter = sourceAdapter;
-    ctx.destAdapter = destAdapter;
 
-    ctx.log("Initialization complete. Adapters resolved.");
+    // 4. Resolve Destination Adapters
+    ctx.destinations = [];
+    for (const dest of job.destinations) {
+        const adapter = registry.get(dest.config.adapterId) as StorageAdapter;
+        if (!adapter) {
+            ctx.log(`Warning: Destination adapter '${dest.config.adapterId}' for '${dest.config.name}' not found. Skipping.`, 'warning');
+            continue;
+        }
+
+        let retention: RetentionConfiguration = { mode: 'NONE' };
+        try {
+            if (dest.retention && dest.retention !== '{}') {
+                retention = JSON.parse(dest.retention);
+            }
+        } catch {
+            ctx.log(`Warning: Failed to parse retention config for destination '${dest.config.name}'. Using NONE.`, 'warning');
+        }
+
+        const destCtx: DestinationContext = {
+            configId: dest.config.id,
+            configName: dest.config.name,
+            adapter,
+            config: decryptConfig(JSON.parse(dest.config.config)),
+            retention,
+            priority: dest.priority,
+            adapterId: dest.config.adapterId,
+        };
+        ctx.destinations.push(destCtx);
+    }
+
+    if (ctx.destinations.length === 0) {
+        throw new Error(`Job ${ctx.jobId}: No valid destination adapters could be resolved`);
+    }
+
+    const destNames = ctx.destinations.map(d => d.configName).join(', ');
+    ctx.log(`Initialization complete. Source: ${job.source.name}, Destinations: [${destNames}] (${ctx.destinations.length})`);
 }

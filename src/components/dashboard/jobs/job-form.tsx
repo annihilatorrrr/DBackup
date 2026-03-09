@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Lock, History, ChevronsUpDown } from "lucide-react";
+import { Lock, History, ChevronsUpDown, Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { AdapterIcon } from "@/components/adapter/adapter-icon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,6 +28,29 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+
+const retentionSchema = z.object({
+    mode: z.enum(["NONE", "SIMPLE", "SMART"]),
+    simple: z.object({
+        keepCount: z.coerce.number().min(1).default(10)
+    }).optional(),
+    smart: z.object({
+        daily: z.coerce.number().min(0).default(7),
+        weekly: z.coerce.number().min(0).default(4),
+        monthly: z.coerce.number().min(0).default(12),
+        yearly: z.coerce.number().min(0).default(2),
+    }).optional()
+});
+
+const destinationSchema = z.object({
+    configId: z.string().min(1, "Destination is required"),
+    retention: retentionSchema,
+});
 
 export interface JobData {
     id: string;
@@ -35,12 +58,15 @@ export interface JobData {
     schedule: string;
     enabled: boolean;
     sourceId: string;
-    destinationId: string;
     encryptionProfileId?: string;
     compression: string;
-    retention: string;
     notificationEvents?: string;
     notifications: { id: string, name: string }[];
+    destinations: {
+        configId: string;
+        priority: number;
+        retention: string;
+    }[];
 }
 
 export interface AdapterOption {
@@ -58,44 +84,59 @@ const jobSchema = z.object({
     name: z.string().min(1, "Name is required"),
     schedule: z.string().min(1, "Cron schedule is required"),
     sourceId: z.string().min(1, "Source is required"),
-    destinationId: z.string().min(1, "Destination is required"),
+    destinations: z.array(destinationSchema).min(1, "At least one destination is required"),
     encryptionProfileId: z.string().optional(),
     compression: z.enum(["NONE", "GZIP", "BROTLI"]).default("NONE"),
     notificationIds: z.array(z.string()).optional(),
     notificationEvents: z.enum(["ALWAYS", "FAILURE_ONLY", "SUCCESS_ONLY"]).default("ALWAYS"),
     enabled: z.boolean().default(true),
-    retention: z.object({
-        mode: z.enum(["NONE", "SIMPLE", "SMART"]),
-        simple: z.object({
-            keepCount: z.coerce.number().min(1).default(10)
-        }).optional(),
-        smart: z.object({
-            daily: z.coerce.number().min(0).default(7),
-            weekly: z.coerce.number().min(0).default(4),
-            monthly: z.coerce.number().min(0).default(12),
-            yearly: z.coerce.number().min(0).default(2),
-        }).optional()
-    })
 });
+
+const defaultRetentionValue = { mode: "NONE" as const, simple: { keepCount: 10 }, smart: { daily: 7, weekly: 4, monthly: 12, yearly: 2 } };
 
 interface JobFormProps {
     sources: AdapterOption[];
     destinations: AdapterOption[];
     notifications: AdapterOption[];
     encryptionProfiles: EncryptionOption[];
-    initialData: JobData | null;
+    initialData: {
+        id: string;
+        name: string;
+        schedule: string;
+        enabled: boolean;
+        sourceId: string;
+        encryptionProfileId?: string;
+        compression: string;
+        notificationEvents?: string;
+        notifications: { id: string; name: string }[];
+        destinations: { configId: string; priority: number; retention: string }[];
+    } | null;
     onSuccess: () => void;
+}
+
+function parseRetention(retentionStr: string) {
+    try {
+        const parsed = JSON.parse(retentionStr);
+        if (!parsed.simple) parsed.simple = { keepCount: 10 };
+        if (!parsed.smart) parsed.smart = { daily: 7, weekly: 4, monthly: 12, yearly: 2 };
+        if (!parsed.mode) parsed.mode = "NONE";
+        return parsed;
+    } catch {
+        return { ...defaultRetentionValue };
+    }
 }
 
 export function JobForm({ sources, destinations, notifications, encryptionProfiles, initialData, onSuccess }: JobFormProps) {
     const [sourceOpen, setSourceOpen] = useState(false);
-    const [destOpen, setDestOpen] = useState(false);
     const [notifyOpen, setNotifyOpen] = useState(false);
+    const [expandedDests, setExpandedDests] = useState<Set<number>>(new Set());
 
-    const defaultRetention = initialData?.retention ? JSON.parse(initialData.retention) : { mode: "NONE", simple: { keepCount: 10 }, smart: { daily: 7, weekly: 4, monthly: 12, yearly: 2 } };
-    // Ensure structure even if JSON is partial
-    if (!defaultRetention.simple) defaultRetention.simple = { keepCount: 10 };
-    if (!defaultRetention.smart) defaultRetention.smart = { daily: 7, weekly: 4, monthly: 12, yearly: 2 };
+    const defaultDestinations = initialData?.destinations?.length
+        ? initialData.destinations.map(d => ({
+            configId: d.configId,
+            retention: parseRetention(d.retention),
+        }))
+        : [{ configId: "", retention: { ...defaultRetentionValue } }];
 
     const form = useForm({
         resolver: zodResolver(jobSchema),
@@ -103,25 +144,42 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
             name: initialData?.name || "",
             schedule: initialData?.schedule || "0 0 * * *",
             sourceId: initialData?.sourceId || "",
-            destinationId: initialData?.destinationId || "",
+            destinations: defaultDestinations,
             encryptionProfileId: initialData?.encryptionProfileId || "no-encryption",
             compression: (initialData?.compression as "NONE" | "GZIP" | "BROTLI") || "NONE",
             notificationIds: initialData?.notifications?.map((n) => n.id) || [],
             notificationEvents: (initialData?.notificationEvents as "ALWAYS" | "FAILURE_ONLY" | "SUCCESS_ONLY") || "ALWAYS",
             enabled: initialData?.enabled ?? true,
-            retention: defaultRetention
         }
     });
+
+    const { fields, append, remove } = useFieldArray({
+        control: form.control,
+        name: "destinations",
+    });
+
+    const toggleExpanded = (index: number) => {
+        setExpandedDests(prev => {
+            const next = new Set(prev);
+            if (next.has(index)) next.delete(index);
+            else next.add(index);
+            return next;
+        });
+    };
 
     const onSubmit = async (data: z.infer<typeof jobSchema>) => {
          try {
             const url = initialData ? `/api/jobs/${initialData.id}` : '/api/jobs';
             const method = initialData ? 'PUT' : 'POST';
 
-            // Clean payload
             const payload = {
                 ...data,
-                encryptionProfileId: data.encryptionProfileId === "no-encryption" ? "" : data.encryptionProfileId
+                encryptionProfileId: data.encryptionProfileId === "no-encryption" ? "" : data.encryptionProfileId,
+                destinations: data.destinations.map((d, i) => ({
+                    configId: d.configId,
+                    priority: i,
+                    retention: d.retention,
+                }))
             };
 
             const res = await fetch(url, {
@@ -140,11 +198,14 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
         } catch { toast.error("Error occurred"); }
     };
 
+    // Get used destination IDs to prevent duplicates
+    const usedDestIds = form.watch("destinations").map(d => d.configId).filter(Boolean);
+
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 
-                {/* Header: Name and Enabled */}
+                {/* Header: Name */}
                 <div className="flex flex-col md:flex-row gap-4">
                     <FormField control={form.control} name="name" render={({ field }) => (
                         <FormItem className="flex-1">
@@ -156,14 +217,13 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                 </div>
 
                 <Tabs defaultValue="config" className="w-full">
-                    <TabsList className="grid w-full grid-cols-4">
+                    <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="config">General</TabsTrigger>
-                        <TabsTrigger value="retention">Retention</TabsTrigger>
                         <TabsTrigger value="security">Security</TabsTrigger>
                         <TabsTrigger value="notifications">Notify</TabsTrigger>
                     </TabsList>
 
-                    {/* TAB 1: GENERAL (Source, Dest, Schedule) */}
+                    {/* TAB 1: GENERAL (Source, Destinations, Schedule) */}
                     <TabsContent value="config" className="space-y-4 pt-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField control={form.control} name="sourceId" render={({ field }) => (
@@ -217,69 +277,20 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                                 </FormItem>
                             )} />
 
-                            <FormField control={form.control} name="destinationId" render={({ field }) => (
-                                <FormItem className="flex flex-col">
-                                    <FormLabel>Destination</FormLabel>
-                                    <Popover open={destOpen} onOpenChange={setDestOpen} modal={true}>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                    variant="outline"
-                                                    role="combobox"
-                                                    aria-expanded={destOpen}
-                                                    className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
-                                                >
-                                                    {field.value ? (
-                                                        <span className="flex items-center gap-2">
-                                                            <AdapterIcon adapterId={destinations.find((d) => d.id === field.value)?.adapterId ?? ""} className="h-4 w-4" />
-                                                            {destinations.find((d) => d.id === field.value)?.name}
-                                                        </span>
-                                                    ) : "Select Destination"}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                            <Command>
-                                                <CommandInput placeholder="Search destination..." />
-                                                <CommandList>
-                                                    <CommandEmpty>No destination found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {destinations.map((d) => (
-                                                            <CommandItem
-                                                                value={d.name}
-                                                                key={d.id}
-                                                                onSelect={() => {
-                                                                    form.setValue("destinationId", d.id);
-                                                                    setDestOpen(false);
-                                                                }}
-                                                                className={cn(field.value === d.id && "bg-accent")}
-                                                            >
-                                                                <AdapterIcon adapterId={d.adapterId} className="h-4 w-4" />
-                                                                {d.name}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
+                            <div className="space-y-2">
+                                <FormField control={form.control} name="schedule" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Schedule (Cron)</FormLabel>
+                                        <FormControl><Input placeholder="0 0 * * *" {...field} /></FormControl>
+                                        <FormDescription>Min Hour Day Month Weekday</FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                             <FormField control={form.control} name="schedule" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Schedule (Cron)</FormLabel>
-                                    <FormControl><Input placeholder="0 0 * * *" {...field} /></FormControl>
-                                    <FormDescription>Min Hour Day Month Weekday</FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-
-                             <FormField control={form.control} name="enabled" render={({ field }) => (
+                        <div>
+                            <FormField control={form.control} name="enabled" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Active Status</FormLabel>
                                     <div className="flex h-10 items-center justify-between rounded-md border border-input bg-transparent px-3 py-2">
@@ -295,117 +306,66 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                                 </FormItem>
                             )} />
                         </div>
-                    </TabsContent>
 
-                    {/* TAB 2: RETENTION */}
-                    <TabsContent value="retention" className="pt-4">
-                         <Card className="border-border">
+                        {/* DESTINATIONS SECTION */}
+                        <Card className="border-border">
                             <CardHeader className="pb-3">
-                                <CardTitle className="text-base flex items-center gap-2">
-                                    <History className="h-4 w-4" />
-                                    Retention Strategy
-                                </CardTitle>
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-base">Destinations</CardTitle>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            append({ configId: "", retention: { ...defaultRetentionValue } });
+                                        }}
+                                        disabled={usedDestIds.length >= destinations.length}
+                                    >
+                                        <Plus className="h-4 w-4 mr-1" />
+                                        Add Destination
+                                    </Button>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    Backups are uploaded sequentially to each destination. Configure retention per destination.
+                                </p>
                             </CardHeader>
-                            <CardContent className="space-y-4">
-                                <FormField
-                                    control={form.control}
-                                    name="retention.mode"
-                                    render={({ field }) => (
-                                        <Tabs value={field.value} onValueChange={field.onChange} className="w-full">
-                                            <TabsList className="grid w-full grid-cols-3">
-                                                <TabsTrigger value="NONE">Keep All</TabsTrigger>
-                                                <TabsTrigger value="SIMPLE">Simple Limit</TabsTrigger>
-                                                <TabsTrigger value="SMART">Smart Rotation</TabsTrigger>
-                                            </TabsList>
-
-                                            <TabsContent value="NONE" className="pt-4">
-                                                <div className="bg-muted p-4 rounded-md text-sm text-muted-foreground">
-                                                    All backups will be kept indefinitely.
-                                                    <br/><strong>Warning:</strong> This may fill up your storage quickly if you run backups frequently.
-                                                </div>
-                                            </TabsContent>
-
-                                            <TabsContent value="SIMPLE" className="pt-4">
-                                                <FormField
-                                                    control={form.control}
-                                                    name="retention.simple.keepCount"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Max Backups to Keep</FormLabel>
-                                                            <FormControl>
-                                                                <div className="flex items-center gap-2">
-                                                                     <Input type="number" min={1} {...field} value={field.value as number} onChange={e => field.onChange(parseInt(e.target.value))} className="w-24" />
-                                                                     <span className="text-sm text-muted-foreground">newest backups</span>
-                                                                </div>
-                                                            </FormControl>
-                                                            <FormDescription>
-                                                                Older backups exceeding this limit are deleted.
-                                                            </FormDescription>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            </TabsContent>
-
-                                            <TabsContent value="SMART" className="pt-4 space-y-4">
-                                                <p className="text-sm text-muted-foreground mb-4">
-                                                    Grandfather-Father-Son rotation. Defines how many backups to keep for each time period.
-                                                </p>
-                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="retention.smart.daily"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Daily</FormLabel>
-                                                                <FormControl><Input type="number" min={0} {...field} value={field.value as number} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
-                                                                <FormDescription>Days</FormDescription>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="retention.smart.weekly"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Weekly</FormLabel>
-                                                                <FormControl><Input type="number" min={0} {...field} value={field.value as number} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
-                                                                <FormDescription>Weeks</FormDescription>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="retention.smart.monthly"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Monthly</FormLabel>
-                                                                <FormControl><Input type="number" min={0} {...field} value={field.value as number} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
-                                                                <FormDescription>Months</FormDescription>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="retention.smart.yearly"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Yearly</FormLabel>
-                                                                <FormControl><Input type="number" min={0} {...field} value={field.value as number} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
-                                                                <FormDescription>Years</FormDescription>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
-                                            </TabsContent>
-                                        </Tabs>
-                                    )}
-                                />
+                            <CardContent className="space-y-3">
+                                {fields.length === 0 && (
+                                    <div className="bg-muted p-4 rounded-md text-sm text-muted-foreground text-center">
+                                        No destinations configured. Add at least one destination.
+                                    </div>
+                                )}
+                                {fields.map((field, index) => (
+                                    <DestinationRow
+                                        key={field.id}
+                                        index={index}
+                                        form={form}
+                                        destinations={destinations}
+                                        usedDestIds={usedDestIds}
+                                        isExpanded={expandedDests.has(index)}
+                                        onToggleExpand={() => toggleExpanded(index)}
+                                        onRemove={() => {
+                                            remove(index);
+                                            setExpandedDests(prev => {
+                                                const next = new Set<number>();
+                                                prev.forEach(i => {
+                                                    if (i < index) next.add(i);
+                                                    else if (i > index) next.add(i - 1);
+                                                });
+                                                return next;
+                                            });
+                                        }}
+                                        canRemove={fields.length > 1}
+                                    />
+                                ))}
+                                {form.formState.errors.destinations?.root && (
+                                    <p className="text-sm text-destructive">{form.formState.errors.destinations.root.message}</p>
+                                )}
                             </CardContent>
                         </Card>
                     </TabsContent>
 
-                    {/* TAB 3: SECURITY & OPTIMIZATION */}
+                    {/* TAB 2: SECURITY & OPTIMIZATION */}
                     <TabsContent value="security" className="space-y-4 pt-4">
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField control={form.control} name="encryptionProfileId" render={({ field }) => (
@@ -450,7 +410,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                         </div>
                     </TabsContent>
 
-                    {/* TAB 4: NOTIFICATIONS */}
+                    {/* TAB 3: NOTIFICATIONS */}
                     <TabsContent value="notifications" className="pt-4 space-y-4">
                         <FormField control={form.control} name="notificationEvents" render={({ field }) => (
                             <FormItem>
@@ -504,17 +464,8 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                                                                 if (!current.includes(n.id)) {
                                                                     field.onChange([...current, n.id]);
                                                                 } else {
-                                                                    // Toggle off if already selected?
-                                                                    // Usually multi-select comboboxes allow toggling
                                                                     field.onChange(current.filter(id => id !== n.id));
                                                                 }
-                                                                // setNotifyOpen(false); // Keep open for multi-select convenience? OR close it.
-                                                                // Standard shadcn behavior is often to close, but for multi-select staying open is nicer.
-                                                                // Let's close it to match other inputs behavior for now, or keep it open?
-                                                                // User might want to add multiple at once.
-                                                                // But I will keep it simple: Select -> Close.
-                                                                // Actually, toggling is better UX.
-                                                                // Let's allow toggle and keep OPEN ? No, standard is close.
                                                                 setNotifyOpen(false);
                                                             }}
                                                             className={cn((field.value || []).includes(n.id) && "bg-accent")}
@@ -560,4 +511,194 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
             </form>
         </Form>
     )
+}
+
+// --- Destination Row Component ---
+
+interface DestinationRowProps {
+    index: number;
+    form: any;
+    destinations: AdapterOption[];
+    usedDestIds: string[];
+    isExpanded: boolean;
+    onToggleExpand: () => void;
+    onRemove: () => void;
+    canRemove: boolean;
+}
+
+function DestinationRow({ index, form, destinations, usedDestIds, isExpanded, onToggleExpand, onRemove, canRemove }: DestinationRowProps) {
+    const [destOpen, setDestOpen] = useState(false);
+    const currentConfigId = form.watch(`destinations.${index}.configId`);
+    const currentDest = destinations.find(d => d.id === currentConfigId);
+
+    // Available destinations: not yet used by other rows OR is the current row's selection
+    const availableDests = destinations.filter(d => !usedDestIds.includes(d.id) || d.id === currentConfigId);
+
+    return (
+        <div className="border rounded-lg">
+            <div className="flex items-center gap-2 p-3">
+                <span className="text-xs text-muted-foreground font-mono w-5 shrink-0">#{index + 1}</span>
+
+                <FormField control={form.control} name={`destinations.${index}.configId`} render={({ field }) => (
+                    <FormItem className="flex-1 space-y-0">
+                        <Popover open={destOpen} onOpenChange={setDestOpen} modal={true}>
+                            <PopoverTrigger asChild>
+                                <FormControl>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        aria-expanded={destOpen}
+                                        className={cn("w-full justify-between h-9", !field.value && "text-muted-foreground")}
+                                    >
+                                        {currentDest ? (
+                                            <span className="flex items-center gap-2">
+                                                <AdapterIcon adapterId={currentDest.adapterId} className="h-4 w-4" />
+                                                {currentDest.name}
+                                            </span>
+                                        ) : "Select Destination"}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command>
+                                    <CommandInput placeholder="Search destination..." />
+                                    <CommandList>
+                                        <CommandEmpty>No destination found.</CommandEmpty>
+                                        <CommandGroup>
+                                            {availableDests.map((d) => (
+                                                <CommandItem
+                                                    value={d.name}
+                                                    key={d.id}
+                                                    onSelect={() => {
+                                                        form.setValue(`destinations.${index}.configId`, d.id);
+                                                        setDestOpen(false);
+                                                    }}
+                                                    className={cn(field.value === d.id && "bg-accent")}
+                                                >
+                                                    <AdapterIcon adapterId={d.adapterId} className="h-4 w-4" />
+                                                    {d.name}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 px-2"
+                    onClick={onToggleExpand}
+                    title="Retention settings"
+                >
+                    <History className="h-4 w-4 mr-1" />
+                    {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                </Button>
+
+                {canRemove && (
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 px-2 text-muted-foreground hover:text-destructive"
+                        onClick={onRemove}
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                )}
+            </div>
+
+            {/* Inline Retention Config */}
+            <Collapsible open={isExpanded}>
+                <CollapsibleContent>
+                    <div className="border-t px-3 py-3 bg-muted/30">
+                        <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                            <History className="h-3 w-3" />
+                            Retention for {currentDest?.name || `Destination #${index + 1}`}
+                        </div>
+                        <RetentionConfig form={form} prefix={`destinations.${index}.retention`} />
+                    </div>
+                </CollapsibleContent>
+            </Collapsible>
+        </div>
+    );
+}
+
+// --- Retention Config Component (reusable per destination) ---
+
+function RetentionConfig({ form, prefix }: { form: any; prefix: string }) {
+    const mode = form.watch(`${prefix}.mode`);
+
+    return (
+        <div className="space-y-3">
+            <FormField
+                control={form.control}
+                name={`${prefix}.mode`}
+                render={({ field }) => (
+                    <Tabs value={field.value} onValueChange={field.onChange} className="w-full">
+                        <TabsList className="grid w-full grid-cols-3 h-8">
+                            <TabsTrigger value="NONE" className="text-xs">Keep All</TabsTrigger>
+                            <TabsTrigger value="SIMPLE" className="text-xs">Simple</TabsTrigger>
+                            <TabsTrigger value="SMART" className="text-xs">Smart (GFS)</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                )}
+            />
+
+            {mode === "NONE" && (
+                <p className="text-xs text-muted-foreground">All backups kept indefinitely.</p>
+            )}
+
+            {mode === "SIMPLE" && (
+                <FormField
+                    control={form.control}
+                    name={`${prefix}.simple.keepCount`}
+                    render={({ field }) => (
+                        <FormItem>
+                            <div className="flex items-center gap-2">
+                                <FormControl>
+                                    <Input type="number" min={1} {...field} value={field.value as number} onChange={e => field.onChange(parseInt(e.target.value))} className="w-20 h-8" />
+                                </FormControl>
+                                <span className="text-xs text-muted-foreground">newest backups</span>
+                            </div>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            )}
+
+            {mode === "SMART" && (
+                <div className="grid grid-cols-4 gap-2">
+                    {(["daily", "weekly", "monthly", "yearly"] as const).map(period => (
+                        <FormField
+                            key={period}
+                            control={form.control}
+                            name={`${prefix}.smart.${period}`}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs capitalize">{period}</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            type="number"
+                                            min={0}
+                                            {...field}
+                                            value={field.value as number}
+                                            onChange={e => field.onChange(parseInt(e.target.value))}
+                                            className="h-8"
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
 }

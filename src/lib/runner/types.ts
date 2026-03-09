@@ -1,12 +1,32 @@
 import { DatabaseAdapter, StorageAdapter } from "@/lib/core/interfaces";
-import { Job, AdapterConfig, Execution } from "@prisma/client";
+import { Job, AdapterConfig, Execution, JobDestination } from "@prisma/client";
 import { LogEntry, LogLevel, LogType } from "@/lib/core/logs";
+import { RetentionConfiguration } from "@/lib/core/retention";
+
+export type JobDestinationWithConfig = JobDestination & {
+    config: AdapterConfig;
+};
 
 export type JobWithRelations = Job & {
     source: AdapterConfig;
-    destination: AdapterConfig;
+    destinations: JobDestinationWithConfig[];
     notifications: AdapterConfig[];
 };
+
+export interface DestinationContext {
+    configId: string;
+    configName: string;
+    adapter: StorageAdapter;
+    config: Record<string, unknown>; // decrypted adapter config
+    retention: RetentionConfiguration;
+    priority: number;
+    adapterId: string;
+    uploadResult?: {
+        success: boolean;
+        path?: string;
+        error?: string;
+    };
+}
 
 export interface RunnerContext {
     jobId: string;
@@ -19,7 +39,7 @@ export interface RunnerContext {
     updateProgress: (percent: number, stage?: string) => void;
 
     sourceAdapter?: DatabaseAdapter;
-    destAdapter?: StorageAdapter;
+    destinations: DestinationContext[];
 
     // File paths
     tempFile?: string;
@@ -29,6 +49,6 @@ export interface RunnerContext {
     dumpSize?: number;
     metadata?: any;
 
-    status: "Success" | "Failed" | "Running";
+    status: "Success" | "Failed" | "Running" | "Partial";
     startedAt: Date;
 }

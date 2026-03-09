@@ -50,29 +50,87 @@ Manages backup job configuration.
 
 ```typescript
 // src/services/job-service.ts
+
+// Shared include for all job queries (multi-destination)
+const jobInclude = {
+  source: true,
+  destinations: {
+    include: { config: true },
+    orderBy: { priority: "asc" as const },
+  },
+  notifications: true,
+};
+
+// Input type for create/update
+interface DestinationInput {
+  configId: string;
+  priority: number;
+  retention: string; // JSON string of RetentionConfig
+}
+
 export const JobService = {
   async getAll() {
-    return prisma.job.findMany({
-      include: { source: true, destination: true }
+    return prisma.job.findMany({ include: jobInclude });
+  },
+
+  async create(data: {
+    name: string;
+    sourceId: string;
+    destinations: DestinationInput[];
+    // ...other job fields
+  }) {
+    return prisma.job.create({
+      data: {
+        name: data.name,
+        sourceId: data.sourceId,
+        // Nested create for all destinations
+        destinations: {
+          create: data.destinations.map((d) => ({
+            configId: d.configId,
+            priority: d.priority,
+            retention: d.retention,
+          })),
+        },
+        // ...other fields
+      },
+      include: jobInclude,
     });
   },
 
-  async create(data: JobInput) {
-    return prisma.job.create({ data });
-  },
+  async update(id: string, data: {
+    destinations?: DestinationInput[];
+    // ...other job fields
+  }) {
+    // Transaction: delete all existing destinations, then recreate
+    return prisma.$transaction(async (tx) => {
+      if (data.destinations) {
+        await tx.jobDestination.deleteMany({ where: { jobId: id } });
+        await tx.jobDestination.createMany({
+          data: data.destinations.map((d) => ({
+            jobId: id,
+            configId: d.configId,
+            priority: d.priority,
+            retention: d.retention,
+          })),
+        });
+      }
 
-  async update(id: string, data: Partial<JobInput>) {
-    return prisma.job.update({
-      where: { id },
-      data
+      return tx.job.update({
+        where: { id },
+        data: { name: data.name /* ...other fields */ },
+        include: jobInclude,
+      });
     });
   },
 
   async delete(id: string) {
+    // JobDestination rows cascade-delete automatically
     return prisma.job.delete({ where: { id } });
   }
 };
 ```
+
+> **Why delete + recreate?** SQLite doesn't support `upsert` on composite keys well. The transaction-based `deleteMany` + `createMany` is the cleanest approach for managing the join table on updates.
 
 ### BackupService
 

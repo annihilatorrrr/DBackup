@@ -110,7 +110,7 @@ export class IntegrityService {
       );
       // Fallback: use known job names
       const jobs = await prisma.job.findMany({
-        where: { destinationId: storageConfig.id },
+        where: { destinations: { some: { configId: storageConfig.id } } },
         select: { name: true },
       });
       folders = jobs.map((j) => j.name);

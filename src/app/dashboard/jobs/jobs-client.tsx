@@ -18,6 +18,7 @@ import { Edit, Play, Trash2, Clock, Lock, Webhook } from "lucide-react";
 import { toast } from "sonner";
 import { JobForm, JobData, AdapterOption, EncryptionOption } from "@/components/dashboard/jobs/job-form";
 import { ApiTriggerDialog } from "@/components/dashboard/jobs/api-trigger-dialog";
+import { AdapterIcon } from "@/components/adapter/adapter-icon";
 import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -28,10 +29,18 @@ import { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
 
+// Extended destination with config relation from API
+interface JobDestinationWithConfig {
+    configId: string;
+    priority: number;
+    retention: string;
+    config: { id: string; name: string; adapterId: string };
+}
+
 // Extended Job type for display (includes related entity names)
-interface Job extends JobData {
-    source: { name: string, type: string };
-    destination: { name: string, type: string };
+interface Job extends Omit<JobData, 'destinations'> {
+    source: { name: string, type: string, adapterId: string };
+    destinations: JobDestinationWithConfig[];
     createdAt: string;
     encryptionProfile?: { name: string };
 }
@@ -50,7 +59,7 @@ export function JobsClient({ canManage, canExecute }: JobsClientProps) {
     const [isLoading, setIsLoading] = useState(true);
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [editingJob, setEditingJob] = useState<JobData | null>(null);
+    const [editingJob, setEditingJob] = useState<Job | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [apiTriggerJob, setApiTriggerJob] = useState<{ id: string; name: string } | null>(null);
     const router = useRouter();
@@ -156,19 +165,29 @@ export function JobsClient({ canManage, canExecute }: JobsClientProps) {
             accessorKey: "source.name",
             header: "Source",
             cell: ({ row }) => (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                    <AdapterIcon adapterId={row.original.source.adapterId} className="h-3.5 w-3.5" />
                     {row.original.source.name}
                 </div>
             )
         },
         {
-            accessorKey: "destination.name",
-            header: "Destination",
-            cell: ({ row }) => (
-                <div className="flex items-center gap-2">
-                    {row.original.destination.name}
-                </div>
-            )
+            id: "destinations",
+            header: "Destinations",
+            cell: ({ row }) => {
+                const dests = row.original.destinations || [];
+                if (dests.length === 0) return <span className="text-muted-foreground text-sm">-</span>;
+                return (
+                    <div className="flex flex-col gap-0.5">
+                        {dests.map((d, i) => (
+                            <div key={d.configId || i} className="flex items-center gap-1.5 text-sm">
+                                <AdapterIcon adapterId={d.config?.adapterId ?? ""} className="h-3.5 w-3.5" />
+                                {d.config?.name || d.configId}
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
         },
         {
             id: "compression",

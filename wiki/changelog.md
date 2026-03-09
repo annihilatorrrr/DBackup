@@ -29,6 +29,16 @@ All notable changes to DBackup are documented here.
 - **Disable Reminders** — Selecting "Disabled" sends only the initial notification when a condition first becomes active — no repeated reminders while the condition persists
 - **Applies to Storage Alerts** — Storage Usage Spike, Storage Limit Warning, and Missing Backup alerts now respect the configured reminder interval instead of the previous hardcoded 24-hour cooldown
 
+#### 🔀 Multi-Destination Fan-Out (3-2-1 Backup Rule)
+- **Multiple Destinations per Job** — A single backup job can now upload to an unlimited number of storage destinations (e.g., local + S3 + Dropbox). All destinations are equal — no primary/secondary distinction
+- **Per-Destination Retention** — Each destination has its own independent retention policy (None, Simple, or Smart/GFS). Configure different retention strategies per destination — for example, keep 30 daily backups locally but only 12 monthly backups in cloud storage
+- **Sequential Upload** — Backups are uploaded to each destination sequentially in priority order. The dump and compression/encryption pipeline runs only once — the resulting file is uploaded to each destination in turn
+- **Partial Success Status** — New `Partial` execution status for mixed results: if some destinations succeed and others fail, the execution is marked as "Partial" instead of flat "Failed". Partial triggers notifications on both ALWAYS and FAILURE_ONLY events
+- **Per-Destination Results** — Execution metadata now includes a `destinationResults` array showing the individual success/failure status for each destination, visible in the execution detail view
+- **Inline Retention Config** — The job form now embeds retention settings directly inside each destination row via a collapsible panel, replacing the previous standalone Retention tab. Each destination can be expanded to configure its own retention strategy
+- **Duplicate Prevention** — The destination selector prevents selecting the same storage destination twice within a single job
+- **Adapter Icons in Job Table** — The Jobs list now shows adapter brand icons (Dropbox, S3, Local, etc.) alongside destination and source names for quick visual identification
+
 ### 🎨 UI Improvements
 
 - **Update Indicator Redesign** — Replaced the orange pulsing update indicator in the sidebar with a muted, non-animated design: subtle `ArrowUpCircle` icon in the version footer, small blue dot on the avatar badge, and blue-tinted "Update available" entry in the user dropdown — consistent with the overall dark/minimal design language
@@ -42,6 +52,24 @@ All notable changes to DBackup are documented here.
 - **API Trigger — cURL Placeholder Clarity** — The "Poll Execution Status" and "Poll with Logs" cURL examples used a bare `EXECUTION_ID` placeholder without explanation. The placeholder is now formatted as `{EXECUTION_ID}` and each example includes an explicit hint: *"Replace `{EXECUTION_ID}` with the `executionId` from the trigger response"*
 
 ### 🔧 Technical Changes
+- New `prisma/migrations/20260309000000_multi_destination/migration.sql` — Schema migration: creates `JobDestination` join table with `jobId`, `configId`, `priority`, `retention` fields and `@@unique([jobId, configId])` constraint; migrates existing `Job.destinationId` + `Job.retention` data into `JobDestination` rows; rebuilds `Job` table without removed columns (SQLite table rebuild pattern)
+- Updated `prisma/schema.prisma` — Removed `destinationId` and `retention` from `Job` model; added `JobDestination` model with `id`, `jobId`, `configId`, `priority` (Int, default 0), `retention` (String, default "{}"), timestamps; added `destinations JobDestination[]` on `Job` and `jobDestinations JobDestination[]` on `AdapterConfig`; cascade delete on job
+- Updated `src/lib/runner/types.ts` — Added `DestinationContext` interface (configId, configName, adapter, config, retention, priority, uploadResult); updated `RunnerContext` to use `destinations: DestinationContext[]` instead of single `destAdapter`; added `"Partial"` to status union type
+- Updated `src/services/job-service.ts` — `CreateJobInput`/`UpdateJobInput` now use `destinations: DestinationInput[]`; `createJob` uses nested Prisma create; `updateJob` uses `$transaction` with `deleteMany` + `createMany`; shared `jobInclude` constant with `destinations: { include: { config: true }, orderBy: { priority: 'asc' } }`
+- Updated `src/lib/runner/steps/01-initialize.ts` — Resolves all destination adapters into `ctx.destinations[]` with decrypted configs and retention parsing
+- Rewritten `src/lib/runner/steps/03-upload.ts` — Compression/encryption pipeline runs once; sequential upload loop iterates `ctx.destinations` by priority; per-destination progress, logging with `[destName]` prefix, and integrity checks; evaluates mixed results → sets `ctx.status = "Partial"` if some fail
+- Rewritten `src/lib/runner/steps/05-retention.ts` — Iterates `ctx.destinations`, skips failed uploads; calls `applyRetentionForDestination()` per destination using its own retention config
+- Updated `src/lib/runner/steps/04-completion.ts` — Builds `destinationResults` array in execution metadata; handles "Partial" status in notification logic
+- Updated `src/lib/runner.ts` — Added `destinations: []` to context initialization; preserves "Partial" status set by upload step
+- Updated `src/app/api/jobs/route.ts` and `src/app/api/jobs/[id]/route.ts` — POST/PUT accept `destinations` array; validates non-empty; maps with `configId`, `priority`, `retention`
+- Updated `src/components/dashboard/jobs/job-form.tsx` — Complete rewrite: `useFieldArray` for multi-destination list; per-destination `RetentionConfig` component; `DestinationRow` with combobox + collapsible retention; 3 tabs (General, Security, Notify)
+- Updated `src/app/dashboard/jobs/jobs-client.tsx` — Destination column shows names with adapter icons from `config` relation instead of IDs; source column enhanced with adapter icon
+- Updated `src/components/dashboard/widgets/storage-status.tsx` — Queries via `job.destinations[].configId`; includes "Partial" status executions
+- Updated `src/components/dashboard/widgets/recent-activity.tsx` — Include changed to `destinations: { include: { config: true } }`
+- Updated `src/services/dashboard-service.ts` — Three queries updated from `{ destinationId: id }` to `{ destinations: { some: { configId: id } } }`
+- Updated `src/app/api/adapters/[id]/route.ts` — Deletion check uses `destinations: { some: { configId } }` for job usage detection
+- Updated `src/services/integrity-service.ts` — Job lookup uses `destinations: { some: { configId } }` filter
+- Updated `src/components/dashboard/setup/steps/job-step.tsx` — Payload sends `destinations: [{ configId, priority, retention }]`
 - New `src/lib/execution-recovery.ts` — `recoverStaleExecutions()` function; queries executions with `Running` or `Pending` status, updates them to `Failed` with `endedAt` and an explanatory log entry appended to the existing logs JSON
 - Updated `src/instrumentation.ts` — Added `recoverStaleExecutions()` as startup step 3 (between rate limit reload and scheduler init)
 - Updated `src/components/dashboard/widgets/latest-jobs.tsx` — `SourceIcon` component now receives `isPending` prop; color logic extended to `text-yellow-500` for `Pending` status (previously fell through to `text-red-500`)

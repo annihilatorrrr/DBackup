@@ -41,9 +41,25 @@ State flows through the pipeline via `RunnerContext`:
 
 ```typescript
 // src/lib/runner/types.ts
+
+// Per-destination context resolved at initialization
+interface DestinationContext {
+  configId: string;
+  configName: string;
+  adapter: StorageAdapter;
+  config: Record<string, unknown>; // Decrypted adapter config
+  retention: RetentionConfig;
+  priority: number;
+  uploadResult?: {
+    success: boolean;
+    remotePath?: string;
+    error?: string;
+  };
+}
+
 interface RunnerContext {
   jobId: string;
-  job?: JobWithRelations;      // Job with source, destination, notifications
+  job?: JobWithRelations;      // Job with source, destinations, notifications
   execution?: Execution;
 
   // Logging
@@ -53,20 +69,21 @@ interface RunnerContext {
 
   // Resolved adapters
   sourceAdapter?: DatabaseAdapter;
-  destAdapter?: StorageAdapter;
+  destinations: DestinationContext[]; // All destination adapters (sorted by priority)
 
   // File paths
   tempFile?: string;           // Local temporary dump file
-  finalRemotePath?: string;    // Final storage path
 
   // Result data
   dumpSize?: number;
   metadata?: any;
 
-  status: "Success" | "Failed" | "Running";
+  status: "Success" | "Failed" | "Running" | "Partial";
   startedAt: Date;
 }
 ```
+
+> **Partial status:** If some destinations succeed and others fail, the status is set to `"Partial"` instead of flat `"Failed"`. This allows the UI and notification system to distinguish between full and partial failures.
 
 ## Pipeline Steps
 
@@ -84,21 +101,37 @@ export async function stepInitialize(ctx: RunnerContext): Promise<void> {
 
   // Decrypt source credentials
   ctx.job.source.config = decryptConfig(ctx.job.source.config);
-  ctx.job.destination.config = decryptConfig(ctx.job.destination.config);
 
-  // Resolve adapters
+  // Resolve source adapter
   ctx.sourceAdapter = registry.get(ctx.job.source.adapter) as DatabaseAdapter;
-  ctx.destinationAdapter = registry.get(ctx.job.destination.adapter) as StorageAdapter;
 
-  // Validate connections
+  // Validate source connection
   const sourceTest = await ctx.sourceAdapter.test(ctx.job.source.config);
   if (!sourceTest.success) {
     throw new Error(`Source connection failed: ${sourceTest.message}`);
   }
 
-  ctx.logs.push("Initialization complete");
+  // Resolve ALL destination adapters (sorted by priority)
+  for (const dest of ctx.job.destinations) {
+    const decryptedConfig = decryptConfig(dest.config.config);
+    const adapter = registry.get(dest.config.adapter) as StorageAdapter;
+    const retention = JSON.parse(dest.retention || "{}");
+
+    ctx.destinations.push({
+      configId: dest.configId,
+      configName: dest.config.name,
+      adapter,
+      config: decryptedConfig,
+      retention,
+      priority: dest.priority,
+    });
+  }
+
+  ctx.log("Initialization complete");
 }
 ```
+
+> Each destination in `ctx.job.destinations` comes from the `JobDestination` join table (includes the `AdapterConfig` relation). The adapter, config, and retention are resolved per destination.
 
 ### Step 2: Dump (`02-dump.ts`)
 
@@ -144,73 +177,64 @@ export async function stepDump(ctx: RunnerContext): Promise<void> {
 
 ### Step 3: Upload (`03-upload.ts`)
 
-Uploads the backup and metadata to storage, including SHA-256 checksum calculation and post-upload verification.
+Uploads the backup to **all destinations** sequentially (sorted by priority). The dump file is produced once—each destination receives the same file.
 
 ```typescript
 export async function stepUpload(ctx: RunnerContext): Promise<void> {
-  // Generate remote path
+  // Generate remote path (shared across all destinations)
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const extension = path.extname(ctx.tempFile!);
-  ctx.remotePath = `${ctx.job.name}/${ctx.job.name}_${timestamp}${extension}`;
+  const remotePath = `${ctx.job.name}/${ctx.job.name}_${timestamp}${extension}`;
 
-  // Calculate SHA-256 checksum of final file
+  // Calculate SHA-256 checksum once
   const checksum = await calculateFileChecksum(ctx.tempFile!);
-  ctx.logs.push(`Checksum (SHA-256): ${checksum}`);
+  ctx.log(`Checksum (SHA-256): ${checksum}`);
 
-  // Upload backup file
-  await ctx.destinationAdapter.upload(
-    ctx.job.destination.config,
-    ctx.tempFile!,
-    ctx.remotePath
-  );
+  // Build metadata object (shared)
+  const metadata: BackupMetadata = { /* jobId, checksum, compression, encryption, etc. */ };
 
-  // Create and upload metadata (includes checksum)
-  const metadata: BackupMetadata = {
-    jobId: ctx.job.id,
-    jobName: ctx.job.name,
-    sourceAdapter: ctx.job.source.adapter,
-    timestamp: new Date().toISOString(),
-    size: ctx.metadata.size,
-    databases: ctx.metadata.databases,
-    compression: ctx.job.compression,
-    encrypted: !!ctx.encryptionKey,
-    encryptionProfileId: ctx.job.encryptionProfileId,
-    iv: ctx.iv?.toString("hex"),
-    authTag: ctx.authTag?.toString("hex"),
-    checksum, // SHA-256 hash of final backup file
-  };
+  // Sequential fan-out upload to each destination
+  for (const dest of ctx.destinations) {
+    try {
+      ctx.log(`[${dest.configName}] Uploading backup...`);
 
-  await ctx.destinationAdapter.upload(
-    ctx.job.destination.config,
-    JSON.stringify(metadata, null, 2),
-    `${ctx.remotePath}.meta.json`
-  );
+      // Upload backup file
+      await dest.adapter.upload(dest.config, ctx.tempFile!, remotePath);
 
-  // Post-upload verification (local storage only)
-  // Remote storage (S3, SFTP) relies on transport-level integrity,
-  // so re-downloading multi-GB files is skipped to avoid performance impact.
-  if (job.destination.adapterId === "local-filesystem") {
-    const tempVerifyPath = path.join(getTempDir(), `verify-${Date.now()}`);
-    await ctx.destinationAdapter.download(
-      ctx.job.destination.config,
-      ctx.remotePath,
-      tempVerifyPath
-    );
-    const result = await verifyFileChecksum(tempVerifyPath, checksum);
-    await fs.unlink(tempVerifyPath).catch(() => {});
+      // Upload metadata sidecar
+      await dest.adapter.upload(
+        dest.config,
+        JSON.stringify(metadata, null, 2),
+        `${remotePath}.meta.json`
+      );
 
-    if (result.valid) {
-      ctx.logs.push("Post-upload checksum verification: PASSED");
-    } else {
-      ctx.logs.push(`Post-upload checksum verification: FAILED`);
+      // Post-upload verification (local storage only)
+      if (dest.config.adapterId === "local-filesystem") {
+        // Download and verify checksum...
+      }
+
+      dest.uploadResult = { success: true, remotePath };
+      ctx.log(`[${dest.configName}] Upload successful`);
+    } catch (error) {
+      dest.uploadResult = { success: false, error: getErrorMessage(error) };
+      ctx.log(`[${dest.configName}] Upload FAILED: ${getErrorMessage(error)}`, "error");
     }
-  } else {
-    ctx.logs.push("Post-upload verification skipped (remote storage uses transport-level integrity)");
   }
 
-  ctx.logs.push(`Uploaded to: ${ctx.remotePath}`);
+  // Evaluate mixed results → Partial status
+  const succeeded = ctx.destinations.filter(d => d.uploadResult?.success).length;
+  const total = ctx.destinations.length;
+
+  if (succeeded === 0) {
+    ctx.status = "Failed";
+  } else if (succeeded < total) {
+    ctx.status = "Partial"; // Some succeeded, some failed
+  }
+  // If all succeeded, status stays "Running" (set to "Success" in performExecution)
 }
 ```
+
+> **Key design:** The dump/compress/encrypt pipeline runs only once. The resulting temp file is uploaded to each destination in order. If at least one succeeds but not all, the execution is marked `"Partial"`.
 
 ### Step 4: Completion (`04-completion.ts`)
 
@@ -260,49 +284,44 @@ export async function stepCompletion(ctx: RunnerContext): Promise<void> {
 
 ### Step 5: Retention (`05-retention.ts`)
 
-Applies retention policy to delete old backups.
+Applies retention policy **per destination**. Each destination has its own independent retention config (None, Simple, or Smart/GFS).
 
 ```typescript
 export async function stepRetention(ctx: RunnerContext): Promise<void> {
-  if (!ctx.job.retention) return;
+  for (const dest of ctx.destinations) {
+    // Skip destinations where upload failed
+    if (!dest.uploadResult?.success) {
+      ctx.log(`[${dest.configName}] Skipping retention (upload failed)`);
+      continue;
+    }
 
-  const config = ctx.job.retention as RetentionConfig;
+    // Skip if no retention configured for this destination
+    if (!dest.retention || dest.retention.mode === "NONE") continue;
 
-  // List existing backups
-  const files = await ctx.destinationAdapter.list(
-    ctx.job.destination.config,
-    ctx.job.name // folder path
-  );
+    ctx.log(`[${dest.configName}] Applying ${dest.retention.mode} retention...`);
 
-  // Filter to only this job's backups
-  const backups = files.filter(f =>
-    f.name.startsWith(ctx.job.name) &&
-    !f.name.endsWith(".meta.json")
-  );
-
-  // Apply retention algorithm
-  const result = await RetentionService.applyRetention(backups, config);
-
-  // Delete old backups
-  for (const file of result.delete) {
-    // Skip locked files
-    if (file.locked) continue;
-
-    await ctx.destinationAdapter.delete(
-      ctx.job.destination.config,
-      `${ctx.job.name}/${file.name}`
+    // List existing backups in this destination
+    const files = await dest.adapter.list(dest.config, ctx.job.name);
+    const backups = files.filter(f =>
+      f.name.startsWith(ctx.job.name) && !f.name.endsWith(".meta.json")
     );
 
-    // Delete metadata too
-    await ctx.destinationAdapter.delete(
-      ctx.job.destination.config,
-      `${ctx.job.name}/${file.name}.meta.json`
-    ).catch(() => {});
-  }
+    // Apply retention algorithm
+    const result = await RetentionService.applyRetention(backups, dest.retention);
 
-  ctx.logs.push(`Retention: Kept ${result.keep.length}, deleted ${result.delete.length}`);
+    // Delete old backups
+    for (const file of result.delete) {
+      if (file.locked) continue;
+      await dest.adapter.delete(dest.config, `${ctx.job.name}/${file.name}`);
+      await dest.adapter.delete(dest.config, `${ctx.job.name}/${file.name}.meta.json`).catch(() => {});
+    }
+
+    ctx.log(`[${dest.configName}] Retention: Kept ${result.keep.length}, deleted ${result.delete.length}`);
+  }
 }
 ```
+
+> Each destination can have a completely different retention strategy—e.g., keep 30 daily backups locally but only 12 monthly backups in cloud storage.
 
 ## Queue Manager
 
@@ -352,24 +371,31 @@ The runner wraps all steps in error handling:
 // src/lib/runner.ts
 export async function performExecution(executionId: string): Promise<void> {
   const ctx = await createContext(executionId);
+  // ctx.destinations is initialized as []
 
   try {
     await stepInitialize(ctx);
     await stepDump(ctx);
     await stepUpload(ctx);
-    ctx.status = "Success";
+
+    // Preserve "Partial" if set by upload step (some destinations failed)
+    if (ctx.status === "Running") {
+      ctx.status = "Success";
+    }
   } catch (error) {
     ctx.status = "Failed";
-    ctx.logs.push(`Error: ${error instanceof Error ? error.message : error}`);
+    ctx.log(`Error: ${getErrorMessage(error)}`, "error");
     throw error;
   } finally {
     await stepCompletion(ctx);
     await stepRetention(ctx).catch(e => {
-      console.error("Retention failed:", e);
+      log.error("Retention failed", {}, wrapError(e));
     });
   }
 }
 ```
+
+> **Important:** The upload step may set `ctx.status = "Partial"` during its fan-out loop. The `performExecution` function only sets `"Success"` if the status is still `"Running"` (i.e., no partial failures occurred).
 
 ## Streaming Architecture
 

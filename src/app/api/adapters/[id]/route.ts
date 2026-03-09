@@ -47,7 +47,7 @@ export async function DELETE(
             where: {
                 OR: [
                     { sourceId: params.id },
-                    { destinationId: params.id }
+                    { destinations: { some: { configId: params.id } } }
                 ]
             },
             select: { name: true }
