@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Lock, History, ChevronsUpDown, Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { AdapterIcon } from "@/components/adapter/adapter-icon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
@@ -31,7 +32,6 @@ import {
 import {
   Collapsible,
   CollapsibleContent,
-  CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 
 const retentionSchema = z.object({
@@ -217,8 +217,9 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                 </div>
 
                 <Tabs defaultValue="config" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
+                    <TabsList className="grid w-full grid-cols-4">
                         <TabsTrigger value="config">General</TabsTrigger>
+                        <TabsTrigger value="destinations">Destinations</TabsTrigger>
                         <TabsTrigger value="security">Security</TabsTrigger>
                         <TabsTrigger value="notifications">Notify</TabsTrigger>
                     </TabsList>
@@ -307,7 +308,10 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                             )} />
                         </div>
 
-                        {/* DESTINATIONS SECTION */}
+                    </TabsContent>
+
+                    {/* TAB 2: DESTINATIONS */}
+                    <TabsContent value="destinations" className="space-y-4 pt-4">
                         <Card className="border-border">
                             <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
@@ -335,29 +339,35 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                                         No destinations configured. Add at least one destination.
                                     </div>
                                 )}
-                                {fields.map((field, index) => (
-                                    <DestinationRow
-                                        key={field.id}
-                                        index={index}
-                                        form={form}
-                                        destinations={destinations}
-                                        usedDestIds={usedDestIds}
-                                        isExpanded={expandedDests.has(index)}
-                                        onToggleExpand={() => toggleExpanded(index)}
-                                        onRemove={() => {
-                                            remove(index);
-                                            setExpandedDests(prev => {
-                                                const next = new Set<number>();
-                                                prev.forEach(i => {
-                                                    if (i < index) next.add(i);
-                                                    else if (i > index) next.add(i - 1);
-                                                });
-                                                return next;
-                                            });
-                                        }}
-                                        canRemove={fields.length > 1}
-                                    />
-                                ))}
+                                {fields.length > 0 && (
+                                    <ScrollArea className="[&>[data-slot=scroll-area-viewport]]:max-h-[400px]">
+                                        <div className="space-y-3 pr-3">
+                                            {fields.map((field, index) => (
+                                                <DestinationRow
+                                                    key={field.id}
+                                                    index={index}
+                                                    form={form}
+                                                    destinations={destinations}
+                                                    usedDestIds={usedDestIds}
+                                                    isExpanded={expandedDests.has(index)}
+                                                    onToggleExpand={() => toggleExpanded(index)}
+                                                    onRemove={() => {
+                                                        remove(index);
+                                                        setExpandedDests(prev => {
+                                                            const next = new Set<number>();
+                                                            prev.forEach(i => {
+                                                                if (i < index) next.add(i);
+                                                                else if (i > index) next.add(i - 1);
+                                                            });
+                                                            return next;
+                                                        });
+                                                    }}
+                                                    canRemove={fields.length > 1}
+                                                />
+                                            ))}
+                                        </div>
+                                    </ScrollArea>
+                                )}
                                 {form.formState.errors.destinations?.root && (
                                     <p className="text-sm text-destructive">{form.formState.errors.destinations.root.message}</p>
                                 )}
@@ -365,7 +375,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                         </Card>
                     </TabsContent>
 
-                    {/* TAB 2: SECURITY & OPTIMIZATION */}
+                    {/* TAB 3: SECURITY & OPTIMIZATION */}
                     <TabsContent value="security" className="space-y-4 pt-4">
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField control={form.control} name="encryptionProfileId" render={({ field }) => (
@@ -410,7 +420,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                         </div>
                     </TabsContent>
 
-                    {/* TAB 3: NOTIFICATIONS */}
+                    {/* TAB 4: NOTIFICATIONS */}
                     <TabsContent value="notifications" className="pt-4 space-y-4">
                         <FormField control={form.control} name="notificationEvents" render={({ field }) => (
                             <FormItem>
