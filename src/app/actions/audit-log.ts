@@ -1,7 +1,6 @@
 'use server';
 
 import { auditService } from "@/services/audit-service";
-import { checkPermission } from "@/lib/access-control";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { AUDIT_ACTIONS, AUDIT_RESOURCES } from "@/lib/core/audit-types";
