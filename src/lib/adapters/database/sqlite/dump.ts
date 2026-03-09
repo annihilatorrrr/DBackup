@@ -4,6 +4,13 @@ import fs from "fs";
 import { SshClient } from "./ssh-client";
 import { SQLiteConfig } from "@/lib/adapters/definitions";
 
+/**
+ * Escapes a value for safe inclusion in a single-quoted shell string.
+ */
+function shellEscape(value: string): string {
+    return "'" + value.replace(/'/g, "'\\''") + "'";
+}
+
 export const dump: DatabaseAdapter["dump"] = async (config, destinationPath, onLog, onProgress) => {
     const startedAt = new Date();
     const mode = config.mode || "local";
@@ -92,8 +99,8 @@ async function dumpSsh(config: SQLiteConfig, destinationPath: string, log: (msg:
     log("SSH connection established.");
 
     return new Promise((resolve, reject) => {
-        const command = `${binaryPath} "${dbPath}" .dump`;
-        log(`Executing remote command: ${command}`);
+        const command = `${shellEscape(binaryPath)} ${shellEscape(dbPath)} .dump`;
+        log(`Executing remote command: ${binaryPath} ${dbPath} .dump`);
 
         client.execStream(command, (err, stream) => {
             if (err) {

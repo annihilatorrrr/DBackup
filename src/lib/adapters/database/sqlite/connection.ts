@@ -1,11 +1,19 @@
 import { DatabaseAdapter } from "@/lib/core/interfaces";
 import fs from "fs/promises";
 import { constants } from "fs";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 import { SshClient } from "./ssh-client";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+/**
+ * Escapes a value for safe inclusion in a single-quoted shell string.
+ * Handles embedded single quotes by ending the quote, adding an escaped quote, and re-opening.
+ */
+function shellEscape(value: string): string {
+    return "'" + value.replace(/'/g, "'\\''") + "'";
+}
 
 export const test: DatabaseAdapter["test"] = async (config) => {
     try {
@@ -16,7 +24,7 @@ export const test: DatabaseAdapter["test"] = async (config) => {
         if (mode === "local") {
             // 1. Check if sqlite3 binary exists locally
             try {
-                const { stdout } = await execAsync(`${binaryPath} --version`);
+                const { stdout } = await execFileAsync(binaryPath, ['--version']);
                 // Parse version: "3.37.0 2021..." -> "3.37.0"
                 const version = stdout.split(' ')[0].trim();
 
@@ -35,7 +43,7 @@ export const test: DatabaseAdapter["test"] = async (config) => {
                 await client.connect(config);
 
                  // 1. Check if sqlite3 binary exists on remote
-                 const binaryResult = await client.exec(`${binaryPath} --version`);
+                 const binaryResult = await client.exec(`${shellEscape(binaryPath)} --version`);
                  if (binaryResult.code !== 0) {
                      client.end();
                      return { success: false, message: `Remote SQLite3 binary check failed: ${binaryResult.stderr || "Command failed"}` };
@@ -46,7 +54,7 @@ export const test: DatabaseAdapter["test"] = async (config) => {
                  // We use a simple test: sqlite3 [path] "SELECT 1;"
                  // Or just `test -f [path]`
 
-                 const fileCheck = await client.exec(`test -f "${dbPath}" && echo "exists"`);
+                 const fileCheck = await client.exec(`test -f ${shellEscape(dbPath)} && echo "exists"`);
                  if (!fileCheck.stdout.includes("exists")) {
                     client.end();
                     return { success: false, message: `Remote database file at '${dbPath}' not found.` };
@@ -93,8 +101,8 @@ export const getDatabasesWithStats: DatabaseAdapter["getDatabasesWithStats"] = a
 
             // Get table count
             try {
-                const { stdout } = await execAsync(
-                    `${binaryPath} "${dbPath}" "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"`
+                const { stdout } = await execFileAsync(
+                    binaryPath, [dbPath, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"]
                 );
                 const count = parseInt(stdout.trim(), 10);
                 if (!isNaN(count)) tableCount = count;
@@ -107,7 +115,7 @@ export const getDatabasesWithStats: DatabaseAdapter["getDatabasesWithStats"] = a
                 await client.connect(config);
 
                 // Get file size via stat
-                const sizeResult = await client.exec(`stat -c %s "${dbPath}" 2>/dev/null || stat -f %z "${dbPath}" 2>/dev/null`);
+                const sizeResult = await client.exec(`stat -c %s ${shellEscape(dbPath)} 2>/dev/null || stat -f %z ${shellEscape(dbPath)} 2>/dev/null`);
                 if (sizeResult.code === 0) {
                     const size = parseInt(sizeResult.stdout.trim(), 10);
                     if (!isNaN(size)) sizeInBytes = size;
@@ -116,7 +124,7 @@ export const getDatabasesWithStats: DatabaseAdapter["getDatabasesWithStats"] = a
                 // Get table count
                 try {
                     const tableResult = await client.exec(
-                        `${binaryPath} "${dbPath}" "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"`
+                        `${shellEscape(binaryPath)} ${shellEscape(dbPath)} "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"`
                     );
                     if (tableResult.code === 0) {
                         const count = parseInt(tableResult.stdout.trim(), 10);

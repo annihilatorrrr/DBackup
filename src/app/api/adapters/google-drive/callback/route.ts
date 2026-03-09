@@ -3,6 +3,8 @@ import { google } from "googleapis";
 import prisma from "@/lib/prisma";
 import { decryptConfig, encryptConfig } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 const log = logger.child({ route: "adapters/google-drive/callback" });
 
@@ -13,10 +15,20 @@ const log = logger.child({ route: "adapters/google-drive/callback" });
  * Redirects back to the destinations page with success/error status.
  */
 export async function GET(req: NextRequest) {
+    const origin = req.nextUrl.origin;
+
+    // Verify the user is authenticated before processing the OAuth callback
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user) {
+        log.warn("Unauthenticated Google OAuth callback attempt");
+        return NextResponse.redirect(
+            `${origin}/dashboard/destinations?oauth=error&message=${encodeURIComponent("Authentication required. Please log in and try again.")}`
+        );
+    }
+
     const code = req.nextUrl.searchParams.get("code");
     const state = req.nextUrl.searchParams.get("state"); // adapter config ID
     const error = req.nextUrl.searchParams.get("error");
-    const origin = req.nextUrl.origin;
 
     // Handle user denial
     if (error) {

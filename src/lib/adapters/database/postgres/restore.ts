@@ -46,7 +46,9 @@ export async function prepareRestore(config: PostgresRestoreConfig, databases: s
 
     for (const dbName of databases) {
         try {
-            const { stdout } = await execFileAsync('psql', [...args, '-t', '-A', '-c', `SELECT 1 FROM pg_database WHERE datname = '${dbName}'`], { env });
+            // Use dollar-quoting to safely pass the database name as a literal value
+            const safeLiteral = dbName.replace(/'/g, "''");
+            const { stdout } = await execFileAsync('psql', [...args, '-t', '-A', '-c', `SELECT 1 FROM pg_database WHERE datname = '${safeLiteral}'`], { env });
 
             if (stdout.trim() === '1') {
                 continue;

@@ -8,8 +8,8 @@ import {
 
 describe("Notification Types & Constants", () => {
   describe("NOTIFICATION_EVENTS", () => {
-    it("should define all 11 event types", () => {
-      expect(Object.keys(NOTIFICATION_EVENTS)).toHaveLength(11);
+    it("should define all 12 event types", () => {
+      expect(Object.keys(NOTIFICATION_EVENTS)).toHaveLength(12);
     });
 
     it("should have unique event string values", () => {
@@ -36,10 +36,10 @@ describe("Notification Types & Constants", () => {
 
 describe("Notification Event Registry", () => {
   describe("EVENT_DEFINITIONS", () => {
-    it("should define 9 system events (no backup events)", () => {
+    it("should define 10 system events (no backup events)", () => {
       // Backup events are excluded from system notifications (per-job only)
-      // 6 original + 3 storage events = 9
-      expect(EVENT_DEFINITIONS.length).toBe(9);
+      // 6 original + 3 storage events + 1 update event = 10
+      expect(EVENT_DEFINITIONS.length).toBe(10);
     });
 
     it("should have unique event IDs", () => {
@@ -48,7 +48,7 @@ describe("Notification Event Registry", () => {
     });
 
     it("should assign valid categories to all events", () => {
-      const validCategories = ["auth", "backup", "restore", "system", "storage"];
+      const validCategories = ["auth", "backup", "restore", "system", "storage", "updates"];
       for (const event of EVENT_DEFINITIONS) {
         expect(validCategories).toContain(event.category);
       }

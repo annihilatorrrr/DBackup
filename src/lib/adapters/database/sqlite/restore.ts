@@ -4,6 +4,13 @@ import fs from "fs";
 import { SshClient } from "./ssh-client";
 import { SQLiteConfig } from "@/lib/adapters/definitions";
 
+/**
+ * Escapes a value for safe inclusion in a single-quoted shell string.
+ */
+function shellEscape(value: string): string {
+    return "'" + value.replace(/'/g, "'\\''") + "'";
+}
+
 export const prepareRestore: DatabaseAdapter["prepareRestore"] = async (_config, _databases) => {
      // No major prep needed for SQLite mostly, but could check write permissions here
 };
@@ -116,12 +123,13 @@ async function restoreSsh(config: SQLiteConfig, sourcePath: string, log: (msg: s
 
     // Create remote backup and delete original
     log("Creating remote backup of existing DB and cleaning up...");
-    const backupCmd = `if [ -f "${dbPath}" ]; then cp "${dbPath}" "${dbPath}.bak-$(date +%s)"; rm "${dbPath}"; echo "Backed up and removed old DB"; else echo "No existing DB"; fi`;
+    const escapedPath = shellEscape(dbPath);
+    const backupCmd = `if [ -f ${escapedPath} ]; then cp ${escapedPath} ${escapedPath}.bak-$(date +%s); rm ${escapedPath}; echo "Backed up and removed old DB"; else echo "No existing DB"; fi`;
     await client.exec(backupCmd);
 
     return new Promise(async (resolve, reject) => {
-        const command = `${binaryPath} "${dbPath}"`;
-        log(`Executing remote command: ${command}`);
+        const command = `${shellEscape(binaryPath)} ${escapedPath}`;
+        log(`Executing remote command: ${binaryPath} ${dbPath}`);
 
         client.execStream(command, async (err, stream) => {
             if (err) {

@@ -1,7 +1,7 @@
 import { StorageAdapter, FileInfo } from "@/lib/core/interfaces";
 import { RsyncSchema } from "@/lib/adapters/definitions";
 import Rsync from "rsync";
-import { exec } from "child_process";
+import { exec, execFile } from "child_process";
 import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
@@ -11,6 +11,7 @@ import { logger } from "@/lib/logger";
 import { wrapError } from "@/lib/errors";
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const log = logger.child({ adapter: "rsync" });
 
@@ -91,6 +92,35 @@ function buildSshCommand(config: RsyncConfig, keyFile?: string): string {
 }
 
 /**
+ * Builds SSH arguments as an array for execFile (no shell interpretation).
+ * This is the safe equivalent of buildSshCommand for non-shell execution.
+ */
+function buildSshArgArray(config: RsyncConfig, keyFile?: string): string[] {
+    const args = ["-p", String(config.port), "-o", "StrictHostKeyChecking=no"];
+
+    if (config.authType === "password") {
+        args.push("-o", "PreferredAuthentications=password");
+        args.push("-o", "PubkeyAuthentication=no");
+    } else {
+        args.push("-o", "BatchMode=yes");
+    }
+
+    if (config.authType === "privateKey" && keyFile) {
+        args.push("-i", keyFile);
+    }
+
+    return args;
+}
+
+/**
+ * Escapes a value for safe inclusion in a single-quoted shell string on the remote host.
+ * Handles the case where the value itself contains single quotes.
+ */
+function shellEscapeSingleQuote(value: string): string {
+    return value.replace(/'/g, "'\\''" );
+}
+
+/**
  * Builds the remote path for rsync (user@host:path).
  */
 function buildRemotePath(config: RsyncConfig, relativePath: string): string {
@@ -127,26 +157,31 @@ async function checkSshpass(): Promise<boolean> {
 
 /**
  * Executes an SSH command on the remote host.
+ * Uses execFile (no shell) to prevent command injection via config values.
  * Uses SSHPASS env var for password auth (never passes password on command line).
- * Reuses buildSshCommand() to ensure consistent SSH options.
  */
 async function execSSH(config: RsyncConfig, command: string, keyFile?: string): Promise<string> {
-    const sshCmd = buildSshCommand(config, keyFile);
-
+    const sshArgs = buildSshArgArray(config, keyFile);
     const target = `${config.username}@${config.host}`;
-    let fullCommand = `${sshCmd} ${target} "${command}"`;
+    const env = getPasswordEnv(config) ?? process.env;
 
-    // For password auth, use sshpass with -e flag (reads from SSHPASS env var — never inline)
+    let binary: string;
+    let args: string[];
+
     if (config.authType === "password" && config.password) {
         if (!await checkSshpass()) {
             throw new Error("Password authentication requires 'sshpass' to be installed. Install it or use SSH key / agent authentication instead.");
         }
-        fullCommand = `sshpass -e ${fullCommand}`;
+        // sshpass -e ssh [ssh-args] user@host command
+        binary = "sshpass";
+        args = ["-e", "ssh", ...sshArgs, target, command];
+    } else {
+        binary = "ssh";
+        args = [...sshArgs, target, command];
     }
 
-    const env = getPasswordEnv(config);
     try {
-        const { stdout } = await execAsync(fullCommand, { timeout: 30000, env });
+        const { stdout } = await execFileAsync(binary, args, { timeout: 30000, env });
         return stdout.trim();
     } catch (error: unknown) {
         // Re-throw with sanitized message (strips raw command from exec errors)
@@ -244,7 +279,7 @@ export const RsyncAdapter: StorageAdapter = {
             // Ensure remote directory exists
             if (onLog) onLog(`Ensuring remote directory: ${remoteDir}`, "info", "storage");
             try {
-                await execSSH(config, `mkdir -p '${remoteDir}'`, keyFile);
+                await execSSH(config, `mkdir -p '${shellEscapeSingleQuote(remoteDir)}'`, keyFile);
             } catch (e) {
                 log.warn("Could not create remote directory via SSH, rsync may handle it", {}, wrapError(e));
             }
@@ -333,7 +368,7 @@ export const RsyncAdapter: StorageAdapter = {
             // Use SSH cat for small files (like .meta.json) - faster than rsync
             try {
                 const fullPath = path.posix.join(config.pathPrefix, remotePath);
-                const content = await execSSH(config, `cat '${fullPath}'`, keyFile);
+                const content = await execSSH(config, `cat '${shellEscapeSingleQuote(fullPath)}'`, keyFile);
                 return content;
             } catch {
                 // Fallback: download via rsync
@@ -369,9 +404,10 @@ export const RsyncAdapter: StorageAdapter = {
                 : (dir || "/");
 
             // Use SSH find command to recursively list files
+            const safeStartDir = shellEscapeSingleQuote(startDir);
             const output = await execSSH(
                 config,
-                `find '${startDir}' -type f -printf '%p\\t%s\\t%T@\\n' 2>/dev/null || find '${startDir}' -type f -exec stat -f '%N\\t%z\\t%m' {} \\; 2>/dev/null`,
+                `find '${safeStartDir}' -type f -printf '%p\\t%s\\t%T@\\n' 2>/dev/null || find '${safeStartDir}' -type f -exec stat -f '%N\\t%z\\t%m' {} \\; 2>/dev/null`,
                 keyFile
             );
 
@@ -421,7 +457,7 @@ export const RsyncAdapter: StorageAdapter = {
 
             const fullPath = path.posix.join(config.pathPrefix, remotePath);
 
-            await execSSH(config, `rm -f '${fullPath}'`, keyFile);
+            await execSSH(config, `rm -f '${shellEscapeSingleQuote(fullPath)}'`, keyFile);
             return true;
         } catch (error: unknown) {
             log.error("Rsync delete failed", { host: config.host, remotePath }, wrapError(error));
@@ -442,7 +478,7 @@ export const RsyncAdapter: StorageAdapter = {
 
             // Ensure remote directory exists
             try {
-                await execSSH(config, `mkdir -p '${config.pathPrefix}'`, keyFile);
+                await execSSH(config, `mkdir -p '${shellEscapeSingleQuote(config.pathPrefix)}'`, keyFile);
             } catch (mkdirError: unknown) {
                 const errMsg = sanitizeError(mkdirError);
                 if (errMsg.toLowerCase().includes("permission denied")) {
@@ -467,7 +503,7 @@ export const RsyncAdapter: StorageAdapter = {
 
             // 2. Delete Test
             const fullPath = path.posix.join(config.pathPrefix, testFileName);
-            await execSSH(config, `rm -f '${fullPath}'`, keyFile);
+            await execSSH(config, `rm -f '${shellEscapeSingleQuote(fullPath)}'`, keyFile);
 
             return { success: true, message: "Connection successful (Write/Delete verified)" };
         } catch (error: unknown) {
