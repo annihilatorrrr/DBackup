@@ -30,8 +30,8 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
         const file = searchParams.get("file");
         const decrypt = searchParams.get("decrypt") === "true";
 
-        if (!file) {
-             return NextResponse.json({ error: "Missing file param" }, { status: 400 });
+        if (!file || file.includes('..') || file.startsWith('/')) {
+             return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
         }
 
         const tempDir = getTempDir();

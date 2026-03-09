@@ -2,6 +2,7 @@ import { OIDCAdapter } from "@/lib/core/oidc-adapter";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { wrapError } from "@/lib/errors";
+import { validateOutboundUrl } from "@/lib/url-validation";
 
 const log = logger.child({ adapter: "authentik" });
 
@@ -42,6 +43,7 @@ export const AuthentikAdapter: OIDCAdapter = {
     const discoveryUrl = `${baseUrl}/application/o/${config.slug}/.well-known/openid-configuration`;
 
     try {
+      validateOutboundUrl(discoveryUrl);
       const response = await fetch(discoveryUrl);
       if (!response.ok) {
         throw new Error(`Failed to fetch OIDC config from ${discoveryUrl}. Status: ${response.status}`);

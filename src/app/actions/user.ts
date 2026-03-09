@@ -58,6 +58,19 @@ export async function updateUserGroup(userId: string, groupId: string | null) {
     await checkPermission(PERMISSIONS.USERS.WRITE);
     const currentUser = await getCurrentUserWithGroup();
 
+    // Prevent self-group-change (users cannot change their own group)
+    if (currentUser && currentUser.id === userId) {
+        return { success: false, error: "You cannot change your own group assignment." };
+    }
+
+    // Only SuperAdmins can assign users to the SuperAdmin group
+    if (groupId && groupId !== "none") {
+        const targetGroup = await (await import("@/lib/prisma")).default.group.findUnique({ where: { id: groupId } });
+        if (targetGroup?.name === "SuperAdmin" && currentUser?.group?.name !== "SuperAdmin") {
+            return { success: false, error: "Only SuperAdmin users can assign the SuperAdmin group." };
+        }
+    }
+
     try {
         await userService.updateUserGroup(userId, groupId);
         revalidatePath("/dashboard/users");

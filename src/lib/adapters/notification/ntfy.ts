@@ -2,6 +2,7 @@ import { NotificationAdapter } from "@/lib/core/interfaces";
 import { NtfySchema, NtfyConfig } from "@/lib/adapters/definitions";
 import { logger } from "@/lib/logger";
 import { wrapError } from "@/lib/errors";
+import { validateOutboundUrl } from "@/lib/url-validation";
 
 const log = logger.child({ adapter: "ntfy" });
 
@@ -71,6 +72,7 @@ export const NtfyAdapter: NotificationAdapter = {
                 headers["Authorization"] = `Bearer ${config.accessToken}`;
             }
 
+            validateOutboundUrl(url);
             const response = await fetch(url, {
                 method: "POST",
                 headers,
@@ -108,6 +110,7 @@ export const NtfyAdapter: NotificationAdapter = {
                 headers["Authorization"] = `Bearer ${config.accessToken}`;
             }
 
+            validateOutboundUrl(url);
             const response = await fetch(url, {
                 method: "POST",
                 headers,

@@ -2,6 +2,7 @@ import { NotificationAdapter } from "@/lib/core/interfaces";
 import { GotifySchema, GotifyConfig } from "@/lib/adapters/definitions";
 import { logger } from "@/lib/logger";
 import { wrapError } from "@/lib/errors";
+import { validateOutboundUrl } from "@/lib/url-validation";
 
 const log = logger.child({ adapter: "gotify" });
 
@@ -57,6 +58,7 @@ export const GotifyAdapter: NotificationAdapter = {
             const baseUrl = config.serverUrl.replace(/\/+$/, "");
             const url = `${baseUrl}/message`;
 
+            validateOutboundUrl(url);
             const response = await fetch(url, {
                 method: "POST",
                 headers: {
@@ -92,6 +94,7 @@ export const GotifyAdapter: NotificationAdapter = {
             const priority = resolvePriority(config.priority ?? 5, context);
             const formattedMessage = buildMarkdownMessage(message, context);
 
+            validateOutboundUrl(url);
             const response = await fetch(url, {
                 method: "POST",
                 headers: {

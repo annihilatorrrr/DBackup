@@ -2,6 +2,7 @@ import { NotificationAdapter } from "@/lib/core/interfaces";
 import { SlackSchema, SlackConfig } from "@/lib/adapters/definitions";
 import { logger } from "@/lib/logger";
 import { wrapError } from "@/lib/errors";
+import { validateOutboundUrl } from "@/lib/url-validation";
 
 const log = logger.child({ adapter: "slack" });
 
@@ -13,6 +14,7 @@ export const SlackAdapter: NotificationAdapter = {
 
     async test(config: SlackConfig): Promise<{ success: boolean; message: string }> {
         try {
+            validateOutboundUrl(config.webhookUrl);
             const response = await fetch(config.webhookUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -35,6 +37,7 @@ export const SlackAdapter: NotificationAdapter = {
 
     async send(config: SlackConfig, message: string, context?: any): Promise<boolean> {
         try {
+            validateOutboundUrl(config.webhookUrl);
             const payload: Record<string, unknown> = {};
 
             if (context) {

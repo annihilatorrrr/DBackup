@@ -59,7 +59,7 @@ describe('Discord Adapter', () => {
         };
 
         await DiscordAdapter.send(
-            { webhookUrl: 'url', username: 'Bot' },
+            { webhookUrl: 'https://discord.com/api/webhooks/test', username: 'Bot' },
             'Backup finished',
             context
         );
@@ -83,7 +83,7 @@ describe('Discord Adapter', () => {
         mockFetch.mockResolvedValue({ ok: true });
 
         await DiscordAdapter.send(
-            { webhookUrl: 'url' },
+            { webhookUrl: 'https://discord.com/api/webhooks/test' },
             'Failed',
             { title: 'Backup Failed', success: false, error: 'Connection refused' }
         );

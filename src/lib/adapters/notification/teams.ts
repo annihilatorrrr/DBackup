@@ -2,6 +2,7 @@ import { NotificationAdapter } from "@/lib/core/interfaces";
 import { TeamsSchema, TeamsConfig } from "@/lib/adapters/definitions";
 import { logger } from "@/lib/logger";
 import { wrapError } from "@/lib/errors";
+import { validateOutboundUrl } from "@/lib/url-validation";
 
 const log = logger.child({ adapter: "teams" });
 
@@ -26,6 +27,7 @@ export const TeamsAdapter: NotificationAdapter = {
                 "#0078D4",
             );
 
+            validateOutboundUrl(config.webhookUrl);
             const response = await fetch(config.webhookUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -52,6 +54,7 @@ export const TeamsAdapter: NotificationAdapter = {
 
             const card = buildAdaptiveCard(title, message, fields, color);
 
+            validateOutboundUrl(config.webhookUrl);
             const response = await fetch(config.webhookUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

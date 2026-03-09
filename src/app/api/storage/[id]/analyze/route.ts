@@ -29,8 +29,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
         const body = await req.json();
         const { file, type } = body;
 
-        if (!file) {
-            return NextResponse.json({ error: "Missing file" }, { status: 400 });
+        if (!file || typeof file !== 'string' || file.includes('..') || file.startsWith('/')) {
+            return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
         }
 
         const storageConfig = await prisma.adapterConfig.findUnique({ where: { id: params.id } });

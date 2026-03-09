@@ -2,6 +2,7 @@ import { NotificationAdapter } from "@/lib/core/interfaces";
 import { GenericWebhookSchema, GenericWebhookConfig } from "@/lib/adapters/definitions";
 import { logger } from "@/lib/logger";
 import { wrapError } from "@/lib/errors";
+import { validateOutboundUrl } from "@/lib/url-validation";
 
 const log = logger.child({ adapter: "generic-webhook" });
 
@@ -33,6 +34,7 @@ export const GenericWebhookAdapter: NotificationAdapter = {
 
     async test(config: GenericWebhookConfig): Promise<{ success: boolean; message: string }> {
         try {
+            validateOutboundUrl(config.webhookUrl);
             const headers = buildHeaders(config);
 
             const body = config.payloadTemplate
@@ -78,6 +80,7 @@ export const GenericWebhookAdapter: NotificationAdapter = {
 
     async send(config: GenericWebhookConfig, message: string, context?: any): Promise<boolean> {
         try {
+            validateOutboundUrl(config.webhookUrl);
             const headers = buildHeaders(config);
             const title = context?.title || "Notification";
             const success = context?.success ?? true;
