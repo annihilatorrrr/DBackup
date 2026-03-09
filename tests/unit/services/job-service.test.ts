@@ -25,7 +25,7 @@ describe('JobService', () => {
                 name: 'Test Job',
                 schedule: '0 0 * * *',
                 sourceId: 'source-1',
-                destinationId: 'dest-1',
+                destinations: [{ configId: 'dest-1', priority: 0, retention: '{}' }],
                 notificationIds: ['notif-1'],
                 enabled: true
             };
@@ -51,21 +51,22 @@ describe('JobService', () => {
                     name: input.name,
                     schedule: input.schedule,
                     sourceId: input.sourceId,
-                    destinationId: input.destinationId,
                     enabled: input.enabled,
                     encryptionProfileId: null,
                     compression: "NONE",
                     notificationEvents: "ALWAYS",
-                    retention: "{}",
                     notifications: {
                         connect: [{ id: 'notif-1' }]
+                    },
+                    destinations: {
+                        create: [{ configId: 'dest-1', priority: 0, retention: '{}' }]
                     }
                 },
-                include: {
+                include: expect.objectContaining({
                     source: true,
-                    destination: true,
+                    destinations: expect.any(Object),
                     notifications: true,
-                }
+                })
             });
 
             // 2. Check if Scheduler was refreshed
@@ -90,9 +91,9 @@ describe('JobService', () => {
 
             // Assert
             expect(prismaMock.job.findMany).toHaveBeenCalledWith({
-                include: {
+                include: expect.objectContaining({
                     source: true,
-                    destination: true,
+                    destinations: expect.any(Object),
                     notifications: true,
                     encryptionProfile: {
                         select: {
@@ -100,7 +101,7 @@ describe('JobService', () => {
                             name: true,
                         }
                     },
-                },
+                }),
                 orderBy: { createdAt: 'desc' }
             });
             expect(result).toHaveLength(2);

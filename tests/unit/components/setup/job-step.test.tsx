@@ -209,7 +209,7 @@ describe("JobStep", () => {
             expect(body).toMatchObject({
                 name: "My Backup",
                 sourceId: "src-1",
-                destinationId: "dst-1",
+                destinations: [{ configId: "dst-1", priority: 0, retention: { mode: "SIMPLE", simple: { keepCount: 10 } } }],
                 encryptionProfileId: "enc-1",
                 compression: "GZIP",
                 enabled: true,

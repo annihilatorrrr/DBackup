@@ -48,12 +48,14 @@ describe('Runner Step: Finalize & Notifications', () => {
             log: vi.fn(),
             updateProgress: vi.fn(),
             execution: { id: 'exec-1' } as any,
+            destinations: [],
             job: {
                 id: 'job-1',
                 name: 'Test Job',
                 notifications: [],
                 notificationEvents: 'ALWAYS',
                 source: { name: 'DB' },
+                destinations: [],
             } as any
         };
     });
@@ -151,5 +153,50 @@ describe('Runner Step: Finalize & Notifications', () => {
         await expect(stepFinalize(mockCtx)).resolves.not.toThrow();
 
         expect(mockCtx.log).toHaveBeenCalledWith(expect.stringContaining('Failed to send notification'));
+    });
+
+    it('should send notification when status is Partial and condition is ALWAYS', async () => {
+        mockCtx.job!.notifications = [{ adapterId: 'discord', config: '{}', name: 'Discord' } as any];
+        mockCtx.job!.notificationEvents = 'ALWAYS';
+        mockCtx.status = 'Partial';
+
+        await stepFinalize(mockCtx);
+
+        expect(mockSend).toHaveBeenCalledTimes(1);
+    });
+
+    it('should send notification when status is Partial and condition is FAILURE_ONLY', async () => {
+        mockCtx.job!.notifications = [{ adapterId: 'discord', config: '{}', name: 'Discord' } as any];
+        mockCtx.job!.notificationEvents = 'FAILURE_ONLY';
+        mockCtx.status = 'Partial';
+
+        await stepFinalize(mockCtx);
+
+        expect(mockSend).toHaveBeenCalledTimes(1);
+    });
+
+    it('should NOT send notification when status is Partial and condition is SUCCESS_ONLY', async () => {
+        mockCtx.job!.notifications = [{ adapterId: 'discord', config: '{}', name: 'Discord' } as any];
+        mockCtx.job!.notificationEvents = 'SUCCESS_ONLY';
+        mockCtx.status = 'Partial';
+
+        await stepFinalize(mockCtx);
+
+        expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it('should include destination results in execution metadata', async () => {
+        mockCtx.destinations = [
+            { configId: 'd1', configName: 'Local NAS', adapterId: 'local-filesystem', uploadResult: { success: true, path: '/backup.sql' } } as any,
+            { configId: 'd2', configName: 'S3 Bucket', adapterId: 's3', uploadResult: { success: false, error: 'Timeout' } } as any,
+        ];
+
+        await stepFinalize(mockCtx);
+
+        expect(prisma.execution.update).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({
+                metadata: expect.stringContaining('Local NAS')
+            })
+        }));
     });
 });

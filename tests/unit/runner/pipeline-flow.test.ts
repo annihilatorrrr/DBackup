@@ -80,7 +80,9 @@ describe('Backup Pipeline Integration', () => {
             id: jobId,
             name: 'Integration Test Job',
             source: { id: 's1', adapterId: 'mock-db', config: '{}', name: 'Mock Source', type: 'database' },
-            destination: { id: 'd1', adapterId: 'mock-storage', config: '{}', name: 'Mock Dest', type: 'storage' },
+            destinations: [
+                { id: 'jd1', configId: 'd1', priority: 0, retention: '{}', config: { id: 'd1', adapterId: 'mock-storage', config: '{}', name: 'Mock Dest', type: 'storage' } }
+            ],
             notifications: [],
             notificationEvents: 'ALWAYS'
         };

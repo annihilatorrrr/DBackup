@@ -48,7 +48,8 @@ describe('Runner Pipeline Resilience', () => {
 
         // Default implementation for initialize to set essential context properties
         vi.mocked(stepInitialize).mockImplementation(async (ctx: any) => {
-            ctx.job = { id: mockJobId }; // simulate loading job
+            ctx.job = { id: mockJobId };
+            ctx.destinations = [];
             return ctx;
         });
     });
