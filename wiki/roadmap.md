@@ -2,75 +2,32 @@
 
 This page outlines planned features and improvements for DBackup. Features are subject to change based on community feedback and priorities.
 
-## 🚨 Release Blockers
 
-These items must be resolved before moving from beta to stable release.
 
-### Automatic Database Migrations
-- Ensure Prisma migrations run without data loss on upgrades
-- Rollback mechanism for failed migrations
-- Migration tests in CI pipeline
-- Freeze and stabilize the database schema
+## 🚀 Planned Features
 
-### Runner Resilience & Error Recovery
+### Runner Resilience
 - **Retry Logic**: Exponential backoff for transient errors (network timeouts, storage hiccups)
-- **Partial Failure Handling**: If 1 of 5 databases fails in a multi-DB backup, save the successful ones
 - **Dead Letter Queue**: Move repeatedly failing jobs to a separate status for investigation
-
-### ~~Graceful Shutdown~~ ✅ *Implemented in v0.9.7*
-
-### Startup Recovery
-- Detect jobs stuck in "Running" status from a previous crash and mark as "Failed"
-- Clean up orphaned temp files on startup
-- Re-initialize the queue manager
-
-### ~~Robust Health Check Endpoint~~ ✅ *Implemented in v0.9.7*
-
-
-
-## 🔐 Security & Stability (Pre-Release)
 
 ### Encryption Key Rotation
 - Mechanism to rotate the `ENCRYPTION_KEY` without downtime
 - Re-encrypt all stored secrets (DB passwords, SSO client secrets) with the new key
 - Rotation guide in documentation
 
-### Configurable Rate Limiting
-- Move hardcoded rate limits to SystemSettings
-- Allow admins to adjust limits per endpoint category via the UI
-
-### Audit Log Performance
-- Ensure pagination and lazy loading for large audit log tables
-- Add database indices on frequently filtered columns
-- Implement log archival or auto-cleanup for old entries
-
-
-
-## 🚀 Planned Features
-
-### Quick Setup Wizard
-Guided first-run experience to configure your first backup:
-1. Add database source
-2. Configure storage destination
-3. Create backup job
-4. Test and schedule
-
 ### User Invite Flow
 - Email-based user invitations
 - Force password change on first login
 - Integration with SMTP notification adapter
 
-### Self-Service Profile
-Allow users to edit their own profile regardless of strict RBAC permissions.
-
-### Backup Verification & Integrity Checks
-- Periodic "test restore" as a scheduled task
-- Alert if backup size deviates significantly from previous runs (anomaly detection)
-
 ### Backup Tags & Annotations
 - Manually tag backups (e.g., "pre-migration", "before-upgrade")
 - Pin backups to protect them from automatic retention policy deletion
 - Filter and search by tags in Storage Explorer
+
+### Backup Anomaly Detection
+- Alert if backup size deviates significantly from previous runs
+- Periodic "test restore" as a scheduled task
 
 
 
@@ -80,9 +37,6 @@ Allow users to edit their own profile regardless of strict RBAC permissions.
 - Visual overview of when backups ran (similar to GitHub contribution graph)
 - Color-coded status (success, failed, skipped)
 
-### Backup Size Trend Analysis
-- Detect unusual growth patterns in databases
-
 ### Prometheus Metrics Endpoint
 - Expose `/metrics` endpoint for Prometheus scraping
 - Metrics: backup count, duration, size, success rate, queue depth
@@ -90,30 +44,11 @@ Allow users to edit their own profile regardless of strict RBAC permissions.
 
 
 
-## 🔔 ~~Planned Notification Adapters~~ ✅ *Implemented in v0.9.8*
+## 📚 Documentation
 
-### ~~Slack~~ ✅
-Webhook notifications for Slack workspaces.
-
-### ~~Microsoft Teams~~ ✅
-Teams channel notifications for enterprise users.
-
-### ~~Generic Webhook~~ ✅
-- Send JSON payloads to any HTTP endpoint
-- Customizable payload templates
-- Supports PagerDuty, Uptime Kuma, and more
-
-### ~~Gotify~~ ✅
-Self-hosted push notifications with priority levels and Markdown formatting.
-
-### ~~ntfy~~ ✅
-Topic-based push notifications — public (ntfy.sh) or self-hosted.
-
-### ~~Telegram~~ ✅
-Bot API push notifications to chats, groups, and channels.
-
-### ~~SMS (Twilio)~~ ✅
-SMS text message alerts via Twilio API for critical notifications.
+### API Reference
+- OpenAPI / Swagger documentation for all API endpoints
+- Interactive API explorer
 
 
 
@@ -123,26 +58,6 @@ SMS text message alerts via Twilio API for critical notifications.
 - Playwright or Cypress tests for critical user flows
 - Login → Create job → Run backup → Restore → Verify
 - Run in CI pipeline
-
-### Stress Testing Tools
-- Scripts to generate large test datasets (1GB+)
-- Performance benchmarking for backup/restore operations
-
-
-
-## 📚 Documentation (Pre-Release)
-
-### API Reference
-- OpenAPI / Swagger documentation for all API endpoints
-- Interactive API explorer
-
-### Disaster Recovery Runbook
-- Step-by-step guide for recovering from total system failure
-- How to restore DBackup itself from a config backup
-
-### Upgrade Guide
-- Version-by-version migration instructions
-- Breaking change highlights per release
 
 
 
@@ -154,15 +69,12 @@ SMS text message alerts via Twilio API for critical notifications.
 - Query result visualization
 
 ### Query Library
-- Pre-built templates for common tasks:
-  - User permission management
-  - Database creation
-  - Table maintenance
+- Pre-built templates for common tasks (user management, table maintenance)
 - Quick-action buttons in the UI
 
 
 
-## 🎨 Nice-to-Have (Post-Release)
+## 🎨 Nice-to-Have
 
 ### Internationalization (i18n)
 - Multi-language UI support
@@ -182,34 +94,56 @@ SMS text message alerts via Twilio API for critical notifications.
 
 
 
-## ✅ Recently Completed
+## ✅ Completed
 
 For a full list of completed features, see the [Changelog](/changelog).
 
-### Highlights
-- ✅ PostgreSQL restore improvements (v0.9.1 - TAR architecture with per-DB custom format dumps)
+### v1.0.0
+- ✅ Automatic database migrations (Prisma migrate on startup)
+- ✅ Startup recovery (stale execution detection, temp file cleanup, queue re-init)
+- ✅ Partial failure handling for multi-DB backups
+- ✅ Configurable rate limiting (per-category, adjustable via Settings UI)
+- ✅ Quick Setup Wizard (guided first-run experience)
+- ✅ Self-service profile editing
+- ✅ Backup integrity checks (SHA-256 checksums, scheduled verification)
+- ✅ Disaster recovery documentation (Recovery Kit)
+- ✅ Upgrade guide for v1.0.0 (config backup/restore)
+- ✅ Audit log pagination with database indices
+- ✅ Stress testing scripts for MySQL, PostgreSQL, MongoDB, MSSQL
+
+### v0.9.5 – v0.9.9
+- ✅ Interactive dashboard with charts and analytics (v0.9.5)
+- ✅ SHA-256 checksum verification with integrity check system (v0.9.5)
+- ✅ Storage usage analytics and per-destination breakdown (v0.9.5)
+- ✅ Smart type filters for sources, destinations, and notifications (v0.9.5)
+- ✅ Rsync, Google Drive, Dropbox & OneDrive storage adapters (v0.9.6)
+- ✅ Notification system overhaul with event-based routing (v0.9.6)
+- ✅ API keys with webhook triggers (v0.9.7)
+- ✅ Graceful shutdown with backup-safe SIGTERM handling (v0.9.7)
+- ✅ Robust health check endpoint (v0.9.7)
+- ✅ Notification adapters: Slack, Teams, Gotify, ntfy, Telegram, Twilio SMS, Generic Webhook (v0.9.8)
+- ✅ Storage alerts and notification logs (v0.9.9)
+
+### Earlier Versions
 - ✅ Multi-database support (MySQL, PostgreSQL, MongoDB, SQLite, MSSQL, Redis)
 - ✅ AES-256-GCM backup encryption with Vault
 - ✅ GZIP and Brotli compression
-- ✅ S3, SFTP, Local, WebDAV, SMB, and FTP/FTPS storage adapters
+- ✅ S3, SFTP, Local, WebDAV, SMB, FTP/FTPS storage adapters
 - ✅ Discord and Email notifications
 - ✅ Cron-based scheduling with GVS retention
 - ✅ RBAC permission system
 - ✅ SSO/OIDC authentication (Authentik, PocketID, Generic)
 - ✅ TOTP and Passkey 2FA
 - ✅ Live backup progress monitoring
-- ✅ System configuration backup
+- ✅ System configuration backup & restore
 - ✅ Audit logging
-- ✅ Centralized logging system with custom error classes (v0.9.4)
-- ✅ wget/curl download links for all backups (v0.9.4)
-- ✅ Redis database support with restore wizard (v0.9.3)
-- ✅ Type-safe adapter configurations (v0.9.4)
-- ✅ Token-based public downloads (v0.9.3)
-- ✅ User preferences system (v0.9.3)
-- ✅ SHA-256 checksum verification with integrity check system (v0.9.5)
-- ✅ Interactive dashboard with charts and analytics (v0.9.5)
-- ✅ Smart type filters for sources, destinations, and notifications (v0.9.5)
-- ✅ Storage usage analytics and per-destination breakdown (v0.9.5)
+- ✅ Centralized logging system with custom error classes
+- ✅ wget/curl download links & token-based public downloads
+- ✅ Redis database support with restore wizard
+- ✅ Type-safe adapter configurations
+- ✅ User preferences system
+- ✅ PostgreSQL TAR architecture with per-DB custom format dumps
+- ✅ Microsoft SQL Server support with Azure SQL Edge compatibility
 
 
 
