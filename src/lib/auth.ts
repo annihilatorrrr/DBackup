@@ -5,6 +5,28 @@ import { twoFactor } from "better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
 import { sso } from "@better-auth/sso";
 
+// Default session duration: 7 days (in seconds)
+const DEFAULT_SESSION_DURATION = 3600 * 24 * 7;
+
+/**
+ * Load session duration from SystemSetting table.
+ * Returns the configured duration in seconds, or the default (7 days).
+ */
+async function getSessionDuration(): Promise<number> {
+    try {
+        const setting = await prisma.systemSetting.findUnique({
+            where: { key: "auth.sessionDuration" },
+        });
+        if (setting) {
+            const seconds = parseInt(setting.value, 10);
+            if (!isNaN(seconds) && seconds > 0) return seconds;
+        }
+    } catch {
+        // DB might not be ready during initial setup
+    }
+    return DEFAULT_SESSION_DURATION;
+}
+
 const originalFetch = global.fetch;
 global.fetch = async (input, init) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input instanceof Request ? input.url : "";
@@ -158,9 +180,25 @@ export const auth = betterAuth({
         enabled: true,
         autoSignIn: true
     },
+    session: {
+        // Default expiry; dynamically overridden per-session via databaseHooks
+        expiresIn: DEFAULT_SESSION_DURATION,
+        updateAge: 60 * 60 * 24, // Refresh session every 24h
+    },
     databaseHooks: {
         session: {
             create: {
+                before: async (session) => {
+                    // Dynamically set session expiry based on admin setting
+                    const duration = await getSessionDuration();
+                    const expiresAt = new Date(Date.now() + duration * 1000);
+                    return {
+                        data: {
+                            ...session,
+                            expiresAt,
+                        },
+                    };
+                },
                 after: async (session) => {
                     // Fire-and-forget system notification for user login
                     // Dynamic import to avoid circular dependencies

@@ -6,6 +6,7 @@ import { AppearanceForm } from "@/components/settings/appearance-form";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { SecurityForm } from "@/components/settings/security-form";
 import { PreferencesForm } from "@/components/settings/preferences-form";
+import { SessionsForm } from "@/components/settings/sessions-form";
 import { redirect } from "next/navigation";
 import { getUserPermissions } from "@/lib/access-control";
 import { PERMISSIONS } from "@/lib/permissions";
@@ -52,6 +53,7 @@ export default async function ProfilePage() {
                     <TabsTrigger value="appearance">Appearance</TabsTrigger>
                     <TabsTrigger value="preferences">Preferences</TabsTrigger>
                     <TabsTrigger value="security">Security</TabsTrigger>
+                    <TabsTrigger value="sessions">Sessions</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="profile" className="space-y-4">
@@ -87,6 +89,9 @@ export default async function ProfilePage() {
                         canManagePasskeys={canManagePasskeys}
                         hasPassword={hasPassword}
                     />
+                </TabsContent>
+                <TabsContent value="sessions" className="space-y-4">
+                    <SessionsForm />
                 </TabsContent>
             </Tabs>
         </div>

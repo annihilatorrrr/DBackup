@@ -34,6 +34,9 @@ export default async function SettingsPage() {
     const disablePasskeySetting = await prisma.systemSetting.findUnique({ where: { key: "auth.disablePasskeyLogin" } });
     const disablePasskeyLogin = disablePasskeySetting?.value === 'true';
 
+    const sessionDurationSetting = await prisma.systemSetting.findUnique({ where: { key: "auth.sessionDuration" } });
+    const sessionDuration = sessionDurationSetting ? parseInt(sessionDurationSetting.value) : 604800;
+
     const retentionSetting = await prisma.systemSetting.findUnique({ where: { key: "audit.retentionDays" } });
     const auditLogRetentionDays = retentionSetting ? parseInt(retentionSetting.value) : 90;
 
@@ -101,6 +104,7 @@ export default async function SettingsPage() {
                     <SystemSettingsForm
                         initialMaxConcurrentJobs={maxConcurrentJobs}
                         initialDisablePasskeyLogin={disablePasskeyLogin}
+                        initialSessionDuration={sessionDuration}
                         initialAuditLogRetentionDays={auditLogRetentionDays}
                         initialStorageSnapshotRetentionDays={storageSnapshotRetentionDays}
                         initialNotificationLogRetentionDays={notificationLogRetentionDays}

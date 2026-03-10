@@ -9,7 +9,15 @@ All notable changes to DBackup are documented here.
 
 ### ✨ New Features
 
-#### 🔄 Stale Execution Recovery on Startup
+#### � Session Management
+- **Admin Session Duration** — Administrators can now configure the session lifetime in Settings → Authentication & Security. Options range from 1 hour to 90 days (default: 7 days). The setting takes effect for all new logins immediately — existing sessions retain their original expiration
+- **Sessions Tab in Profile** — Users can view all their active sessions under Profile → Sessions. Each session shows the browser (with brand icon), operating system (with OS icon), IP address, creation time, and "last seen" timestamp
+- **Browser-Specific Icons** — Sessions display Iconify brand icons for Chrome, Brave, Firefox, Safari, Edge, Opera, Vivaldi, Arc, and Tor Browser. Unknown browsers fall back to device-type icons (desktop/mobile/tablet)
+- **OS Icons** — Operating system icons are shown inline next to the OS name (Apple, Windows, Linux, Android)
+- **Revoke Individual Sessions** — Each session (except the current one) has a delete button to revoke it immediately, forcing a re-login on that device
+- **Revoke All Other Sessions** — A "Revoke All Others" button signs out all devices except the current one, with a confirmation dialog
+
+#### �🔄 Stale Execution Recovery on Startup
 - **Crash Recovery** — When the application is hard-killed (SIGKILL, power loss, OOM) while a backup or restore is running, the affected executions remain stuck in `Running` or `Pending` state indefinitely
 - **Automatic Detection** — On every application startup, DBackup now scans for executions in `Running` or `Pending` state and marks them as `Failed`
 - **Audit Log Entry** — A log entry is appended to each recovered execution explaining the cause:
@@ -111,6 +119,12 @@ All notable changes to DBackup are documented here.
 - Updated `src/components/adapter/form-sections.tsx` — Removed `'database'` from Configuration tab `FieldList` keys (no longer shown for MySQL, PostgreSQL, MongoDB, MSSQL)
 - Updated `src/components/adapter/adapter-form.tsx` — Removed database-picker related props from `DatabaseFormContent` call
 - Updated `src/components/dashboard/setup/steps/source-step.tsx` — Removed database-picker related props from `DatabaseFormContent` call
+- Updated `src/lib/auth.ts` — Added `getSessionDuration()` function that reads `auth.sessionDuration` from `SystemSetting` table; added `databaseHooks.session.create.before` hook to dynamically set `expiresAt` based on admin-configured session duration; configured `session.expiresIn` default (7 days) and `session.updateAge` (24h)
+- Updated `src/app/actions/settings.ts` — Added `sessionDuration` field to settings schema (`z.coerce.number().min(3600).max(7776000).optional()`) and upsert for `auth.sessionDuration` key in `SystemSetting` table
+- Updated `src/app/dashboard/settings/page.tsx` — Loads `auth.sessionDuration` from database and passes it to `SystemSettingsForm` as `initialSessionDuration`
+- Updated `src/components/settings/system-settings-form.tsx` — Added session duration selector (1h–90d) in the "Authentication & Security" card with auto-save
+- New `src/components/settings/sessions-form.tsx` — Sessions management component: fetches active sessions via `authClient.listSessions()`, displays browser brand icons (Iconify), OS icons, formatted IP address, creation/last-seen dates; supports revoking individual sessions and all other sessions with confirmation dialog
+- Updated `src/app/dashboard/profile/page.tsx` — Added "Sessions" tab (5th tab) to the profile page, rendering `SessionsForm`
 
 ## v0.9.9-beta - Storage Alerts, Notification Logs & Restore Improvements
 *Released: February 22, 2026*

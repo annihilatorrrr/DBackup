@@ -144,6 +144,56 @@ See [SSO Integration](./sso.md) for detailed OIDC implementation.
 
 ## Session Management
 
+### Configurable Session Duration
+
+Session lifetime is configurable by administrators via Settings → Authentication & Security. The value is stored in the `SystemSetting` table under the key `auth.sessionDuration` (in seconds).
+
+```typescript
+// src/lib/auth.ts — Dynamic session expiry via database hook
+databaseHooks: {
+  session: {
+    create: {
+      before: async (session) => {
+        const duration = await getSessionDuration(); // reads SystemSetting
+        const expiresAt = new Date(Date.now() + duration * 1000);
+        return { data: { ...session, expiresAt } };
+      },
+    },
+  },
+},
+```
+
+**Default:** 7 days (604800 seconds). Available options: 1h, 8h, 1d, 3d, 7d, 14d, 30d, 90d.
+
+The `session.expiresIn` config serves as fallback when no database setting exists. The `databaseHooks.session.create.before` hook dynamically overrides `expiresAt` for every new session based on the admin-configured value.
+
+### Session Listing & Revocation
+
+Better Auth provides built-in endpoints for session management:
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/auth/list-sessions` | GET | List all sessions for the current user |
+| `/api/auth/revoke-session` | POST | Revoke a specific session by token |
+| `/api/auth/revoke-other-sessions` | POST | Revoke all sessions except the current one |
+
+Client-side usage:
+
+```typescript
+import { authClient } from "@/lib/auth-client";
+
+// List sessions
+const { data: sessions } = await authClient.listSessions();
+
+// Revoke a specific session
+await authClient.revokeSession({ token: session.token });
+
+// Revoke all other sessions
+await authClient.revokeOtherSessions();
+```
+
+Each session record includes `ipAddress`, `userAgent`, `createdAt`, `updatedAt`, and `expiresAt` fields, populated automatically by Better Auth.
+
 ### Server-Side Session Access
 
 ```typescript

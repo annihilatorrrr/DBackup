@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button"
 const formSchema = z.object({
     maxConcurrentJobs: z.coerce.number().min(1).max(10),
     disablePasskeyLogin: z.boolean().default(false),
+    sessionDuration: z.coerce.number().min(3600).max(7776000).default(604800),
     auditLogRetentionDays: z.coerce.number().min(1).max(1825).default(90),
     storageSnapshotRetentionDays: z.coerce.number().min(7).max(1825).default(90),
     notificationLogRetentionDays: z.coerce.number().min(7).max(1825).default(90),
@@ -34,6 +35,7 @@ const formSchema = z.object({
 interface SystemSettingsFormProps {
     initialMaxConcurrentJobs: number;
     initialDisablePasskeyLogin?: boolean;
+    initialSessionDuration?: number;
     initialAuditLogRetentionDays?: number;
     initialStorageSnapshotRetentionDays?: number;
     initialNotificationLogRetentionDays?: number;
@@ -41,12 +43,13 @@ interface SystemSettingsFormProps {
     initialShowQuickSetup?: boolean;
 }
 
-export function SystemSettingsForm({ initialMaxConcurrentJobs, initialDisablePasskeyLogin, initialAuditLogRetentionDays = 90, initialStorageSnapshotRetentionDays = 90, initialNotificationLogRetentionDays = 90, initialCheckForUpdates = true, initialShowQuickSetup = false }: SystemSettingsFormProps) {
+export function SystemSettingsForm({ initialMaxConcurrentJobs, initialDisablePasskeyLogin, initialSessionDuration = 604800, initialAuditLogRetentionDays = 90, initialStorageSnapshotRetentionDays = 90, initialNotificationLogRetentionDays = 90, initialCheckForUpdates = true, initialShowQuickSetup = false }: SystemSettingsFormProps) {
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema) as any,
         defaultValues: {
             maxConcurrentJobs: initialMaxConcurrentJobs,
             disablePasskeyLogin: initialDisablePasskeyLogin === true,
+            sessionDuration: initialSessionDuration,
             auditLogRetentionDays: initialAuditLogRetentionDays,
             storageSnapshotRetentionDays: initialStorageSnapshotRetentionDays,
             notificationLogRetentionDays: initialNotificationLogRetentionDays,
@@ -336,7 +339,42 @@ export function SystemSettingsForm({ initialMaxConcurrentJobs, initialDisablePas
                             Configure login and security settings.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-4">
+                        <FormField
+                            control={form.control}
+                            name="sessionDuration"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Session Duration</FormLabel>
+                                    <FormDescription>
+                                        How long a user stays logged in before they need to re-authenticate.
+                                        Applies to new sessions only.
+                                    </FormDescription>
+                                    <Select
+                                        onValueChange={(val) => handleAutoSave("sessionDuration", Number(val))}
+                                        defaultValue={String(field.value)}
+                                    >
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select duration" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="3600">1 Hour</SelectItem>
+                                            <SelectItem value="28800">8 Hours</SelectItem>
+                                            <SelectItem value="86400">1 Day</SelectItem>
+                                            <SelectItem value="259200">3 Days</SelectItem>
+                                            <SelectItem value="604800">7 Days (Default)</SelectItem>
+                                            <SelectItem value="1209600">14 Days</SelectItem>
+                                            <SelectItem value="2592000">30 Days</SelectItem>
+                                            <SelectItem value="7776000">90 Days</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
                         <FormField
                             control={form.control}
                             name="disablePasskeyLogin"

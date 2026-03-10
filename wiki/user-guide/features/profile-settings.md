@@ -55,6 +55,21 @@ Manage your account security:
 - **Two-Factor Authentication (2FA)**: Enable TOTP-based 2FA using an authenticator app
 - **Passkeys/WebAuthn**: Register hardware security keys or platform authenticators
 
+### Sessions Tab
+
+View and manage all your active login sessions:
+
+- **Session List**: Each active session shows the browser name with a brand icon (Chrome, Firefox, Safari, Edge, Brave, Opera, Vivaldi, Arc, Tor), the operating system with an OS icon, and the device type
+- **IP Address**: The IP address of each session is displayed. On localhost, the IPv6 loopback address is shown as "localhost"
+- **Timestamps**: "Created" shows when the session was started, "Last seen" shows the most recent activity
+- **Current Session Badge**: Your current session is marked with a "Current" badge and cannot be revoked
+- **Revoke Session**: Click the trash icon on any other session to revoke it — this forces an immediate sign-out on that device
+- **Revoke All Others**: Use the "Revoke All Others" button to sign out all devices except your current one. A confirmation dialog prevents accidental logouts
+
+::: tip
+If you suspect unauthorized access to your account, use "Revoke All Others" to immediately sign out all other devices, then change your password in the Security tab.
+:::
+
 ## Related
 
 - [Getting Started](/user-guide/getting-started)

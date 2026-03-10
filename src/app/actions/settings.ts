@@ -13,6 +13,7 @@ const log = logger.child({ action: "settings" });
 const settingsSchema = z.object({
     maxConcurrentJobs: z.coerce.number().min(1).max(10),
     disablePasskeyLogin: z.boolean().optional(),
+    sessionDuration: z.coerce.number().min(3600).max(7776000).optional(), // 1h to 90d in seconds
     auditLogRetentionDays: z.coerce.number().min(1).max(1825).optional(),
     storageSnapshotRetentionDays: z.coerce.number().min(7).max(1825).optional(),
     notificationLogRetentionDays: z.coerce.number().min(7).max(1825).optional(),
@@ -34,6 +35,15 @@ export async function updateSystemSettings(data: z.infer<typeof settingsSchema>)
             update: { value: String(result.data.maxConcurrentJobs) },
             create: { key: "maxConcurrentJobs", value: String(result.data.maxConcurrentJobs) },
         });
+
+        // Session Duration Setting (default 604800 = 7 days, in seconds)
+        if (result.data.sessionDuration !== undefined) {
+            await prisma.systemSetting.upsert({
+                where: { key: "auth.sessionDuration" },
+                update: { value: String(result.data.sessionDuration) },
+                create: { key: "auth.sessionDuration", value: String(result.data.sessionDuration) },
+            });
+        }
 
         // Passkey Login Setting (default false/enabled, stored as true if disabled)
         if (result.data.disablePasskeyLogin !== undefined) {
