@@ -8,6 +8,17 @@ export type AdapterDefinition = {
     configSchema: z.ZodObject<any>;
 }
 
+// Validation: Reject paths with null bytes or obvious shell injection patterns
+const safePathRegex = /^[^\0]+$/;
+const safePath = (description: string) =>
+    z.string().min(1, `${description} is required`).regex(safePathRegex, "Path contains invalid characters");
+
+// Validation: Binary paths must not contain shell metacharacters beyond basic path chars
+const safeBinaryPath = z.string().regex(
+    /^[a-zA-Z0-9/_\-.]+$/,
+    "Binary path may only contain letters, digits, slashes, underscores, hyphens, and dots"
+);
+
 export const MySQLSchema = z.object({
     host: z.string().default("localhost"),
     port: z.coerce.number().default(3306),
@@ -52,8 +63,8 @@ export const SQLiteSchema = z.object({
     mode: z.enum(["local", "ssh"]).describe("Connection Mode"),
 
     // Common
-    path: z.string().min(1, "Database path is required").describe("Absolute path to .sqlite file"),
-    sqliteBinaryPath: z.string().default("sqlite3").optional().describe("Path to sqlite3 binary (default: sqlite3)"),
+    path: safePath("Database path").describe("Absolute path to .sqlite file"),
+    sqliteBinaryPath: safeBinaryPath.default("sqlite3").optional().describe("Path to sqlite3 binary (default: sqlite3)"),
 
     // SSH Specific
     host: z.string().optional().describe("SSH Host (Required for SSH mode)"),
@@ -73,7 +84,7 @@ export const MSSQLSchema = z.object({
     database: z.union([z.string(), z.array(z.string())]).default(""),
     encrypt: z.boolean().default(true).describe("Encrypt connection (required for Azure SQL)"),
     trustServerCertificate: z.boolean().default(false).describe("Trust self-signed certificates (for development)"),
-    backupPath: z.string().default("/var/opt/mssql/backup").describe("Server-side path where SQL Server writes .bak files"),
+    backupPath: z.string().regex(safePathRegex, "Backup path contains invalid characters").default("/var/opt/mssql/backup").describe("Server-side path where SQL Server writes .bak files"),
     fileTransferMode: z.enum(["local", "ssh"]).default("local").describe("How to access .bak files from the SQL Server"),
     localBackupPath: z.string().default("/tmp").optional().describe("Host-side path (Docker volume mount or shared filesystem)"),
     sshHost: z.string().optional().describe("SSH host of the SQL Server (defaults to DB host)"),
@@ -185,7 +196,7 @@ export const RsyncSchema = z.object({
     password: z.string().optional().describe("Password"),
     privateKey: z.string().optional().describe("Private Key (PEM format, optional)"),
     passphrase: z.string().optional().describe("Passphrase for Private Key (optional)"),
-    pathPrefix: z.string().min(1, "Remote destination path is required").describe("Remote destination folder (e.g. /backups)"),
+    pathPrefix: safePath("Remote destination path").describe("Remote destination folder (e.g. /backups)"),
     options: z.string().optional().describe("Additional rsync options"),
 });
 

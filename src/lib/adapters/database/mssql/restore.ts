@@ -193,7 +193,7 @@ export async function restore(
                 log(`Restoring from: ${bakFile.serverPath}`);
 
                 // Get file list from backup to determine logical names
-                const fileListQuery = `RESTORE FILELISTONLY FROM DISK = '${bakFile.serverPath}'`;
+                const fileListQuery = `RESTORE FILELISTONLY FROM DISK = N'${bakFile.serverPath.replace(/'/g, "''")}'`;
                 const fileListResult = await executeQuery(config, fileListQuery);
 
                 const logicalFiles = fileListResult.recordset.map((row: any) => ({

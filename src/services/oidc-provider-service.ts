@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { encrypt } from "@/lib/crypto";
 
 export interface CreateSsoProviderInput {
     name: string;
@@ -72,10 +73,14 @@ export class OidcProviderService {
                 : undefined
         );
 
+        // Encrypt credentials before storing
+        const encryptedClientId = encrypt(data.clientId);
+        const encryptedClientSecret = encrypt(data.clientSecret);
+
         const oidcConfig = data.type === "oidc" ? JSON.stringify({
             issuer: data.issuer,
-            clientId: data.clientId,
-            clientSecret: data.clientSecret,
+            clientId: encryptedClientId,
+            clientSecret: encryptedClientSecret,
             authorizationEndpoint: data.authorizationEndpoint,
             tokenEndpoint: data.tokenEndpoint,
             userInfoEndpoint: data.userInfoEndpoint,
@@ -99,8 +104,8 @@ export class OidcProviderService {
                 domain: data.domain, // Required by better-auth SSO plugin
                 adapterConfig: data.adapterConfig,
 
-                clientId: data.clientId,
-                clientSecret: data.clientSecret,
+                clientId: encryptedClientId,
+                clientSecret: encryptedClientSecret,
 
                 issuer: data.issuer,
                 authorizationEndpoint: data.authorizationEndpoint,
@@ -123,9 +128,14 @@ export class OidcProviderService {
         const existing = await prisma.ssoProvider.findUnique({ where: { id } });
         if (!existing) throw new Error("Provider not found");
 
+        // Encrypt credentials if provided
+        const encryptedClientId = data.clientId ? encrypt(data.clientId) : undefined;
+        const encryptedClientSecret = data.clientSecret ? encrypt(data.clientSecret) : undefined;
+
         if (isOidcUpdate || data.type === "oidc") {
 
                 // Merge new data with existing data for config construction
+                // Note: existing values are already decrypted by Prisma middleware
                 const merged = {
                     issuer: data.issuer ?? existing.issuer,
                     clientId: data.clientId ?? existing.clientId,
@@ -145,8 +155,11 @@ export class OidcProviderService {
                     discEndpoint = `${merged.issuer.replace(/\/$/, '')}/.well-known/openid-configuration`;
                 }
 
+                // Encrypt credentials inside oidcConfig
                 oidcConfigUpdate = JSON.stringify({
                     ...merged,
+                    clientId: encrypt(merged.clientId ?? ""),
+                    clientSecret: encrypt(merged.clientSecret ?? ""),
                     scope: data.scope || "openid profile email",
                     discoveryEndpoint: discEndpoint,
                     skipDiscovery: true,
@@ -163,8 +176,8 @@ export class OidcProviderService {
                 allowProvisioning: data.allowProvisioning,
                 adapterConfig: data.adapterConfig,
 
-                clientId: data.clientId,
-                clientSecret: data.clientSecret,
+                clientId: encryptedClientId,
+                clientSecret: encryptedClientSecret,
 
                 issuer: data.issuer,
                 authorizationEndpoint: data.authorizationEndpoint,

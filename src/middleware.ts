@@ -152,13 +152,16 @@ export const config = {
     matcher: [
         /*
          * Match all request paths except for the ones starting with:
-         * - api/auth (auth endpoints must be public)
          * - api/internal (internal endpoints used by middleware itself)
          * - _next/static (static files)
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
          * - public assets if any
+         *
+         * NOTE: api/auth is intentionally NOT excluded — the middleware must
+         * run on auth endpoints so the auth rate limiter (5 req/min) can
+         * protect /api/auth/sign-in against brute-force attacks.
          */
-        '/((?!api/auth|api/internal|_next/static|_next/image|favicon.ico|uploads/).*)',
+        '/((?!api/internal|_next/static|_next/image|favicon.ico|uploads/).*)',
     ],
 };
