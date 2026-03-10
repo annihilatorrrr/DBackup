@@ -37,10 +37,18 @@ export const updateService = {
 
       // 2. Fetch tags from GitLab Registry API
       // We use the public API since it's a public repository
-      const response = await fetch(
-        `https://gitlab.com/api/v4/projects/${GITLAB_PROJECT_ID}/registry/repositories/${REGISTRY_ID}/tags?per_page=100&order_by=name&sort=desc`,
-        { next: { revalidate: 3600 } } // Cache for 1 hour
-      );
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+
+      let response: Response;
+      try {
+        response = await fetch(
+          `https://gitlab.com/api/v4/projects/${GITLAB_PROJECT_ID}/registry/repositories/${REGISTRY_ID}/tags?per_page=100&order_by=name&sort=desc`,
+          { next: { revalidate: 3600 }, signal: controller.signal }
+        );
+      } finally {
+        clearTimeout(timeout);
+      }
 
       if (!response.ok) {
         throw new Error(`Failed to fetch tags: ${response.statusText}`);

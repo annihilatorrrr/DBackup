@@ -30,20 +30,16 @@ export default async function DashboardLayout({
         redirect("/")
     }
 
-    const permissions = await getUserPermissions();
-    const userWithGroup = await getCurrentUserWithGroup();
-    const isSuperAdmin = userWithGroup?.group?.name === "SuperAdmin";
-
-    // Check for updates (non-blocking, or parallel if we wanted, but here simple await is fine as it's cached)
-    // Actually, to avoid slowing down dashboard load, we might want to wrap in Suspense or just let it block a bit.
-    // Next.js patches fetch, so subsequent requests are fast.
-    const updateInfo = await updateService.checkForUpdates();
-
-    // Determine whether Quick Setup should be shown in the sidebar
-    const [sourceCount, quickSetupSetting] = await Promise.all([
+    // Run all queries in parallel to avoid sequential blocking
+    const [permissions, userWithGroup, updateInfo, sourceCount, quickSetupSetting] = await Promise.all([
+        getUserPermissions(),
+        getCurrentUserWithGroup(),
+        updateService.checkForUpdates(),
         prisma.adapterConfig.count({ where: { type: "database" } }),
         prisma.systemSetting.findUnique({ where: { key: "general.showQuickSetup" } }),
     ]);
+
+    const isSuperAdmin = userWithGroup?.group?.name === "SuperAdmin";
     const forceShowQuickSetup = quickSetupSetting?.value === "true";
     const showQuickSetup = forceShowQuickSetup || sourceCount === 0;
 
