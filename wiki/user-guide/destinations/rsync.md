@@ -173,7 +173,7 @@ The official Docker image includes all required tools. No additional configurati
 ```yaml
 services:
   dbackup:
-    image: skyfay/dbackup:beta
+    image: skyfay/dbackup:latest
     # rsync, sshpass, openssh-client are pre-installed
 ```
 
@@ -182,7 +182,7 @@ For SSH Agent forwarding in Docker:
 ```yaml
 services:
   dbackup:
-    image: skyfay/dbackup:beta
+    image: skyfay/dbackup:latest
     volumes:
       - ${SSH_AUTH_SOCK}:/ssh-agent:ro
     environment:

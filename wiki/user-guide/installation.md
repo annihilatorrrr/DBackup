@@ -21,7 +21,7 @@ Supports: Intel/AMD servers, Raspberry Pi 4+, Apple Silicon (M1/M2/M3), AWS Grav
 # docker-compose.yml
 services:
   dbackup:
-    image: skyfay/dbackup:beta
+    image: skyfay/dbackup:latest
     restart: always
     ports:
       - "3000:3000"
@@ -47,7 +47,7 @@ docker run -d \
   -v "$(pwd)/backups:/backups" \
   -v "$(pwd)/db:/app/db" \
   -v "$(pwd)/storage:/app/storage" \
-  skyfay/dbackup:beta
+  skyfay/dbackup:latest
 ```
 
 :::
@@ -95,7 +95,7 @@ docker run -d \
   -v "$(pwd)/backups:/backups" \
   -v "$(pwd)/db:/app/db" \
   -v "$(pwd)/storage:/app/storage" \
-  skyfay/dbackup:beta
+  skyfay/dbackup:latest
 ```
 
 ## Environment Variables

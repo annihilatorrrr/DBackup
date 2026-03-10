@@ -66,13 +66,13 @@ docker run -d --name dbackup -p 3000:3000 \
   -v "$(pwd)/db:/app/db" \
   -v "$(pwd)/backups:/backups" \
   -v "$(pwd)/storage:/app/storage" \
-  skyfay/dbackup:beta
+  skyfay/dbackup:latest
 ```
 
 ```yaml [Docker Compose]
 services:
   dbackup:
-    image: skyfay/dbackup:beta
+    image: skyfay/dbackup:latest
     container_name: dbackup
     restart: always
     ports:

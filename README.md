@@ -68,7 +68,7 @@ Whether you're running a single MySQL database or managing multiple PostgreSQL, 
 # docker-compose.yml
 services:
   dbackup:
-    image: skyfay/dbackup:beta
+    image: skyfay/dbackup:latest
     container_name: dbackup
     restart: always
     ports:

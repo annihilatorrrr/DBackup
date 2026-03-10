@@ -1,6 +1,6 @@
 services:
   dbackup:
-    image: skyfay/dbackup:beta
+    image: skyfay/dbackup:latest
     container_name: dbackup
     restart: always
     ports:
