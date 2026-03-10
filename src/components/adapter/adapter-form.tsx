@@ -113,7 +113,8 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
                 toast.success(initialData ? "Updated successfully" : "Created successfully");
                 onSuccess();
             } else {
-                toast.error("Operation failed");
+                const result = await res.json().catch(() => null);
+                toast.error(result?.error || "Operation failed");
             }
         } catch (_error) {
             toast.error("An error occurred");

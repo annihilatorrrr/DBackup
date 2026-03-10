@@ -69,6 +69,12 @@ export class JobService {
     async createJob(input: CreateJobInput) {
         const { name, schedule, sourceId, databases, destinations, notificationIds, enabled, encryptionProfileId, compression, notificationEvents } = input;
 
+        // Check name uniqueness
+        const existingByName = await prisma.job.findFirst({ where: { name } });
+        if (existingByName) {
+            throw new Error(`A job with the name "${name}" already exists.`);
+        }
+
         const newJob = await prisma.job.create({
             data: {
                 name,
@@ -100,6 +106,14 @@ export class JobService {
 
     async updateJob(id: string, input: UpdateJobInput) {
         const { name, schedule, sourceId, databases, destinations, notificationIds, enabled, encryptionProfileId, compression, notificationEvents } = input;
+
+        // Check name uniqueness (excluding current job)
+        if (name) {
+            const existingByName = await prisma.job.findFirst({ where: { name, id: { not: id } } });
+            if (existingByName) {
+                throw new Error(`A job with the name "${name}" already exists.`);
+            }
+        }
 
         const updatedJob = await prisma.$transaction(async (tx) => {
             // Update destinations if provided

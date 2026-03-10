@@ -6,6 +6,12 @@ import crypto from 'crypto';
  * Creates a new encryption profile with a secure, auto-generated key.
  */
 export async function createEncryptionProfile(name: string, description?: string) {
+  // Check name uniqueness
+  const existingByName = await prisma.encryptionProfile.findFirst({ where: { name } });
+  if (existingByName) {
+    throw new Error(`An encryption profile with the name "${name}" already exists.`);
+  }
+
   // Generate a new random 32-byte key for this profile
   const masterKeyBuffer = crypto.randomBytes(32);
   const masterKeyHex = masterKeyBuffer.toString('hex');
@@ -29,6 +35,12 @@ export async function createEncryptionProfile(name: string, description?: string
  * Validates the hex format (32 bytes = 64 chars) before storing.
  */
 export async function importEncryptionProfile(name: string, keyHex: string, description?: string) {
+  // Check name uniqueness
+  const existingByName = await prisma.encryptionProfile.findFirst({ where: { name } });
+  if (existingByName) {
+    throw new Error(`An encryption profile with the name "${name}" already exists.`);
+  }
+
   // 1. Validate Format
   const cleanKey = keyHex.trim();
   if (!/^[0-9a-fA-F]{64}$/.test(cleanKey)) {

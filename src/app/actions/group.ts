@@ -47,6 +47,12 @@ export async function createGroup(data: GroupFormValues) {
     try {
         const validated = groupSchema.parse(data);
 
+        // Check name uniqueness
+        const existingByName = await prisma.group.findUnique({ where: { name: validated.name } });
+        if (existingByName) {
+            return { success: false, error: `A group with the name "${validated.name}" already exists.` };
+        }
+
         const newGroup = await prisma.group.create({
             data: {
                 name: validated.name,
@@ -87,6 +93,12 @@ export async function updateGroup(id: string, data: GroupFormValues) {
 
         if (existingGroup?.name === "SuperAdmin") {
              return { success: false, error: "The SuperAdmin group cannot be edited manually." };
+        }
+
+        // Check name uniqueness (excluding current group)
+        const existingByName = await prisma.group.findUnique({ where: { name: validated.name } });
+        if (existingByName && existingByName.id !== id) {
+            return { success: false, error: `A group with the name "${validated.name}" already exists.` };
         }
 
         await prisma.group.update({

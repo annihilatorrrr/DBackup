@@ -326,6 +326,8 @@ export class ConfigService {
       }
 
       // 2. Restore Adapters
+      // Build mapping from backup adapter ID → actual adapter ID for FK remapping
+      const adapterIdMap = new Map<string, string>();
       if (opts.adapters) {
           for (const adapter of data.adapters) {
             let configObj: any = {};
@@ -336,32 +338,64 @@ export class ConfigService {
             // Re-encrypt config with CURRENT system key
             configObj = encryptConfig(configObj);
 
-            await tx.adapterConfig.upsert({
-            where: { id: adapter.id },
-            create: { ...adapter, config: JSON.stringify(configObj) },
-            update: { ...adapter, config: JSON.stringify(configObj) },
+            const adapterData = { ...adapter, config: JSON.stringify(configObj) };
+
+            // Check if an adapter with the same name and type already exists
+            const existingByName = await tx.adapterConfig.findFirst({
+              where: { name: adapter.name, type: adapter.type },
             });
+            if (existingByName && existingByName.id !== adapter.id) {
+              // Update existing adapter in-place
+              const { id, ...updateFields } = adapterData;
+              await tx.adapterConfig.update({
+                where: { id: existingByName.id },
+                data: updateFields,
+              });
+              adapterIdMap.set(adapter.id, existingByName.id);
+            } else {
+              await tx.adapterConfig.upsert({
+                where: { id: adapter.id },
+                create: adapterData,
+                update: adapterData,
+              });
+            }
         }
       }
 
       // 3. Restore Encryption Profiles (Metadata only)
+      // Build mapping from backup profile ID → actual profile ID for FK remapping
+      const profileIdMap = new Map<string, string>();
       if (opts.profiles) {
         for (const profile of data.encryptionProfiles) {
-            // Check if exists
-            const exists = await tx.encryptionProfile.findUnique({ where: { id: profile.id }});
-            if (exists) {
+            // Check if a profile with the same name but different ID exists
+            const existingByName = await tx.encryptionProfile.findFirst({ where: { name: profile.name } });
+
+            if (existingByName && existingByName.id !== profile.id) {
+              // Update existing profile in-place
+              await tx.encryptionProfile.update({
+                where: { id: existingByName.id },
+                data: {
+                  name: profile.name,
+                  description: profile.description,
+                  updatedAt: new Date(),
+                },
+              });
+              profileIdMap.set(profile.id, existingByName.id);
+            } else {
+              // Check if exists by ID
+              const exists = await tx.encryptionProfile.findUnique({ where: { id: profile.id }});
+              if (exists) {
                 await tx.encryptionProfile.update({
                     where: { id: profile.id },
                     data: {
                         name: profile.name,
                         description: profile.description,
-                        updatedAt: new Date(), // touch update
+                        updatedAt: new Date(),
                     }
                 });
-            } else {
+              } else {
                 // @ts-expect-error Types might miss secretKey depending on Omit usage
                 if (profile.secretKey) {
-                    // Start fresh with provided key
                     // Re-encrypt with CURRENT system key
                     // @ts-expect-error Types might miss secretKey
                     const encryptedKey = encrypt(profile.secretKey);
@@ -374,6 +408,7 @@ export class ConfigService {
                 } else {
                     svcLog.warn("Skipping encryption profile - secret key missing in export", { profileId: profile.id, name: profile.name });
                 }
+              }
             }
         }
       }
@@ -382,6 +417,16 @@ export class ConfigService {
       if (opts.jobs) {
         for (const jobItem of data.jobs) {
             const job = { ...jobItem };
+
+            // Remap sourceId if the adapter was merged
+            if (job.sourceId && adapterIdMap.has(job.sourceId)) {
+              job.sourceId = adapterIdMap.get(job.sourceId)!;
+            }
+
+            // Remap encryptionProfileId if the profile was merged
+            if (job.encryptionProfileId && profileIdMap.has(job.encryptionProfileId)) {
+              job.encryptionProfileId = profileIdMap.get(job.encryptionProfileId)!;
+            }
 
             // Check Encryption Profile Dependency
             if (job.encryptionProfileId) {
@@ -392,20 +437,35 @@ export class ConfigService {
                 }
             }
 
-            await tx.job.upsert({
-            where: { id: job.id },
-            create: job as any,
-            update: job as any,
-            });
+            // Check if a job with the same name but different ID exists
+            const existingJob = await tx.job.findFirst({ where: { name: job.name } });
+            if (existingJob && existingJob.id !== job.id) {
+              const { id, ...updateFields } = job;
+              await tx.job.update({
+                where: { id: existingJob.id },
+                data: updateFields as any,
+              });
+            } else {
+              await tx.job.upsert({
+                where: { id: job.id },
+                create: job as any,
+                update: job as any,
+              });
+            }
         }
 
         // 4b. Restore Job Destinations
         if (data.jobDestinations && data.jobDestinations.length > 0) {
           for (const dest of data.jobDestinations) {
+            const remapped = { ...dest };
+            // Remap configId if the adapter was merged
+            if (remapped.configId && adapterIdMap.has(remapped.configId)) {
+              remapped.configId = adapterIdMap.get(remapped.configId)!;
+            }
             await tx.jobDestination.upsert({
-              where: { id: dest.id },
-              create: dest,
-              update: dest,
+              where: { id: remapped.id },
+              create: remapped,
+              update: remapped,
             });
           }
         }
@@ -413,11 +473,13 @@ export class ConfigService {
         // 4c. Restore Job Notification Assignments (M:M)
         if (data.jobNotifications) {
           for (const [jobId, notifIds] of Object.entries(data.jobNotifications)) {
+            // Remap notification adapter IDs
+            const remappedNotifIds = notifIds.map(id => adapterIdMap.get(id) ?? id);
             await tx.job.update({
               where: { id: jobId },
               data: {
                 notifications: {
-                  set: notifIds.map(id => ({ id }))
+                  set: remappedNotifIds.map(id => ({ id }))
                 }
               }
             });

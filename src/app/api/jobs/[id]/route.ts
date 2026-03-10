@@ -58,7 +58,9 @@ export async function PUT(
         });
 
         return NextResponse.json(updatedJob);
-    } catch (_error) {
-        return NextResponse.json({ error: "Failed to update job" }, { status: 500 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to update job";
+        const status = message.includes("already exists") ? 409 : 500;
+        return NextResponse.json({ error: message }, { status });
     }
 }

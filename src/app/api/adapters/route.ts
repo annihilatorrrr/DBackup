@@ -97,6 +97,14 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
+        // Check name uniqueness within the same type
+        const existingByName = await prisma.adapterConfig.findFirst({
+            where: { name, type },
+        });
+        if (existingByName) {
+            return NextResponse.json({ error: `A ${type === 'database' ? 'source' : type === 'storage' ? 'destination' : 'notification'} with the name "${name}" already exists.` }, { status: 409 });
+        }
+
         // Ensure config is object for encryption
         const configObj = typeof config === 'string' ? JSON.parse(config) : config;
 

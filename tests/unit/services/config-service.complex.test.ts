@@ -74,6 +74,15 @@ vi.mock('@/lib/prisma', () => {
             const item = store.get(where[idField]);
             return item || null;
         }),
+        findFirst: vi.fn(async ({ where }) => {
+            const values = Array.from(store.values());
+            return values.find((item: any) => {
+                return Object.entries(where).every(([key, val]) => {
+                    if (val && typeof val === 'object' && 'not' in (val as any)) return item[key] !== (val as any).not;
+                    return item[key] === val;
+                });
+            }) || null;
+        }),
         upsert: vi.fn(async ({ where, create, update }) => {
             const id = where[idField];
             const existing = store.get(id);

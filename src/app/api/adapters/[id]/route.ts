@@ -117,6 +117,17 @@ export async function PUT(
         const body = await req.json();
         const { name, config } = body;
 
+        // Check name uniqueness within the same type (excluding current adapter)
+        if (name) {
+            const existingByName = await prisma.adapterConfig.findFirst({
+                where: { name, type: existingAdapter.type, id: { not: params.id } },
+            });
+            if (existingByName) {
+                const typeLabel = existingAdapter.type === 'database' ? 'source' : existingAdapter.type === 'storage' ? 'destination' : 'notification';
+                return NextResponse.json({ error: `A ${typeLabel} with the name "${name}" already exists.` }, { status: 409 });
+            }
+        }
+
         const configObj = typeof config === 'string' ? JSON.parse(config) : config;
         const encryptedConfig = encryptConfig(configObj);
         const configString = JSON.stringify(encryptedConfig);

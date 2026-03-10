@@ -10,6 +10,7 @@ vi.mock('@/lib/prisma', () => ({
     encryptionProfile: {
       create: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       findMany: vi.fn(),
       delete: vi.fn(),
     }
@@ -42,6 +43,7 @@ describe('Encryption Service', () => {
 
             const fixedKeyHex = FIXED_KEY_BUFFER.toString('hex');
 
+            (prisma.encryptionProfile.findFirst as any).mockResolvedValue(null);
             (prisma.encryptionProfile.create as any).mockResolvedValue({ id: '1', name: 'Test', secretKey: mockEncrypted });
 
             await createEncryptionProfile('Test Profile', 'Desc');
@@ -67,6 +69,7 @@ describe('Encryption Service', () => {
 
     describe('importEncryptionProfile', () => {
         it('should validate hex string length', async () => {
+            (prisma.encryptionProfile.findFirst as any).mockResolvedValue(null);
             await expect(importEncryptionProfile('Test', 'shorts')).rejects.toThrow('Invalid key format');
             await expect(importEncryptionProfile('Test', 'zz'.repeat(32))).rejects.toThrow('Invalid key format'); // valid length, invalid chars
         });
@@ -75,6 +78,7 @@ describe('Encryption Service', () => {
             const validKeyHex = '00'.repeat(32); // 64 chars
             const mockEncrypted = 'encrypted-imported-value';
             (cryptoLib.encrypt as any).mockReturnValue(mockEncrypted);
+            (prisma.encryptionProfile.findFirst as any).mockResolvedValue(null);
             (prisma.encryptionProfile.create as any).mockResolvedValue({ id: '2', name: 'Imported', secretKey: mockEncrypted });
 
             await importEncryptionProfile('Imported Key', validKeyHex, 'Desc');
