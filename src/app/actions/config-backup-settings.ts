@@ -17,6 +17,7 @@ const configBackupSchema = z.object({
     storageId: z.string().min(1, "Destination is required"),
     profileId: z.string().optional().or(z.literal("")), // Can be empty if secrets not included? But UI recommends it.
     includeSecrets: z.boolean(),
+    includeStatistics: z.boolean(),
     retention: z.coerce.number().min(1).default(10),
 });
 
@@ -65,6 +66,11 @@ export async function updateConfigBackupSettings(data: z.infer<typeof configBack
                 where: { key: "config.backup.retention" },
                 update: { value: String(result.data.retention) },
                 create: { key: "config.backup.retention", value: String(result.data.retention) },
+            }),
+            prisma.systemSetting.upsert({
+                where: { key: "config.backup.includeStatistics" },
+                update: { value: String(result.data.includeStatistics) },
+                create: { key: "config.backup.includeStatistics", value: String(result.data.includeStatistics) },
             }),
         ]);
 

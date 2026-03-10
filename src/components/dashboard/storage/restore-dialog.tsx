@@ -97,7 +97,8 @@ export function RestoreDialog({ file, open, onOpenChange, destinationId, sources
         jobs: true,
         users: true,
         sso: true,
-        profiles: true
+        profiles: true,
+        statistics: false
     });
 
     const handleConfigRestore = async () => {
@@ -129,7 +130,7 @@ export function RestoreDialog({ file, open, onOpenChange, destinationId, sources
         setAnalyzedDbs([]);
         setDbConfig([]);
         setRestoreOptions({
-            settings: true, adapters: true, jobs: true, users: true, sso: true, profiles: true
+            settings: true, adapters: true, jobs: true, users: true, sso: true, profiles: true, statistics: false
         });
         setRestoreLogs(null);
         setShowPrivileged(false);
@@ -444,6 +445,16 @@ export function RestoreDialog({ file, open, onOpenChange, destinationId, sources
                                             />
                                             <label htmlFor="opt-profiles" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                                 Encryption Profiles
+                                            </label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id="opt-statistics"
+                                                checked={restoreOptions.statistics}
+                                                onCheckedChange={(c) => setRestoreOptions(p => ({...p, statistics: !!c}))}
+                                            />
+                                            <label htmlFor="opt-statistics" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                Statistics & History
                                             </label>
                                         </div>
                                     </div>

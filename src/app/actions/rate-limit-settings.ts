@@ -7,7 +7,8 @@ import { checkPermission } from "@/lib/access-control";
 import { PERMISSIONS } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { wrapError } from "@/lib/errors";
-import { RATE_LIMIT_KEYS, RATE_LIMIT_DEFAULTS, reloadRateLimits } from "@/lib/rate-limit";
+import { RATE_LIMIT_KEYS, RATE_LIMIT_DEFAULTS } from "@/lib/rate-limit";
+import { reloadRateLimits } from "@/lib/rate-limit-server";
 
 const log = logger.child({ action: "rate-limit-settings" });
 

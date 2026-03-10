@@ -5,7 +5,9 @@ vi.mock('@/lib/prisma', () => ({
   default: {
     systemSetting: { findMany: vi.fn(), upsert: vi.fn() },
     adapterConfig: { findMany: vi.fn(), upsert: vi.fn() },
-    job: { findMany: vi.fn(), upsert: vi.fn() },
+    job: { findMany: vi.fn(), upsert: vi.fn(), update: vi.fn() },
+    jobDestination: { findMany: vi.fn(), upsert: vi.fn() },
+    apiKey: { findMany: vi.fn(), upsert: vi.fn() },
     user: { findMany: vi.fn(), upsert: vi.fn() },
     group: { findMany: vi.fn(), upsert: vi.fn() },
     ssoProvider: { findMany: vi.fn(), upsert: vi.fn() },
@@ -43,6 +45,8 @@ describe('ConfigService', () => {
     // Mock other calls with empty arrays
     prismaMock.systemSetting.findMany.mockResolvedValue([]);
     prismaMock.job.findMany.mockResolvedValue([]);
+    prismaMock.jobDestination.findMany.mockResolvedValue([]);
+    prismaMock.apiKey.findMany.mockResolvedValue([]);
     prismaMock.user.findMany.mockResolvedValue([]);
     prismaMock.group.findMany.mockResolvedValue([]);
     prismaMock.ssoProvider.findMany.mockResolvedValue([]);

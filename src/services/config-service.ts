@@ -3,6 +3,7 @@ import { AppConfigurationBackup, RestoreOptions } from "@/lib/types/config-backu
 import { decryptConfig, encryptConfig, stripSecrets, decrypt, encrypt } from "@/lib/crypto";
 import packageJson from "../../package.json";
 import { registry } from "@/lib/core/registry";
+import { registerAdapters } from "@/lib/adapters";
 import { StorageAdapter } from "@/lib/core/interfaces";
 import { createDecryptionStream } from "@/lib/crypto-stream";
 import { createGunzip } from "zlib";
@@ -17,19 +18,43 @@ import { wrapError } from "@/lib/errors";
 
 const svcLog = logger.child({ service: "ConfigService" });
 
+interface ExportOptions {
+  includeSecrets: boolean;
+  includeStatistics?: boolean;
+}
+
 export class ConfigService {
   /**
    * Generates the configuration object.
    * @param includeSecrets If true, decrypts DB passwords and includes them.
+   * @param optionsOrIncludeSecrets Legacy boolean or options object.
    */
-  async export(includeSecrets: boolean): Promise<AppConfigurationBackup> {
+  async export(optionsOrIncludeSecrets: boolean | ExportOptions): Promise<AppConfigurationBackup> {
+    const opts: ExportOptions = typeof optionsOrIncludeSecrets === 'boolean'
+      ? { includeSecrets: optionsOrIncludeSecrets }
+      : optionsOrIncludeSecrets;
+
+    const { includeSecrets, includeStatistics = false } = opts;
     const settings = await prisma.systemSetting.findMany();
     const adapters = await prisma.adapterConfig.findMany();
     const jobs = await prisma.job.findMany();
+    const jobDestinations = await prisma.jobDestination.findMany();
+    const jobsWithNotifications = await prisma.job.findMany({
+      select: { id: true, notifications: { select: { id: true } } }
+    });
+    const apiKeys = await prisma.apiKey.findMany();
     const users = await prisma.user.findMany({ include: { accounts: true } });
     const groups = await prisma.group.findMany();
     const ssoProviders = await prisma.ssoProvider.findMany();
     const encryptionProfiles = await prisma.encryptionProfile.findMany();
+
+    // Build jobId → notificationIds map
+    const jobNotifications: Record<string, string[]> = {};
+    for (const j of jobsWithNotifications) {
+      if (j.notifications.length > 0) {
+        jobNotifications[j.id] = j.notifications.map(n => n.id);
+      }
+    }
 
     // Process Adapters
     const processedAdapters = adapters.map((adapter) => {
@@ -120,20 +145,45 @@ export class ConfigService {
         }
     }));
 
+    // Process API Keys (strip hashedKey when secrets not requested)
+    const processedApiKeys = apiKeys.map(key => {
+      if (!includeSecrets) {
+        return { ...key, hashedKey: "" };
+      }
+      return key;
+    });
+
+    // Optional: Gather statistics data
+    let statistics: AppConfigurationBackup['statistics'] | undefined;
+    if (includeStatistics) {
+      const [storageSnapshots, executions, auditLogs, notificationLogs] = await Promise.all([
+        prisma.storageSnapshot.findMany(),
+        prisma.execution.findMany(),
+        prisma.auditLog.findMany(),
+        prisma.notificationLog.findMany(),
+      ]);
+      statistics = { storageSnapshots, executions, auditLogs, notificationLogs };
+    }
+
     return {
       metadata: {
         version: packageJson.version,
         exportedAt: new Date().toISOString(),
         includeSecrets,
+        includeStatistics,
         sourceType: "SYSTEM",
       },
       settings,
       adapters: processedAdapters,
       jobs,
+      jobDestinations,
+      jobNotifications,
+      apiKeys: processedApiKeys,
       users: processedUsers,
       groups,
       ssoProviders: processedSsoProviders,
       encryptionProfiles: processedProfiles,
+      ...(statistics ? { statistics } : {}),
     };
   }
 
@@ -256,7 +306,8 @@ export class ConfigService {
         jobs: true,
         users: true,
         sso: true,
-        profiles: true
+        profiles: true,
+        statistics: false,
     };
 
     // TODO: Add version compatibility check here if needed in future
@@ -334,7 +385,6 @@ export class ConfigService {
 
             // Check Encryption Profile Dependency
             if (job.encryptionProfileId) {
-                // If profiles were NOT restored, we must check if they exist in DB
                 const profileExists = await tx.encryptionProfile.findUnique({ where: { id: job.encryptionProfileId }});
                 if (!profileExists) {
                     svcLog.warn("Removing invalid encryption profile from job", { encryptionProfileId: job.encryptionProfileId, jobName: job.name });
@@ -348,50 +398,207 @@ export class ConfigService {
             update: job as any,
             });
         }
+
+        // 4b. Restore Job Destinations
+        if (data.jobDestinations && data.jobDestinations.length > 0) {
+          for (const dest of data.jobDestinations) {
+            await tx.jobDestination.upsert({
+              where: { id: dest.id },
+              create: dest,
+              update: dest,
+            });
+          }
+        }
+
+        // 4c. Restore Job Notification Assignments (M:M)
+        if (data.jobNotifications) {
+          for (const [jobId, notifIds] of Object.entries(data.jobNotifications)) {
+            await tx.job.update({
+              where: { id: jobId },
+              data: {
+                notifications: {
+                  set: notifIds.map(id => ({ id }))
+                }
+              }
+            });
+          }
+        }
       }
 
       // 5. Restore Groups
+      // Build mappings from backup IDs → actual IDs for FK remapping
+      const groupIdMap = new Map<string, string>();
+      const userIdMap = new Map<string, string>();
       if (opts.users) {
         for (const group of data.groups) {
-            await tx.group.upsert({
-            where: { id: group.id },
-            create: group,
-            update: group,
-            });
+            // Check if a group with the same name but different ID already exists
+            const existingByName = await tx.group.findUnique({ where: { name: group.name } });
+            if (existingByName && existingByName.id !== group.id) {
+              // Update the existing group in-place to avoid unique constraint violation
+              await tx.group.update({
+                where: { id: existingByName.id },
+                data: { permissions: group.permissions, updatedAt: group.updatedAt },
+              });
+              groupIdMap.set(group.id, existingByName.id);
+            } else {
+              await tx.group.upsert({
+                where: { id: group.id },
+                create: group,
+                update: group,
+              });
+            }
         }
 
-
-      // 6. Restore Users
+        // 6. Restore Users
         for (const user of data.users) {
-            // Detach accounts to handle separately
             const { accounts, ...userFields } = user;
 
-            await tx.user.upsert({
+            // Remap groupId if the group was merged into an existing one
+            if (userFields.groupId && groupIdMap.has(userFields.groupId)) {
+              userFields.groupId = groupIdMap.get(userFields.groupId)!;
+            }
+
+            // Check if a user with the same email but different ID already exists
+            const existingUser = await tx.user.findUnique({ where: { email: user.email } });
+            if (existingUser && existingUser.id !== user.id) {
+              const { id, email, ...updateFields } = userFields;
+              await tx.user.update({
+                where: { id: existingUser.id },
+                data: updateFields,
+              });
+              userIdMap.set(user.id, existingUser.id);
+            } else {
+              await tx.user.upsert({
                 where: { id: user.id },
                 create: userFields,
                 update: userFields,
-            });
+              });
+            }
+
+            // Determine the actual userId for child records
+            const actualUserId = userIdMap.get(user.id) ?? user.id;
 
             if (accounts && Array.isArray(accounts)) {
                  for (const account of accounts) {
+                     const remappedAccount = { ...account, userId: actualUserId };
                      await tx.account.upsert({
                          where: { id: account.id },
-                         create: account,
-                         update: account
+                         create: remappedAccount,
+                         update: remappedAccount
                      });
                  }
             }
+        }
+
+        // 6b. Restore API Keys
+        if (data.apiKeys && data.apiKeys.length > 0) {
+          for (const key of data.apiKeys) {
+            // Skip keys with stripped hashedKey (no-secret exports)
+            if (!key.hashedKey) continue;
+            const remappedKey = { ...key };
+            if (remappedKey.userId && userIdMap.has(remappedKey.userId)) {
+              remappedKey.userId = userIdMap.get(remappedKey.userId)!;
+            }
+            await tx.apiKey.upsert({
+              where: { id: remappedKey.id },
+              create: remappedKey,
+              update: remappedKey,
+            });
+          }
         }
       }
 
       // 7. Restore SSO Providers
       if (opts.sso) {
         for (const provider of data.ssoProviders) {
-            await tx.ssoProvider.upsert({
-            where: { id: provider.id },
-            create: provider,
-            update: provider,
+            // Re-encrypt secrets with current system key before storing
+            const providerData = { ...provider };
+            if (providerData.clientId) {
+              try { providerData.clientId = encrypt(providerData.clientId); } catch { /* already encrypted or empty */ }
+            }
+            if (providerData.clientSecret) {
+              try { providerData.clientSecret = encrypt(providerData.clientSecret); } catch { /* already encrypted or empty */ }
+            }
+            if (providerData.oidcConfig) {
+              try {
+                const oidcConfig = JSON.parse(providerData.oidcConfig);
+                if (oidcConfig.clientId) oidcConfig.clientId = encrypt(oidcConfig.clientId);
+                if (oidcConfig.clientSecret) oidcConfig.clientSecret = encrypt(oidcConfig.clientSecret);
+                providerData.oidcConfig = JSON.stringify(oidcConfig);
+              } catch { /* parse error, keep as-is */ }
+            }
+
+            // Check if a provider with the same providerId but different ID exists
+            const existingSso = await tx.ssoProvider.findUnique({ where: { providerId: providerData.providerId } });
+            if (existingSso && existingSso.id !== providerData.id) {
+              const { id, ...ssoUpdateFields } = providerData;
+              await tx.ssoProvider.update({
+                where: { id: existingSso.id },
+                data: ssoUpdateFields,
+              });
+            } else {
+              await tx.ssoProvider.upsert({
+                where: { id: providerData.id },
+                create: providerData,
+                update: providerData,
+              });
+            }
+        }
+      }
+
+      // 8. Restore Statistics (optional)
+      if (opts.statistics && data.statistics) {
+        if (data.statistics.storageSnapshots) {
+          for (const snapshot of data.statistics.storageSnapshots) {
+            await tx.storageSnapshot.upsert({
+              where: { id: snapshot.id },
+              create: snapshot,
+              update: snapshot,
             });
+          }
+        }
+        if (data.statistics.executions) {
+          for (const execution of data.statistics.executions) {
+            const remapped = { ...execution };
+            // Verify jobId FK exists, null out if not
+            if (remapped.jobId) {
+              const jobExists = await tx.job.findUnique({ where: { id: remapped.jobId }, select: { id: true } });
+              if (!jobExists) remapped.jobId = null;
+            }
+            await tx.execution.upsert({
+              where: { id: remapped.id },
+              create: remapped as any,
+              update: remapped as any,
+            });
+          }
+        }
+        if (data.statistics.auditLogs) {
+          for (const auditLog of data.statistics.auditLogs) {
+            const remapped = { ...auditLog };
+            // Remap userId if the user was merged into an existing one
+            if (remapped.userId && userIdMap.has(remapped.userId)) {
+              remapped.userId = userIdMap.get(remapped.userId)!;
+            }
+            // Verify userId FK exists, null out if not (userId is nullable)
+            if (remapped.userId) {
+              const userExists = await tx.user.findUnique({ where: { id: remapped.userId }, select: { id: true } });
+              if (!userExists) remapped.userId = null;
+            }
+            await tx.auditLog.upsert({
+              where: { id: remapped.id },
+              create: remapped,
+              update: remapped,
+            });
+          }
+        }
+        if (data.statistics.notificationLogs) {
+          for (const notifLog of data.statistics.notificationLogs) {
+            await tx.notificationLog.upsert({
+              where: { id: notifLog.id },
+              create: notifLog,
+              update: notifLog,
+            });
+          }
         }
       }
     });
@@ -439,15 +646,20 @@ export class ConfigService {
       options?: RestoreOptions
   ) {
       const logs: any[] = [];
+      const pendingUpdates: Promise<any>[] = [];
       const log = (msg: string, level = "info") => {
           logs.push({ timestamp: new Date().toISOString(), level, message: msg });
-          // Flush logs to DB periodically (or at end/error) for live updates
-          // For simplicity here, we assume partial updates or end update.
-          // In a real runner, we'd debounce this.
-          prisma.execution.update({
+          const p = prisma.execution.update({
               where: { id: executionId },
               data: { logs: JSON.stringify(logs) }
           }).catch(() => {});
+          pendingUpdates.push(p);
+      };
+
+      // Wait for all pending fire-and-forget log writes to settle before final DB write
+      const flushLogs = async () => {
+          await Promise.allSettled(pendingUpdates);
+          pendingUpdates.length = 0;
       };
 
       try {
@@ -456,19 +668,20 @@ export class ConfigService {
 
           log(`Initializing restore from ${filePath}`);
 
+          // Ensure adapters are registered before accessing registry
+          registerAdapters();
+
           // Fetch Storage Config
           const storageConfig = await prisma.adapterConfig.findUnique({ where: { id: storageConfigId } });
           if (!storageConfig) throw new Error("Storage adapter not found");
 
           const adapter = registry.get(storageConfig.adapterId) as StorageAdapter;
+          if (!adapter) throw new Error(`Storage adapter '${storageConfig.adapterId}' not found in registry`);
           const config = decryptConfig(JSON.parse(storageConfig.config));
 
           // Download
           log("Downloading backup file...");
           await adapter.download(config, filePath, downloadPath);
-
-          // Determine pipeline based on extension or metadata
-          // We assume standard ending: .json.gz.enc, .json.gz, .json
 
           // Check Metadata if available (sidecar)
           let meta: any = null;
@@ -481,8 +694,6 @@ export class ConfigService {
               log("Warning: Could not read metadata sidecar. Proceeding with filename detection.", "warn");
           }
 
-          let currentStream: Readable = createReadStream(downloadPath);
-
           // Normalize Metadata for Logic
           const metaEncryption = meta?.encryption && typeof meta.encryption === 'object' ? meta.encryption : null;
 
@@ -490,12 +701,18 @@ export class ConfigService {
                               (metaEncryption && metaEncryption.enabled) ||
                               (meta && meta.iv);
 
-          // Decryption
+          const isCompressed = filePath.includes(".gz") || (meta && String(meta.compression).toUpperCase() === 'GZIP');
+
+          // ── Resolve Encryption Key ───────────────────────────────
+          // Track if Smart Recovery already produced the decrypted content
+          let smartRecoveryContent: string | null = null;
+
+          let encryptionKey: Buffer | null = null;
+
           if (isEncrypted) {
               log("File detected as encrypted. Preparing decryption...");
 
               if (!decryptionProfileId) {
-                  // Try to find profile ID from meta
                   if (metaEncryption?.profileId) {
                        decryptionProfileId = metaEncryption.profileId;
                   } else if (meta?.encryptionProfileId) {
@@ -509,128 +726,105 @@ export class ConfigService {
                   }
               }
 
-              if (decryptionProfileId) {
-                  let key: Buffer;
-                  try {
-                      // Try finding the profile normally first
-                      const profile = await prisma.encryptionProfile.findUnique({ where: { id: decryptionProfileId } });
-                      if (!profile) throw new Error("Encryption profile not found");
-                      const decryptedKeyHex = decrypt(profile.secretKey);
-                      key = Buffer.from(decryptedKeyHex, 'hex');
-                  } catch (_err) {
-                      log(`Profile ${decryptionProfileId} not found/accessible. Attempting Smart Recovery...`, "warn");
+              try {
+                  const profile = await prisma.encryptionProfile.findUnique({ where: { id: decryptionProfileId } });
+                  if (!profile) throw new Error("Encryption profile not found");
+                  const decryptedKeyHex = decrypt(profile.secretKey);
+                  encryptionKey = Buffer.from(decryptedKeyHex, 'hex');
+              } catch (_err) {
+                  log(`Profile ${decryptionProfileId} not found/accessible. Attempting Smart Recovery...`, "warn");
 
-                      // --- SMART RECOVERY LOGIC ---
-                      const allProfiles = await getEncryptionProfiles();
-                      let foundKey: Buffer | null = null;
-                      let matchProfileName = "";
+                  // --- SMART RECOVERY LOGIC ---
+                  // Since config backups are small, decrypt the full file with each candidate key.
+                  // On success, keep the decrypted content to avoid re-processing the stream pipeline.
+                  const allProfiles = await getEncryptionProfiles();
+                  log(`Smart Recovery: Testing ${allProfiles.length} available profile(s)...`);
 
-                      const isCompressed = filePath.includes(".gz") || (meta && String(meta.compression).toUpperCase() === 'GZIP');
+                  for (const profile of allProfiles) {
+                      try {
+                          const candidateKey = await getProfileMasterKey(profile.id);
+                          log(`Smart Recovery: Testing profile '${profile.name}' (${profile.id})...`);
 
-                      // Helper: Test if candidate key decrypts successfully
-                      const checkKeyCandidate = async (candidateKey: Buffer): Promise<boolean> => {
-                          return new Promise((resolve) => {
-                                if (!meta || !meta.iv || !meta.authTag) { resolve(false); return; }
-                                const iv = Buffer.from(meta.iv, 'hex');
-                                const authTag = Buffer.from(meta.authTag, 'hex');
-
-                                try {
-                                    const decipher = createDecryptionStream(candidateKey, iv, authTag);
-                                    const input = createReadStream(downloadPath, { start: 0, end: 1024 }); // Head check
-
-                                    let isValid = true;
-
-                                    if (isCompressed) {
-                                        const gunzip = createGunzip();
-                                        decipher.on('error', () => { isValid = false; resolve(false); });
-                                        gunzip.on('error', () => { isValid = false; resolve(false); });
-                                        gunzip.on('data', () => { resolve(true); input.destroy(); }); // Success
-                                        input.pipe(decipher).pipe(gunzip);
-                                    } else {
-                                        decipher.on('error', () => { isValid = false; resolve(false); });
-                                        decipher.on('data', (chunk: Buffer) => {
-                                            const str = chunk.toString('utf8').trim();
-                                            // JSON check
-                                            if (str.startsWith('{') || str.startsWith('[')) { resolve(true); }
-                                            else { resolve(false); }
-                                            input.destroy();
-                                        });
-                                        input.pipe(decipher);
-                                    }
-
-                                    input.on('end', () => { if (isValid) resolve(true); });
-                                } catch { resolve(false); }
-                          });
-                      };
-
-                      for (const profile of allProfiles) {
-                          try {
-                              const candidateKey = await getProfileMasterKey(profile.id);
-                              if (await checkKeyCandidate(candidateKey)) {
-                                  foundKey = candidateKey;
-                                  matchProfileName = profile.name;
-                                  break;
-                              }
-                          } catch {}
-                      }
-
-                      if (foundKey) {
-                          log(`Smart Recovery: Unlocked using profile '${matchProfileName}'`, "success");
-                          key = foundKey;
-                      } else {
-                          throw new Error("Encryption profile missing and no other key worked.");
-                      }
+                          const result = await this.tryDecryptFile(downloadPath, candidateKey, meta, isCompressed);
+                          if (result) {
+                              log(`Smart Recovery: Unlocked using profile '${profile.name}'`, "success");
+                              smartRecoveryContent = result;
+                              encryptionKey = candidateKey;
+                              break;
+                          }
+                      } catch {}
                   }
 
-                  // If we have meta, use it. If not, we can't reliably decrypt GCM without IV/AuthTag
-                  // The runner stores IV/AuthTag in .meta.json.
-
-                  // Support both Flat (Old) and Nested (New) formats
-                  let ivHex = meta?.iv;
-                  let authTagHex = meta?.authTag;
-
-                  if (meta?.encryption && typeof meta.encryption === 'object') {
-                      if (meta.encryption.iv) ivHex = meta.encryption.iv;
-                      if (meta.encryption.authTag) authTagHex = meta.encryption.authTag;
+                  if (!smartRecoveryContent) {
+                      throw new Error("Encryption profile missing and no other key worked.");
                   }
-
-                  if (!ivHex || !authTagHex) {
-                      throw new Error("Missing encryption metadata (IV/AuthTag). Cannot decrypt.");
-                  }
-
-                  const iv = Buffer.from(ivHex, 'hex');
-                  const authTag = Buffer.from(authTagHex, 'hex');
-
-                  const decipher = createDecryptionStream(key, iv, authTag);
-                  currentStream = currentStream.pipe(decipher);
-                  log("Decryption stream attached.");
               }
           }
 
-          // Decompression
-          if (filePath.includes(".gz") || (meta && meta.compression === 'gzip')) {
-              log("File detected as compressed. Attaching gunzip...");
-              const gunzip = createGunzip();
-              currentStream = currentStream.pipe(gunzip);
+          // ── Process File ─────────────────────────────────────────
+          let content: string;
+
+          if (smartRecoveryContent) {
+              // Smart Recovery already produced the decrypted+decompressed content
+              log("Using pre-decrypted content from Smart Recovery.");
+              content = smartRecoveryContent;
+          } else {
+              // Normal path: stream pipeline with proper error handling
+              // Support both Flat (Old) and Nested (New) meta formats for IV/AuthTag
+              let ivHex = meta?.iv;
+              let authTagHex = meta?.authTag;
+              if (meta?.encryption && typeof meta.encryption === 'object') {
+                  if (meta.encryption.iv) ivHex = meta.encryption.iv;
+                  if (meta.encryption.authTag) authTagHex = meta.encryption.authTag;
+              }
+
+              if (isEncrypted) {
+                  if (!ivHex || !authTagHex) {
+                      throw new Error("Missing encryption metadata (IV/AuthTag). Cannot decrypt.");
+                  }
+                  if (!encryptionKey) {
+                      throw new Error("No encryption key available.");
+                  }
+              }
+
+              // Use stream.pipeline() for proper error propagation across all streams
+              const streams: (Readable | Transform)[] = [createReadStream(downloadPath)];
+
+              if (isEncrypted && encryptionKey && ivHex && authTagHex) {
+                  const iv = Buffer.from(ivHex, 'hex');
+                  const authTag = Buffer.from(authTagHex, 'hex');
+                  streams.push(createDecryptionStream(encryptionKey, iv, authTag));
+                  log("Decryption stream attached.");
+              }
+
+              if (isCompressed) {
+                  log("File detected as compressed. Attaching gunzip...");
+                  streams.push(createGunzip());
+              }
+
+              log("Reading and parsing configuration data...");
+
+              const chunks: Buffer[] = [];
+              const collector = new Transform({
+                  transform(chunk, _encoding, callback) {
+                      chunks.push(chunk);
+                      callback();
+                  }
+              });
+              streams.push(collector);
+
+              // pipeline() properly propagates errors across all streams
+              // @ts-expect-error Pipeline argument spread issues
+              await pipeline(...streams);
+              content = Buffer.concat(chunks).toString("utf8");
           }
-
-          // We need to read the stream into a string/buffer to parse JSON
-          // Ideally we stream-parse, but config is small enough to fit in memory
-          log("Reading and parsing configuration data...");
-
-          const content = await new Promise<string>((resolve, reject) => {
-              const chunks: any[] = [];
-              currentStream.on("data", (chunk) => chunks.push(chunk));
-              currentStream.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-              currentStream.on("error", (err) => reject(err));
-          });
 
           // Parse
           let backupData: AppConfigurationBackup;
           try {
               backupData = JSON.parse(content);
           } catch {
-              throw new Error("Failed to parse configuration JSON. File might be currupt or decryption failed.");
+              throw new Error("Failed to parse configuration JSON. File might be corrupt or decryption failed.");
           }
 
           // Validation
@@ -644,6 +838,7 @@ export class ConfigService {
 
           log("Restoration completed successfully.", "info");
 
+          await flushLogs();
           await prisma.execution.update({
               where: { id: executionId },
               data: {
@@ -661,7 +856,8 @@ export class ConfigService {
       } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);
           log(`Restoration failed: ${message}`, "error");
-           await prisma.execution.update({
+          await flushLogs();
+          await prisma.execution.update({
               where: { id: executionId },
               data: {
                   status: "Failed",
@@ -669,6 +865,52 @@ export class ConfigService {
                   logs: JSON.stringify(logs)
               }
           });
+      }
+  }
+
+  /**
+   * Attempts to decrypt (and decompress) a downloaded config backup file with a candidate key.
+   * Returns the decrypted JSON string on success, or null on failure.
+   */
+  private async tryDecryptFile(
+      downloadPath: string,
+      candidateKey: Buffer,
+      meta: any,
+      isCompressed: boolean
+  ): Promise<string | null> {
+      const ivHex = meta?.encryption?.iv || meta?.iv;
+      const authTagHex = meta?.encryption?.authTag || meta?.authTag;
+
+      if (!ivHex || !authTagHex) return null;
+
+      try {
+          const iv = Buffer.from(ivHex, 'hex');
+          const authTag = Buffer.from(authTagHex, 'hex');
+
+          const streams: (Readable | Transform)[] = [createReadStream(downloadPath)];
+          streams.push(createDecryptionStream(candidateKey, iv, authTag));
+          if (isCompressed) streams.push(createGunzip());
+
+          const chunks: Buffer[] = [];
+          const collector = new Transform({
+              transform(chunk, _encoding, callback) {
+                  chunks.push(chunk);
+                  callback();
+              }
+          });
+          streams.push(collector);
+
+          // @ts-expect-error Pipeline argument spread issues
+          await pipeline(...streams);
+          const content = Buffer.concat(chunks).toString('utf8').trim();
+
+          // Validate: must be valid JSON
+          if (content.startsWith('{') || content.startsWith('[')) {
+              return content;
+          }
+          return null;
+      } catch {
+          return null;
       }
   }
 }

@@ -103,7 +103,8 @@ export function RestoreClient() {
         jobs: true,
         users: true,
         sso: true,
-        profiles: true
+        profiles: true,
+        statistics: false
     });
 
     // Fetch database sources
@@ -476,6 +477,7 @@ export function RestoreClient() {
                                         { key: 'users' as const, label: 'Users & Groups' },
                                         { key: 'sso' as const, label: 'SSO Providers' },
                                         { key: 'profiles' as const, label: 'Encryption Profiles' },
+                                        { key: 'statistics' as const, label: 'Statistics & History' },
                                     ]).map(opt => (
                                         <div key={opt.key} className="flex items-center space-x-2">
                                             <Checkbox

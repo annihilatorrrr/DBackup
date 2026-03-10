@@ -36,6 +36,7 @@ export async function runConfigBackup() {
     const storageId = await prisma.systemSetting.findUnique({ where: { key: "config.backup.storageId" } });
     const profileId = await prisma.systemSetting.findUnique({ where: { key: "config.backup.profileId" } });
     const includeSecrets = await prisma.systemSetting.findUnique({ where: { key: "config.backup.includeSecrets" } });
+    const includeStatisticsSetting = await prisma.systemSetting.findUnique({ where: { key: "config.backup.includeStatistics" } });
     const retentionCountSetting = await prisma.systemSetting.findUnique({ where: { key: "config.backup.retention" } });
     const retentionCount = retentionCountSetting ? parseInt(retentionCountSetting.value) : 10;
 
@@ -96,7 +97,8 @@ export async function runConfigBackup() {
     // 4. Generate JSON Data
     const configService = new ConfigService();
     const safeToIncludeSecrets = (includeSecrets?.value === 'true') && (encryptionKey !== null);
-    const backupData = await configService.export(safeToIncludeSecrets);
+    const includeStatistics = includeStatisticsSetting?.value === 'true';
+    const backupData = await configService.export({ includeSecrets: safeToIncludeSecrets, includeStatistics });
     const jsonString = JSON.stringify(backupData, null, 2);
 
     // 5. Create Temp File for Processing

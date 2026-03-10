@@ -10,7 +10,7 @@ import { ConfigBackupSettings } from "@/components/settings/config-backup-settin
 import { NotificationSettings } from "@/components/settings/notification-settings";
 import { RateLimitSettings } from "@/components/settings/rate-limit-settings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getRateLimitConfig } from "@/lib/rate-limit";
+import { getRateLimitConfig } from "@/lib/rate-limit-server";
 
 export default async function SettingsPage() {
     const headersList = await headers();
@@ -59,6 +59,7 @@ export default async function SettingsPage() {
     const configProfileId = await prisma.systemSetting.findUnique({ where: { key: "config.backup.profileId" } });
     const configIncludeSecrets = await prisma.systemSetting.findUnique({ where: { key: "config.backup.includeSecrets" } });
     const configRetention = await prisma.systemSetting.findUnique({ where: { key: "config.backup.retention" } });
+    const configIncludeStatistics = await prisma.systemSetting.findUnique({ where: { key: "config.backup.includeStatistics" } });
 
     // Load Options for Config Backup
 
@@ -76,6 +77,7 @@ export default async function SettingsPage() {
         storageId: configStorageId?.value || "",
         profileId: configProfileId?.value || "",
         includeSecrets: configIncludeSecrets?.value === 'true',
+        includeStatistics: configIncludeStatistics?.value === 'true',
         retention: configRetention ? parseInt(configRetention.value) : 10,
     };
 

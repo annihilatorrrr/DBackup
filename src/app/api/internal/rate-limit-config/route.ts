@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getRateLimitConfig } from "@/lib/rate-limit";
+import { getRateLimitConfig } from "@/lib/rate-limit-server";
 
 /**
  * Internal endpoint for the Edge Runtime middleware to fetch rate limit

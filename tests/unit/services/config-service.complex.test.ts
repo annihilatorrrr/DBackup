@@ -42,6 +42,8 @@ const { mockDb } = vi.hoisted(() => ({
         settings: new Map(),
         adapters: new Map(),
         jobs: new Map(),
+        jobDestinations: new Map(),
+        apiKeys: new Map(),
         users: new Map(),
         accounts: new Map(),
         groups: new Map(),
@@ -61,6 +63,10 @@ vi.mock('@/lib/prisma', () => {
                      ...u,
                      accounts: Array.from(mockDb.accounts.values()).filter((a: any) => a.userId === u.id)
                  }));
+            }
+            if (args?.select?.id && args?.select?.notifications) {
+                 // Return job IDs with empty notifications for M:M mock
+                 values = values.map((j: any) => ({ id: j.id, notifications: [] }));
             }
             return values;
         }),
@@ -96,6 +102,8 @@ vi.mock('@/lib/prisma', () => {
             systemSetting: createPrismaDelegate(mockDb.settings, 'key'),
             adapterConfig: createPrismaDelegate(mockDb.adapters, 'id'),
             job: createPrismaDelegate(mockDb.jobs, 'id'),
+            jobDestination: createPrismaDelegate(mockDb.jobDestinations, 'id'),
+            apiKey: createPrismaDelegate(mockDb.apiKeys, 'id'),
             user: createPrismaDelegate(mockDb.users, 'id'),
             account: createPrismaDelegate(mockDb.accounts, 'id'),
             group: createPrismaDelegate(mockDb.groups, 'id'),

@@ -7,7 +7,7 @@ export async function register() {
         validateEnvironment();
 
         // 2. Load rate limit settings from DB
-        const { reloadRateLimits } = await import('@/lib/rate-limit');
+        const { reloadRateLimits } = await import('@/lib/rate-limit-server');
         await reloadRateLimits();
 
         // 3. Recover stale executions from previous crash/hard-kill

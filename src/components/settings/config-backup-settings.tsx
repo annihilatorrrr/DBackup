@@ -37,10 +37,10 @@ import { useState } from "react"
 
 const formSchema = z.object({
     enabled: z.boolean(),
-    // schedule: z.string().min(1, "Schedule is required"), // REMOVED
     storageId: z.string().min(1, "Destination is required"),
     profileId: z.string().optional(),
     includeSecrets: z.boolean(),
+    includeStatistics: z.boolean(),
     retention: z.coerce.number().min(1).default(10),
 })
 
@@ -51,6 +51,7 @@ interface ConfigBackupSettingsProps {
         storageId: string;
         profileId: string;
         includeSecrets: boolean;
+        includeStatistics: boolean;
         retention: number;
     };
     storageAdapters: { id: string, name: string }[];
@@ -62,10 +63,10 @@ export function ConfigBackupSettings({ initialSettings, storageAdapters, encrypt
         resolver: zodResolver(formSchema) as any,
         defaultValues: {
             enabled: initialSettings.enabled,
-            // schedule: initialSettings.schedule,
             storageId: initialSettings.storageId,
             profileId: initialSettings.profileId || "NO_ENCRYPTION",
             includeSecrets: initialSettings.includeSecrets,
+            includeStatistics: initialSettings.includeStatistics,
             retention: initialSettings.retention,
         },
     })
@@ -270,6 +271,28 @@ export function ConfigBackupSettings({ initialSettings, storageAdapters, encrypt
                                         <Switch
                                             checked={field.value}
                                             onCheckedChange={(val) => handleAutoSave("includeSecrets", val)}
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="includeStatistics"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                    <div className="space-y-0.5">
+                                        <FormLabel className="text-base">Include Statistics & History</FormLabel>
+                                        <FormDescription>
+                                            Includes storage history, execution logs, audit logs, and notification logs.
+                                            Increases backup file size significantly.
+                                        </FormDescription>
+                                    </div>
+                                    <FormControl>
+                                        <Switch
+                                            checked={field.value}
+                                            onCheckedChange={(val) => handleAutoSave("includeStatistics", val)}
                                         />
                                     </FormControl>
                                 </FormItem>
