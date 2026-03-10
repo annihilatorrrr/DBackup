@@ -73,7 +73,7 @@ export function CreateGroupDialog() {
                     Create Group
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
+            <DialogContent className="sm:max-w-150">
                 <DialogHeader>
                     <DialogTitle>Create Group</DialogTitle>
                 </DialogHeader>
