@@ -7,6 +7,10 @@ All notable changes to DBackup are documented here.
 
 🎉 **DBackup 1.0.0 — the first stable release.** This version stabilizes the platform after the extensive beta phase, ships quality-of-life fixes for the API trigger workflow, hardens job status tracking with stale execution recovery, adds update notifications with configurable reminder intervals, and polishes the dashboard UI.
 
+### ⚠️ Breaking Changes
+
+- **Database Reset Required** — All Prisma migrations have been squashed into a single `0_init` migration for the v1.0.0 release. Existing databases from beta versions are **not compatible** and must be recreated. **Before upgrading**, export your configuration via Settings → Config Backup. After upgrading, run `npx prisma migrate deploy` (or let Docker handle it automatically) and re-import your configuration
+
 ### ✨ New Features
 
 #### � Session Management
@@ -77,7 +81,7 @@ All notable changes to DBackup are documented here.
 - **API Trigger — cURL Placeholder Clarity** — The "Poll Execution Status" and "Poll with Logs" cURL examples used a bare `EXECUTION_ID` placeholder without explanation. The placeholder is now formatted as `{EXECUTION_ID}` and each example includes an explicit hint: *"Replace `{EXECUTION_ID}` with the `executionId` from the trigger response"*
 
 ### 🔧 Technical Changes
-- New `prisma/migrations/20260309000000_multi_destination/migration.sql` — Schema migration: creates `JobDestination` join table with `jobId`, `configId`, `priority`, `retention` fields and `@@unique([jobId, configId])` constraint; migrates existing `Job.destinationId` + `Job.retention` data into `JobDestination` rows; rebuilds `Job` table without removed columns (SQLite table rebuild pattern)
+- **Squashed Migrations** — All 7 beta migrations merged into a single `prisma/migrations/0_init/migration.sql` for a clean v1.0.0 baseline. This creates the complete schema (18 tables) in one step
 - Updated `prisma/schema.prisma` — Removed `destinationId` and `retention` from `Job` model; added `JobDestination` model with `id`, `jobId`, `configId`, `priority` (Int, default 0), `retention` (String, default "{}"), timestamps; added `destinations JobDestination[]` on `Job` and `jobDestinations JobDestination[]` on `AdapterConfig`; cascade delete on job
 - Updated `src/lib/runner/types.ts` — Added `DestinationContext` interface (configId, configName, adapter, config, retention, priority, uploadResult); updated `RunnerContext` to use `destinations: DestinationContext[]` instead of single `destAdapter`; added `"Partial"` to status union type
 - Updated `src/services/job-service.ts` — `CreateJobInput`/`UpdateJobInput` now use `destinations: DestinationInput[]`; `createJob` uses nested Prisma create; `updateJob` uses `$transaction` with `deleteMany` + `createMany`; shared `jobInclude` constant with `destinations: { include: { config: true }, orderBy: { priority: 'asc' } }`
