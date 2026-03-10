@@ -3,7 +3,7 @@
 All notable changes to DBackup are documented here.
 
 ## v1.0.0 - First Stable Release
-*Release: In Progress*
+*Released: March 10, 2026*
 
 🎉 **DBackup 1.0.0 — the first stable release.** This version stabilizes the platform after the extensive beta phase, ships quality-of-life fixes for the API trigger workflow, hardens job status tracking with stale execution recovery, adds update notifications with configurable reminder intervals, and polishes the dashboard UI.
 
@@ -13,7 +13,7 @@ All notable changes to DBackup are documented here.
 
 ### ✨ New Features
 
-#### � Session Management
+#### 🔄 Session Management
 - **Admin Session Duration** — Administrators can now configure the session lifetime in Settings → Authentication & Security. Options range from 1 hour to 90 days (default: 7 days). The setting takes effect for all new logins immediately — existing sessions retain their original expiration
 - **Sessions Tab in Profile** — Users can view all their active sessions under Profile → Sessions. Each session shows the browser (with brand icon), operating system (with OS icon), IP address, creation time, and "last seen" timestamp
 - **Browser-Specific Icons** — Sessions display Iconify brand icons for Chrome, Brave, Firefox, Safari, Edge, Opera, Vivaldi, Arc, and Tor Browser. Unknown browsers fall back to device-type icons (desktop/mobile/tablet)
@@ -21,7 +21,7 @@ All notable changes to DBackup are documented here.
 - **Revoke Individual Sessions** — Each session (except the current one) has a delete button to revoke it immediately, forcing a re-login on that device
 - **Revoke All Other Sessions** — A "Revoke All Others" button signs out all devices except the current one, with a confirmation dialog
 
-#### �🔄 Stale Execution Recovery on Startup
+#### 🔄 Stale Execution Recovery on Startup
 - **Crash Recovery** — When the application is hard-killed (SIGKILL, power loss, OOM) while a backup or restore is running, the affected executions remain stuck in `Running` or `Pending` state indefinitely
 - **Automatic Detection** — On every application startup, DBackup now scans for executions in `Running` or `Pending` state and marks them as `Failed`
 - **Audit Log Entry** — A log entry is appended to each recovered execution explaining the cause:
