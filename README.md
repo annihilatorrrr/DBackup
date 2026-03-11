@@ -165,15 +165,15 @@ For testing infrastructure and contribution guidelines, see the [Developer Guide
 
 ## 🤖 AI Development Transparency & Security Notice
 
-### Architecture & Concept (Human-Led):
+**Architecture & Concept (Human-Led):**
 
 The system architecture, infrastructure design, strict technology stack selection, and feature specifications for DBackup were entirely conceptualized and directed by a human System Engineer to solve real-world infrastructure challenges.
 
-### Code Generation (AI-Driven):
+**Code Generation (AI-Driven):**
 
 100% of the underlying application code, including the backend logic and frontend components, was written by advanced AI coding agents based on strict architectural prompts. No manual software coding was performed.
 
-### Testing & Quality Assurance:
+**Testing & Quality Assurance:**
 
 Manual Functional Testing: Every single feature has been extensively and manually tested by a human to ensure complete functional correctness, stability, and reliability in real-world scenarios.
 
