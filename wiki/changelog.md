@@ -2,6 +2,13 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.0.1 - Hotfix Release
+*Release: In Progress*
+
+### 🐛 Bug Fixes
+
+- **Database Picker — Mouse Wheel Scrolling** — The database selection dropdown (and all other `CommandList`-based dropdowns) did not respond to mouse wheel scrolling. Radix `ScrollArea` sets `overflow-y: hidden` on the viewport via inline style by default, blocking native wheel events. Fixed by adding an `onWheel` handler to `CommandList` that forwards wheel delta directly to the `ScrollArea` viewport's `scrollTop`, bypassing the inline style restriction entirely
+
 ## v1.0.0 - First Stable Release
 *Released: March 10, 2026*
 

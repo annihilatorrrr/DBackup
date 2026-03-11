@@ -88,13 +88,30 @@ function CommandList({
   children,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.List>) {
+  const viewportRef = React.useRef<HTMLDivElement>(null)
+
   return (
     <CommandPrimitive.List
       data-slot="command-list"
       className={cn("overflow-hidden!", className)}
       {...props}
+      onWheel={(e) => {
+        const viewport = viewportRef.current
+        if (!viewport) return
+
+        const { scrollTop, scrollHeight, clientHeight } = viewport
+        const maxScroll = scrollHeight - clientHeight
+        if (maxScroll <= 0) return
+
+        const atTop = scrollTop <= 0 && e.deltaY < 0
+        const atBottom = scrollTop >= maxScroll && e.deltaY > 0
+        if (atTop || atBottom) return
+
+        viewport.scrollTop += e.deltaY
+        e.preventDefault()
+      }}
     >
-      <ScrollArea className="max-h-75 **:data-[slot=scroll-area-viewport]:max-h-[inherit]">
+      <ScrollArea viewportRef={viewportRef} className="max-h-75 **:data-[slot=scroll-area-viewport]:max-h-[inherit]">
         {children}
       </ScrollArea>
     </CommandPrimitive.List>
