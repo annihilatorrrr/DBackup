@@ -163,14 +163,27 @@ pnpm dev
 
 For testing infrastructure and contribution guidelines, see the [Developer Guide](https://dbackup.app/developer-guide/).
 
-## 🤖 AI Development Transparency
+## 🤖 AI Development Transparency & Security Notice
 
-This project is developed with the assistance of advanced AI coding agents. While AI accelerates development, we adhere to strict engineering standards:
+### Architecture & Concept (Human-Led):
 
-- **Human Review** — All AI-generated code undergoes manual review for logic and security
-- **Security-First** — Rigorous access controls (RBAC), encryption standards (AES-256-GCM), and audits
-- **Testing Culture** — Comprehensive unit and integration test suite (Vitest)
-- **Modern Practices** — Current best practices for Next.js, TypeScript, and Docker
+The system architecture, infrastructure design, strict technology stack selection, and feature specifications for DBackup were entirely conceptualized and directed by a human System Engineer to solve real-world infrastructure challenges.
+
+### Code Generation (AI-Driven):
+
+100% of the underlying application code, including the backend logic and frontend components, was written by advanced AI coding agents based on strict architectural prompts. No manual software coding was performed.
+
+### Testing & Quality Assurance:
+
+Manual Functional Testing: Every single feature has been extensively and manually tested by a human to ensure complete functional correctness, stability, and reliability in real-world scenarios.
+
+Automated & Security Audits: Automated unit testing (Vitest) and initial static security audits were also conducted and implemented using AI agents.
+
+### Community Call for Code Review:
+
+While DBackup is functionally robust, heavily tested for daily use, and built on modern architectural best practices, the codebase has not yet undergone a manual security review by a human software developer. Due to the nature of AI-generated code and AI-driven audits, hidden structural vulnerabilities might still exist.
+
+If you are a software developer or cybersecurity professional, your expertise is highly welcome! We invite the open-source community to review the code, submit PRs, and help us elevate DBackup to a fully verified, enterprise-ready standard.
 
 ## 📝 License
 
