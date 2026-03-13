@@ -10,6 +10,10 @@ All notable changes to DBackup are documented here.
 - **Database Picker — Mouse Wheel Scrolling** — The database selection dropdown (and all other `CommandList`-based dropdowns) did not respond to mouse wheel scrolling. Radix `ScrollArea` sets `overflow-y: hidden` on the viewport via inline style by default, blocking native wheel events. Fixed by adding an `onWheel` handler to `CommandList` that forwards wheel delta directly to the `ScrollArea` viewport's `scrollTop`, bypassing the inline style restriction entirely
 - **MSSQL Backup — Silent Failure with Missing Error Details** — When a MSSQL `BACKUP DATABASE` command failed in production, the execution log only showed the generic `"BACKUP DATABASE is terminating abnormally"` error without revealing the actual cause (e.g., permission denied, disk full, path not found). SQL Server sends the real error details as informational messages *before* the final error, but the `executeQuery` function did not capture these messages. Added `executeQueryWithMessages()` in `connection.ts` that listens to the `mssql` request's `info` event to collect all SQL Server messages during execution. On success, progress messages (e.g., "10 percent processed") are logged to the execution output. On failure, detail messages are appended to the error (e.g., `"BACKUP DATABASE is terminating abnormally — Details: Cannot open backup device '...'. Operating system error 5(Access is denied.)"`). Both `dump.ts` and `restore.ts` now use this enhanced function for BACKUP/RESTORE operations
 
+### 📝 Documentation
+
+- **README & Wiki updated** — Feature list revised to be more accurate and less marketing-heavy. Added Multi-Destination Jobs, Storage Monitoring & Alerts, and Storage Explorer as explicit feature entries. Notification count updated to `9+`. Community & Support section added with Discord, GitLab Issues, support email (`support@dbackup.app`), and security disclosure address (`security@dbackup.app`)
+
 ## v1.0.0 - First Stable Release
 *Released: March 10, 2026*
 

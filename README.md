@@ -48,17 +48,21 @@ Whether you're running a single MySQL database or managing multiple PostgreSQL, 
 
 ## ✨ Features
 
-- **Multi-Database Support** — MySQL, PostgreSQL, MongoDB, Redis, SQLite, Microsoft SQL Server
-- **Enterprise-Grade Security** — AES-256-GCM encryption with Encryption Vault, key rotation, and offline recovery kits
-- **Flexible Storage** — 13+ built-in adapters: S3, Google Drive, Dropbox, OneDrive, SFTP, Rsync, WebDAV, SMB, FTP, and more
-- **Smart Retention** — Grandfather-Father-Son (GVS) rotation with configurable daily, weekly, and monthly policies
-- **API & Webhooks** — Trigger backups via REST API with fine-grained API keys — ready-made cURL, Bash, and Ansible examples for CI/CD integration
-- **Dashboard & Analytics** — Interactive charts, real-time progress tracking, storage usage history, and auto-refreshing activity feeds
-- **One-Click Restore** — Browse backups in the Storage Explorer, verify checksums, and restore to any target database
+- **Multi-Database Support** — MySQL, MariaDB, PostgreSQL, MongoDB, SQLite, Redis, and Microsoft SQL Server
+- **Backup Encryption** — AES-256-GCM encryption for backup files with an Encryption Vault, key rotation, and offline Recovery Kits
+- **Compression** — Built-in GZIP and Brotli compression to reduce backup size and storage costs
+- **Flexible Storage** — 13+ adapters: S3, Google Drive, Dropbox, OneDrive, SFTP, Rsync, WebDAV, SMB, FTP, and more
+- **Multi-Destination Jobs** — Each backup job can target multiple storage destinations simultaneously — useful for redundancy or off-site copies
+- **Scheduling & Retention** — Cron-based job scheduling with GVS (Grandfather-Father-Son) retention policies for automatic rotation
+- **Notifications** — 9+ adapters including Discord, Slack, Teams, Telegram, Gotify, ntfy, Webhook, SMS, and Email (SMTP)
+- **Restore** — Browse backup history, verify checksums, download files, or restore directly to a database — including database remapping
+- **Storage Explorer** — Browse backup files across all destinations, inspect metadata, download files, or generate direct download links
+- **Storage Monitoring & Alerts** — Per-destination monitoring with configurable alerts for usage spikes, storage limit warnings, and missing backups within a defined time window
 - **SSO & RBAC** — OpenID Connect support (Authentik, PocketID, Generic), user groups, and granular permission system
-- **Notifications** — Discord, Slack, Microsoft Teams, Telegram, Gotify, ntfy, SMS (Twilio), Generic Webhook, and Email (SMTP) alerts for backups, restores, logins, and system events
+- **API & Webhooks** — Trigger backups via REST API with fine-grained API keys — includes ready-made cURL, Bash, and Ansible examples
+- **Dashboard & Analytics** — Interactive charts, real-time progress tracking, storage usage history, and auto-refreshing activity feeds
 - **Configurable Rate Limits** — Per-category rate limiting (Auth, API Read, API Write) adjustable from the Settings UI
-- **Docker Ready** — Multi-arch images (AMD64/ARM64), built-in health checks, and graceful shutdown with backup-safe SIGTERM handling
+- **Docker** — Multi-arch images (AMD64/ARM64), built-in health checks, and graceful shutdown with backup-safe SIGTERM handling
 
 ## 🚀 Quick Start
 
@@ -163,17 +167,25 @@ pnpm dev
 
 For testing infrastructure and contribution guidelines, see the [Developer Guide](https://dbackup.app/developer-guide/).
 
+## 💬 Community & Support
+
+- 💬 **Discord**: Join our community at [https://dc.skyfay.ch](https://dc.skyfay.ch)
+- 📝 **Documentation**: Full guides and API reference at [dbackup.app](https://dbackup.app)
+- 🐛 **Issues**: Report bugs or request features on [GitLab Issues](https://gitlab.com/skyfay/dbackup/-/issues)
+- 📧 **Support**: General questions and support via [support@dbackup.app](mailto:support@dbackup.app)
+- 🔒 **Security**: Report vulnerabilities responsibly via [security@dbackup.app](mailto:security@dbackup.app) (please do **not** open public issues for security reports)
+
 ## 🤖 AI Development Transparency & Security Notice
 
-**Architecture & Concept (Human-Led):**
+### Architecture & Concept (Human-Led):
 
 The system architecture, infrastructure design, strict technology stack selection, and feature specifications for DBackup were entirely conceptualized and directed by a human System Engineer to solve real-world infrastructure challenges.
 
-**Code Generation (AI-Driven):**
+### Code Generation (AI-Driven):
 
 100% of the underlying application code, including the backend logic and frontend components, was written by advanced AI coding agents based on strict architectural prompts. No manual software coding was performed.
 
-**Testing & Quality Assurance:**
+### Testing & Quality Assurance:
 
 Manual Functional Testing: Every single feature has been extensively and manually tested by a human to ensure complete functional correctness, stability, and reliability in real-world scenarios.
 
@@ -184,6 +196,8 @@ Automated & Security Audits: Automated unit testing (Vitest) and initial static 
 While DBackup is functionally robust, heavily tested for daily use, and built on modern architectural best practices, the codebase has not yet undergone a manual security review by a human software developer. Due to the nature of AI-generated code and AI-driven audits, hidden structural vulnerabilities might still exist.
 
 If you are a software developer or cybersecurity professional, your expertise is highly welcome! We invite the open-source community to review the code, submit PRs, and help us elevate DBackup to a fully verified, enterprise-ready standard.
+
+> **Security Disclosure**: If you discover a security vulnerability, please **do not** open a public GitLab or GitHub issue. Instead, report it responsibly via email to **[security@dbackup.app](mailto:security@dbackup.app)**.
 
 ## 📝 License
 

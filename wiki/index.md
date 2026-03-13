@@ -16,39 +16,45 @@ hero:
 features:
   - icon: 🗄️
     title: Multi-Database Support
-    details: Backup MySQL, MariaDB, PostgreSQL, MongoDB, SQLite, Redis, and Microsoft SQL Server with a unified interface.
+    details: Supports MySQL, MariaDB, PostgreSQL, MongoDB, SQLite, Redis, and Microsoft SQL Server.
   - icon: 🔒
-    title: Enterprise-Grade Security
-    details: AES-256-GCM encryption for backups with Encryption Vault, key rotation, and offline Recovery Kits.
+    title: Backup Encryption
+    details: AES-256-GCM encryption for backup files with an Encryption Vault, key rotation, and offline Recovery Kits.
   - icon: 📦
-    title: Smart Compression
-    details: Built-in GZIP and Brotli compression to minimize storage costs and transfer times.
+    title: Compression
+    details: Built-in GZIP and Brotli compression to reduce backup size and storage costs.
   - icon: ☁️
     title: Flexible Storage
-    details: 13+ built-in storage adapters including S3, Google Drive, Dropbox, OneDrive, SFTP, Rsync, WebDAV, SMB, FTP, and local filesystem.
+    details: 13+ storage adapters including S3, Google Drive, Dropbox, OneDrive, SFTP, Rsync, WebDAV, SMB, FTP, and local filesystem.
+  - icon: 🔀
+    title: Multi-Destination Jobs
+    details: Each backup job can target multiple storage destinations simultaneously — useful for redundancy or off-site copies.
   - icon: 📅
-    title: Automated Scheduling
-    details: Cron-based job scheduling with GVS (Grandfather-Father-Son) retention policies for intelligent rotation.
+    title: Scheduling & Retention
+    details: Cron-based job scheduling with GVS (Grandfather-Father-Son) retention policies for automatic rotation.
   - icon: 🔔
     title: Notifications
-    details: Discord, Slack, Microsoft Teams, Telegram, Gotify, ntfy, SMS (Twilio), Generic Webhook, and Email (SMTP) alerts for backups, restores, logins, and system events.
+    details: 9+ notification adapters including Discord, Slack, Teams, Telegram, Gotify, ntfy, Webhook, SMS, and Email (SMTP).
   - icon: 🔄
-    title: One-Click Restore
-    details: Browse backup history, verify checksums, download files, or restore databases directly from the web UI.
+    title: Restore
+    details: Browse backup history, verify checksums, download files, or restore directly to a database — including database remapping.
   - icon: 👥
     title: Multi-User & RBAC
     details: Granular permission system with user groups, SSO/OIDC support (Authentik, PocketID), and audit logging.
   - icon: 🔗
     title: API & Webhooks
-    details: Trigger backups via REST API with fine-grained API keys. Ready-made cURL, Bash, and Ansible examples for CI/CD pipelines.
+    details: Trigger backups via REST API with fine-grained API keys. Includes ready-made cURL, Bash, and Ansible examples.
   - icon: 📊
     title: Dashboard & Analytics
     details: Interactive charts, real-time progress tracking, storage usage history, and auto-refreshing activity feeds.
   - icon: 🔍
     title: Storage Explorer
-    details: Browse all backup files across destinations, inspect metadata, download or generate wget/curl links, and manage retention.
+    details: Browse backup files across all destinations, inspect metadata, download files, or generate direct download links.
+  - icon: 🚨
+    title: Storage Monitoring & Alerts
+    details: Per-destination monitoring with configurable alerts for usage spikes, storage limit warnings, and missing backups within a defined time window.
   - icon: 🐳
-    title: Docker & Health
+    title: Docker
     details: Multi-arch images (AMD64/ARM64), built-in health checks, graceful shutdown, and SHA-256 integrity verification.
 ---
 
@@ -159,3 +165,29 @@ The plugin-based adapter architecture makes it easy to add new databases, storag
 - 💬 **Discord**: Join our community at [https://dc.skyfay.ch](https://dc.skyfay.ch)
 - 📝 **Documentation**: Full guides and API reference in this wiki
 - 🐛 **Issues**: Report bugs or request features on [GitLab Issues](https://gitlab.com/skyfay/dbackup/-/issues)
+- 📧 **Support**: General questions and support via [support@dbackup.app](mailto:support@dbackup.app)
+- 🔒 **Security**: Report vulnerabilities responsibly via [security@dbackup.app](mailto:security@dbackup.app) (please do **not** open public issues for security reports)
+
+## 🤖 AI Development Transparency & Security Notice
+
+### Architecture & Concept (Human-Led):
+
+The system architecture, infrastructure design, strict technology stack selection, and feature specifications for DBackup were entirely conceptualized and directed by a human System Engineer to solve real-world infrastructure challenges.
+
+### Code Generation (AI-Driven):
+
+100% of the underlying application code, including the backend logic and frontend components, was written by advanced AI coding agents based on strict architectural prompts. No manual software coding was performed.
+
+### Testing & Quality Assurance:
+
+Manual Functional Testing: Every single feature has been extensively and manually tested by a human to ensure complete functional correctness, stability, and reliability in real-world scenarios.
+
+Automated & Security Audits: Automated unit testing (Vitest) and initial static security audits were also conducted and implemented using AI agents.
+
+### Community Call for Code Review:
+
+While DBackup is functionally robust, heavily tested for daily use, and built on modern architectural best practices, the codebase has not yet undergone a manual security review by a human software developer. Due to the nature of AI-generated code and AI-driven audits, hidden structural vulnerabilities might still exist.
+
+If you are a software developer or cybersecurity professional, your expertise is highly welcome! We invite the open-source community to review the code, submit PRs, and help us elevate DBackup to a fully verified, enterprise-ready standard.
+
+> **Security Disclosure**: If you discover a security vulnerability, please **do not** open a public GitLab or GitHub issue. Instead, report it responsibly via email to **[security@dbackup.app](mailto:security@dbackup.app)**.
