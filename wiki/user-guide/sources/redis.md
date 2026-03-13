@@ -143,7 +143,7 @@ apk add redis
 
 Ensure Redis is configured to accept remote connections:
 
-```conf
+```ini
 # redis.conf
 bind 0.0.0.0
 protected-mode no  # Or use password authentication

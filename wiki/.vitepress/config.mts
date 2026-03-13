@@ -36,7 +36,7 @@ export default defineConfig({
     ['meta', { property: 'og:url', content: 'https://dbackup.app' }],
     ['meta', { property: 'og:title', content: 'DBackup - Database Backup Automation' }],
     ['meta', { property: 'og:description', content: 'Self-hosted database backup automation with encryption, compression, and retention policies for MySQL, PostgreSQL, MongoDB, and more.' }],
-    ['meta', { property: 'og:image', content: 'https://dbackup.app/logo.svg' }], // TODO: Create a proper og-image.png (1200x630)
+    ['meta', { property: 'og:image', content: 'https://dbackup.app/overview.png' }],
     // Twitter Card
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
     ['meta', { name: 'twitter:url', content: 'https://dbackup.app' }],
@@ -55,11 +55,6 @@ export default defineConfig({
         'price': '0',
         'priceCurrency': 'USD'
       },
-      'aggregateRating': {
-        '@type': 'AggregateRating',
-        'ratingValue': '5',
-        'ratingCount': '1'
-      }
     })]
   ],
   themeConfig: {
@@ -272,6 +267,21 @@ export default defineConfig({
     editLink: {
       pattern: 'https://gitlab.com/Skyfay/dbackup/-/edit/main/wiki/:path',
       text: 'Edit this page on GitLab'
+    }
+  },
+
+  vite: {
+    build: {
+      chunkSizeWarningLimit: 1200,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              return 'vendor'
+            }
+          }
+        }
+      }
     }
   }
 })
