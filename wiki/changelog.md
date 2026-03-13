@@ -13,6 +13,10 @@ All notable changes to DBackup are documented here.
 ### 📝 Documentation
 
 - **README & Wiki updated** — Feature list revised to be more accurate and less marketing-heavy. Added Multi-Destination Jobs, Storage Monitoring & Alerts, and Storage Explorer as explicit feature entries. Notification count updated to `9+`. Community & Support section added with Discord, GitLab Issues, support email (`support@dbackup.app`), and security disclosure address (`security@dbackup.app`)
+- **User Guide rework** — The Getting Started guide has been rewritten and expanded into a multi-page User Guide section:
+  - **Getting Started** — Overview of features, prerequisites, installation options, and next steps
+  - **First Steps** — Detailed walkthrough of creating your first backup job, running it, and setting up notifications
+  - **First Backup** — (moved to First Steps) Step-by-step instructions for configuring a backup job with screenshots
 
 ## v1.0.0 - First Stable Release
 *Released: March 10, 2026*

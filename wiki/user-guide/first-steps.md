@@ -1,8 +1,18 @@
-# Your First Backup
+# First Steps
 
-This tutorial walks you through creating your first automated backup job step by step.
+This guide walks you through your first login and setting up your first automated backup job.
 
-## Overview
+## First Login
+
+After installation, open [http://localhost:3000](http://localhost:3000) in your browser.
+
+On first launch, you'll see a login page with a "Sign Up" option. This self-registration is **only available for the first user** and creates the administrator account.
+
+Once logged in, you can use the **Quick Setup Wizard** (available in the sidebar under **Quick Setup**) to configure your first backup in a guided, step-by-step flow — this is the recommended approach for new users. It walks you through creating a database source, storage destination, optional encryption and notifications, and a backup job all in one place.
+
+If you prefer to configure everything manually, follow the steps below.
+
+## Manual Setup Overview
 
 A backup job in DBackup connects three things:
 
@@ -47,14 +57,7 @@ Now add the database you want to backup.
    - **User**: `backup_user`
    - **Password**: `your-password`
 5. Click **Test Connection**
-
-### Select Databases
-
-After successful connection test:
-
-1. Click **Fetch Databases** to list available databases
-2. Select which databases to include in backups
-3. Click **Save**
+6. Click **Save**
 
 ::: warning Permissions
 Ensure your database user has `SELECT` and `LOCK TABLES` permissions for backup, and `CREATE` permission for restore operations.
@@ -66,48 +69,33 @@ Now connect source and destination in a job.
 
 1. Go to **Jobs** in the sidebar
 2. Click **Create Job**
-3. Configure:
+3. In the **General** tab, configure:
    - **Name**: `Daily MySQL Backup`
    - **Source**: Select "Production MySQL"
-   - **Destination**: Select "Local Backups"
+   - **Databases**: Click **Load** to fetch available databases, then select which ones to back up — leave empty to back up all databases
+4. In the **Destinations** tab, click **Add Destination** and select "Local Backups"
+   - Each destination can have its own independent retention policy
+   - You can add multiple destinations (e.g., local + S3) for redundancy
 
 ### Optional: Add Compression
 
-Reduce backup size significantly:
-
-1. Enable **Compression**
-2. Select algorithm:
-   - **Gzip**: Good balance of speed and compression
-   - **Brotli**: Better compression, slightly slower
+In the **Security** tab: select a compression algorithm (Gzip or Brotli) from the Compression dropdown.
 
 ### Optional: Add Encryption
 
-Secure your backups:
-
-1. First create an Encryption Profile in **Settings > Vault**
-2. Back in job settings, enable **Encryption**
-3. Select your encryption profile
+In the **Security** tab: select an Encryption Profile from the Encryption dropdown. Profiles are managed in the **Vault** (sidebar).
 
 ### Optional: Set Schedule
 
-Automate your backup:
-
-1. Enable **Schedule**
-2. Enter a cron expression or use the helper:
-   - `0 2 * * *` - Daily at 2:00 AM
-   - `0 */6 * * *` - Every 6 hours
-   - `0 2 * * 0` - Weekly on Sunday at 2:00 AM
+In the **General** tab, use the Schedule picker:
+- **Simple mode**: Choose Hourly, Daily, Weekly, or Monthly and set the time
+- **Cron mode**: Enter a raw cron expression (e.g., `0 2 * * *` for daily at 2:00 AM)
 
 ### Optional: Configure Retention
 
-Automatically clean up old backups:
-
-1. Enable **Retention Policy**
-2. Choose mode:
-   - **Simple**: Keep last N backups
-   - **Smart (GVS)**: Grandfather-Father-Son rotation
-
-3. Click **Save**
+In the **Destinations** tab, expand a destination row and configure its retention policy:
+- **Simple**: Keep last N backups
+- **Smart (GVS)**: Grandfather-Father-Son rotation
 
 ## Step 4: Run Your First Backup
 
@@ -149,12 +137,10 @@ Get alerted when backups complete or fail.
 ### Assign to Job
 
 1. Edit your backup job
-2. In the **Notifications** section, select your Discord notification
-3. Choose when to notify:
-   - On success only
-   - On failure only
-   - Always
-4. Save
+2. Go to the **Notify** tab
+3. Select your notification channel from the dropdown
+4. Set the **Notification Trigger** (Always, Success only, Failure only)
+5. Save
 
 ## Next Steps
 

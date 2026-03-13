@@ -99,7 +99,7 @@ export default defineConfig({
           items: [
             { text: 'Introduction', link: '/user-guide/getting-started' },
             { text: 'Installation', link: '/user-guide/installation' },
-            { text: 'First Backup', link: '/user-guide/first-backup' }
+            { text: 'First Steps', link: '/user-guide/first-steps' }
           ]
         },
         {
