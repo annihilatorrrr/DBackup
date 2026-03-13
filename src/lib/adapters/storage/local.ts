@@ -3,7 +3,7 @@ import { LogLevel, LogType } from "@/lib/core/logs";
 import { LocalStorageSchema } from "@/lib/adapters/definitions";
 import fs from "fs/promises";
 import path from "path";
-import { existsSync, statSync, createReadStream, createWriteStream } from "fs";
+import { createReadStream, createWriteStream } from "fs";
 import { pipeline } from "stream/promises";
 import { logger } from "@/lib/logger";
 import { wrapError, AdapterError } from "@/lib/errors";
@@ -42,12 +42,11 @@ export const LocalFileSystemAdapter: StorageAdapter = {
 
             if (onLog) onLog(`Preparing local destination: ${destDir}`, 'info', 'general');
 
-            if (!existsSync(destDir)) {
-                await fs.mkdir(destDir, { recursive: true });
-            }
+            await fs.mkdir(destDir, { recursive: true });
 
             // fs.copyFile does not support progress, so we use streams
-            const size = statSync(localPath).size;
+            const fileStat = await fs.stat(localPath);
+            const size = fileStat.size;
             let processed = 0;
 
             const sourceStream = createReadStream(localPath);
@@ -86,18 +85,19 @@ export const LocalFileSystemAdapter: StorageAdapter = {
         }
 
         try {
-            if (!existsSync(sourcePath)) {
+            try {
+                await fs.access(sourcePath);
+            } catch {
                 log.warn("File not found for download", { sourcePath });
                 return false;
             }
 
             const localDir = path.dirname(localPath);
-            if (!existsSync(localDir)) {
-                await fs.mkdir(localDir, { recursive: true });
-            }
+            await fs.mkdir(localDir, { recursive: true });
 
             // Use streaming copy to track progress
-            const size = statSync(sourcePath).size;
+            const fileStat = await fs.stat(sourcePath);
+            const size = fileStat.size;
             let processed = 0;
 
             const sourceStream = createReadStream(sourcePath);
@@ -121,7 +121,11 @@ export const LocalFileSystemAdapter: StorageAdapter = {
     async read(config: { basePath: string }, remotePath: string): Promise<string | null> {
         try {
              const sourcePath = resolveSafePath(config.basePath, remotePath);
-             if (!existsSync(sourcePath)) return null;
+             try {
+                 await fs.access(sourcePath);
+             } catch {
+                 return null;
+             }
              return await fs.readFile(sourcePath, 'utf-8');
         } catch (error) {
             // Rethrow security errors
@@ -134,7 +138,9 @@ export const LocalFileSystemAdapter: StorageAdapter = {
     async list(config: { basePath: string }, remotePath: string = ""): Promise<FileInfo[]> {
         try {
             const dirPath = resolveSafePath(config.basePath, remotePath);
-            if (!existsSync(dirPath)) {
+            try {
+                await fs.access(dirPath);
+            } catch {
                 return [];
             }
 
@@ -147,7 +153,7 @@ export const LocalFileSystemAdapter: StorageAdapter = {
                     // With recursive: true, entry.name is just the filename, entry.path is the directory
                     const fullPath = path.join(entry.parentPath || entry.path, entry.name); // Node 20+ uses parentPath
                     const relativePath = path.relative(config.basePath, fullPath);
-                    const stats = statSync(fullPath);
+                    const stats = await fs.stat(fullPath);
 
                     files.push({
                         name: entry.name,
@@ -168,7 +174,11 @@ export const LocalFileSystemAdapter: StorageAdapter = {
     async delete(config: { basePath: string }, remotePath: string): Promise<boolean> {
         try {
             const targetPath = resolveSafePath(config.basePath, remotePath);
-            if (!existsSync(targetPath)) return true; // Already gone
+            try {
+                await fs.access(targetPath);
+            } catch {
+                return true; // Already gone
+            }
 
             await fs.unlink(targetPath);
             return true;
@@ -182,10 +192,7 @@ export const LocalFileSystemAdapter: StorageAdapter = {
     async test(config: { basePath: string }): Promise<{ success: boolean; message: string }> {
         const testFile = path.join(config.basePath, `.connection-test-${Date.now()}`);
         try {
-            // Ensure dir exists logic is same as upload, but test explicitly checks if we can write
-            if (!existsSync(config.basePath)) {
-                await fs.mkdir(config.basePath, { recursive: true });
-            }
+            await fs.mkdir(config.basePath, { recursive: true });
 
             // 1. Write
             await fs.writeFile(testFile, "Connection Test");

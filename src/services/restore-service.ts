@@ -695,8 +695,8 @@ export class RestoreService {
                 },
             }).catch(() => {});
         } finally {
-            if (tempFile && fs.existsSync(tempFile)) {
-                try { fs.unlinkSync(tempFile); } catch {}
+            if (tempFile) {
+                await fs.promises.unlink(tempFile).catch(() => {});
             }
             flushLogs(true);
         }

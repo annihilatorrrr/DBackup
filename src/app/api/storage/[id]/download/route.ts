@@ -4,6 +4,7 @@ import { storageService } from "@/services/storage-service";
 import { getTempDir } from "@/lib/temp-dir";
 import path from "path";
 import fs from "fs";
+import fsPromises from "fs/promises";
 import { headers } from "next/headers";
 import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
 import { PERMISSIONS } from "@/lib/permissions";
@@ -44,37 +45,48 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
         const result = await storageService.downloadFile(params.id, file, tempFile, decrypt);
 
         if (!result.success) {
-             if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+             await fsPromises.unlink(tempFile).catch(() => {});
              return NextResponse.json({ error: "Download failed" }, { status: 500 });
         }
 
-        // Stream file back
-        // For large files, it's better to stream, but for simplicity readSync is used here as consistent with prev implementation
-        const fileBuffer = fs.readFileSync(tempFile);
-
-        fs.unlinkSync(tempFile);
+        // Stream file back to avoid blocking the event loop with large files
+        const stat = await fsPromises.stat(tempFile);
 
         let downloadFilename = path.basename(file);
 
         if (result.isZip) {
             downloadFilename = downloadFilename.replace(/\.enc$/, '') + '.zip';
-            // If it was eg. backup.sql.enc -> backup.sql.zip
-            // If just backup.enc -> backup.zip
             if (!downloadFilename.endsWith('.zip')) downloadFilename += '.zip';
         } else if (decrypt && downloadFilename.endsWith('.enc')) {
             downloadFilename = downloadFilename.slice(0, -4);
         }
 
-        return new NextResponse(fileBuffer, {
+        const fileStream = fs.createReadStream(tempFile);
+        const readableStream = new ReadableStream({
+            start(controller) {
+                fileStream.on('data', (chunk: Buffer) => controller.enqueue(chunk));
+                fileStream.on('end', () => {
+                    controller.close();
+                    fsPromises.unlink(tempFile!).catch(() => {});
+                });
+                fileStream.on('error', (err) => {
+                    controller.error(err);
+                    fsPromises.unlink(tempFile!).catch(() => {});
+                });
+            }
+        });
+
+        return new NextResponse(readableStream, {
             headers: {
                 "Content-Disposition": `attachment; filename="${downloadFilename}"`,
                 "Content-Type": result.isZip ? "application/zip" : "application/octet-stream",
+                "Content-Length": String(stat.size),
             }
         });
 
     } catch (error: unknown) {
-        if (tempFile && fs.existsSync(tempFile)) {
-             try { fs.unlinkSync(tempFile); } catch {}
+        if (tempFile) {
+             await fsPromises.unlink(tempFile).catch(() => {});
         }
 
         log.error("Download error", { storageId: params.id }, wrapError(error));

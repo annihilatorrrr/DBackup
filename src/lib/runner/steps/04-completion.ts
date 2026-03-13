@@ -1,6 +1,6 @@
 import { RunnerContext } from "../types";
 import prisma from "@/lib/prisma";
-import fs from "fs";
+import fs from "fs/promises";
 import { registry } from "@/lib/core/registry";
 import { NotificationAdapter } from "@/lib/core/interfaces";
 import { decryptConfig } from "@/lib/crypto";
@@ -13,12 +13,13 @@ const log = logger.child({ step: "04-completion" });
 
 export async function stepCleanup(ctx: RunnerContext) {
     // 1. Filesystem Cleanup
-    if (ctx.tempFile && fs.existsSync(ctx.tempFile)) {
+    if (ctx.tempFile) {
         try {
-            fs.unlinkSync(ctx.tempFile);
+            await fs.access(ctx.tempFile);
+            await fs.unlink(ctx.tempFile);
             ctx.log("Temporary file cleaned up");
         } catch (_e) {
-            ctx.log("Warning: Failed to cleanup temp file");
+            // File doesn't exist or cleanup failed — ignore
         }
     }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import {
     Dialog,
     DialogContent,
@@ -70,12 +70,18 @@ function HistoryContent() {
         }
     }, [executions, executionId, selectedLog, router]);
 
+    const fetchInFlight = useRef(false);
+
     const fetchHistory = useCallback(async () => {
+        if (fetchInFlight.current) return; // Prevent stacking requests
+        fetchInFlight.current = true;
         try {
             const res = await fetch("/api/history");
             if (res.ok) setExecutions(await res.json());
         } catch (_e) {
             console.error(_e);
+        } finally {
+            fetchInFlight.current = false;
         }
     }, []);
 
@@ -91,12 +97,18 @@ function HistoryContent() {
         }
     }, []);
 
+    // Poll history: 5s default, 2s when a job is running for live feel
+    const hasRunningJob = useMemo(
+        () => executions.some(e => e.status === "Running" || e.status === "Pending"),
+        [executions]
+    );
+
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchHistory();
-        const interval = setInterval(fetchHistory, 1000); // Poll faster (1s) for live feel
+        const interval = setInterval(fetchHistory, hasRunningJob ? 2000 : 5000);
         return () => clearInterval(interval);
-    }, [fetchHistory]);
+    }, [fetchHistory, hasRunningJob]);
 
     // Fetch notification logs when that tab becomes active
     useEffect(() => {

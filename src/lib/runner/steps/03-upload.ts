@@ -2,7 +2,7 @@ import { RunnerContext, DestinationContext } from "../types";
 import { decryptConfig } from "@/lib/crypto";
 import path from "path";
 import fs from "fs/promises";
-import { createReadStream, createWriteStream, statSync } from "fs";
+import { createReadStream, createWriteStream } from "fs";
 import { pipeline } from "stream/promises";
 import { BackupMetadata } from "@/lib/core/interfaces";
 import { getProfileMasterKey } from "@/services/encryption-service";
@@ -35,7 +35,8 @@ export async function stepUpload(ctx: RunnerContext) {
     let currentFile = ctx.tempFile;
     const transformStreams: any[] = [];
 
-    const sourceSize = statSync(ctx.tempFile).size;
+    const sourceStat = await fs.stat(ctx.tempFile);
+    const sourceSize = sourceStat.size;
     const progressMonitor = new ProgressMonitorStream(sourceSize, (processed, total, percent) => {
         ctx.updateProgress(percent, `${processingLabel} (${formatBytes(processed)} / ${formatBytes(total)})`);
     });
@@ -99,7 +100,8 @@ export async function stepUpload(ctx: RunnerContext) {
             await fs.unlink(inputFile);
             ctx.tempFile = currentFile;
 
-            ctx.dumpSize = statSync(currentFile).size;
+            const finalStat = await fs.stat(currentFile);
+            ctx.dumpSize = finalStat.size;
             ctx.log(`Pipeline complete. Final size: ${formatBytes(ctx.dumpSize)}`);
 
             if (encryptionMeta && getAuthTagCallback) {

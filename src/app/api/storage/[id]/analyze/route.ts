@@ -117,8 +117,8 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
         const message = e instanceof Error ? e.message : "Unknown error";
         return NextResponse.json({ error: message }, { status: 500 });
     } finally {
-        if (tempFile && fs.existsSync(tempFile)) {
-            try { fs.unlinkSync(tempFile); } catch {}
+        if (tempFile) {
+            await fs.promises.unlink(tempFile).catch(() => {});
         }
     }
 }

@@ -5,6 +5,7 @@ import { consumeDownloadToken, markTokenUsed } from "@/lib/download-tokens";
 import path from "path";
 import os from "os";
 import fs from "fs";
+import fsPromises from "fs/promises";
 import { logger } from "@/lib/logger";
 import { wrapError } from "@/lib/errors";
 
@@ -56,19 +57,16 @@ export async function GET(req: NextRequest) {
         const result = await storageService.downloadFile(storageId, file, tempFile, decrypt);
 
         if (!result.success) {
-            if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+            await fsPromises.unlink(tempFile).catch(() => {});
             return NextResponse.json({ error: "Download failed" }, { status: 500 });
         }
 
-        // Read file into buffer
-        const fileBuffer = fs.readFileSync(tempFile);
-
-        // Cleanup temp file
-        fs.unlinkSync(tempFile);
-
         // Mark token as used ONLY after successful download
         markTokenUsed(token);
-        log.debug("Download successful, token marked as used", { fileSize: fileBuffer.length });
+
+        // Stream file back to avoid blocking the event loop with large files
+        const stat = await fsPromises.stat(tempFile);
+        log.debug("Download successful, token marked as used", { fileSize: stat.size });
 
         // Determine filename
         let downloadFilename = path.basename(file);
@@ -80,16 +78,32 @@ export async function GET(req: NextRequest) {
             downloadFilename = downloadFilename.slice(0, -4);
         }
 
-        return new NextResponse(fileBuffer, {
+        const fileStream = fs.createReadStream(tempFile);
+        const readableStream = new ReadableStream({
+            start(controller) {
+                fileStream.on('data', (chunk: Buffer) => controller.enqueue(chunk));
+                fileStream.on('end', () => {
+                    controller.close();
+                    fsPromises.unlink(tempFile!).catch(() => {});
+                });
+                fileStream.on('error', (err) => {
+                    controller.error(err);
+                    fsPromises.unlink(tempFile!).catch(() => {});
+                });
+            }
+        });
+
+        return new NextResponse(readableStream, {
             headers: {
                 "Content-Disposition": `attachment; filename="${downloadFilename}"`,
                 "Content-Type": result.isZip ? "application/zip" : "application/octet-stream",
+                "Content-Length": String(stat.size),
             }
         });
 
     } catch (error: unknown) {
-        if (tempFile && fs.existsSync(tempFile)) {
-            try { fs.unlinkSync(tempFile); } catch { /* ignore */ }
+        if (tempFile) {
+            await fsPromises.unlink(tempFile).catch(() => {});
         }
 
         log.error("Public download error", {}, wrapError(error));
