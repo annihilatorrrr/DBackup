@@ -177,6 +177,26 @@ export async function getDatabasesWithStats(config: MSSQLConfig): Promise<Databa
 }
 
 /**
+ * SQL Server message captured during query execution
+ */
+export interface SqlServerMessage {
+    message: string;
+    number: number;
+    state: number;
+    class: number;
+    serverName?: string;
+    procName?: string;
+}
+
+/**
+ * Result from executeQueryWithMessages including captured SQL Server messages
+ */
+export interface QueryResultWithMessages {
+    result: sql.IResult<any>;
+    messages: SqlServerMessage[];
+}
+
+/**
  * Execute a SQL query and return raw results
  * Used internally by dump/restore operations
  */
@@ -191,6 +211,56 @@ export async function executeQuery(config: MSSQLConfig, query: string, database?
 
         pool = await sql.connect(connConfig);
         return await pool.request().query(query);
+    } finally {
+        if (pool) {
+            await pool.close();
+        }
+    }
+}
+
+/**
+ * Execute a SQL query while capturing all SQL Server info/error messages.
+ * Essential for BACKUP/RESTORE operations where the actual error details
+ * are sent as informational messages before the final error is thrown.
+ */
+export async function executeQueryWithMessages(
+    config: MSSQLConfig,
+    query: string,
+    database?: string
+): Promise<QueryResultWithMessages> {
+    let pool: sql.ConnectionPool | null = null;
+    const messages: SqlServerMessage[] = [];
+
+    try {
+        const connConfig = buildConnectionConfig(config);
+        if (database) {
+            connConfig.database = database;
+        }
+
+        pool = await sql.connect(connConfig);
+        const request = pool.request();
+
+        // Capture all SQL Server info messages (progress reports, warnings, errors)
+        request.on("info", (info: SqlServerMessage) => {
+            messages.push(info);
+        });
+
+        const result = await request.query(query);
+        return { result, messages };
+    } catch (error: unknown) {
+        // Enhance the error with captured SQL Server messages
+        const serverMessages = messages
+            .filter((m) => m.class > 0)
+            .map((m) => m.message)
+            .filter(Boolean);
+
+        if (serverMessages.length > 0 && error instanceof Error) {
+            // Prepend detail messages so the actual cause is visible
+            const details = serverMessages.join(" | ");
+            error.message = `${error.message} — Details: ${details}`;
+        }
+
+        throw error;
     } finally {
         if (pool) {
             await pool.close();

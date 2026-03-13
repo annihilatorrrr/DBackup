@@ -1,6 +1,6 @@
 import { BackupResult } from "@/lib/core/interfaces";
 import { LogLevel, LogType } from "@/lib/core/logs";
-import { executeQuery, supportsCompression } from "./connection";
+import { executeQueryWithMessages, supportsCompression } from "./connection";
 import { getDialect } from "./dialects";
 import { MssqlSshTransfer, isSSHTransferEnabled } from "./ssh-transfer";
 import fs from "fs/promises";
@@ -118,8 +118,16 @@ export async function dump(
 
                 log(`Executing backup`, "info", "command", backupQuery);
 
-                // Execute backup command on the server
-                await executeQuery(config, backupQuery);
+                // Execute backup command on the server, capturing all SQL Server messages
+                const { messages } = await executeQueryWithMessages(config, backupQuery);
+
+                // Log SQL Server progress/info messages (e.g. "10 percent processed")
+                for (const msg of messages) {
+                    if (msg.message) {
+                        log(`SQL Server: ${msg.message}`, "info", "general");
+                    }
+                }
+
                 log(`Backup completed for: ${dbName}`);
                 tempFiles.push({ server: serverBakPath, local: localBakPath });
             }
@@ -220,7 +228,7 @@ export async function dump(
         }
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
-        log(`Error: ${message}`, "error");
+        log(`Dump failed: ${message}`, "error");
         return {
             success: false,
             logs,

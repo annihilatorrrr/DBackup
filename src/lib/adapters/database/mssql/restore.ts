@@ -1,6 +1,6 @@
 import { BackupResult } from "@/lib/core/interfaces";
 import { LogLevel, LogType } from "@/lib/core/logs";
-import { executeQuery, executeParameterizedQuery } from "./connection";
+import { executeQuery, executeParameterizedQuery, executeQueryWithMessages } from "./connection";
 import { getDialect } from "./dialects";
 import { MssqlSshTransfer, isSSHTransferEnabled } from "./ssh-transfer";
 import fs from "fs/promises";
@@ -228,7 +228,15 @@ export async function restore(
                 log(`Executing restore`, "info", "command", restoreQuery);
 
                 try {
-                    await executeQuery(config, restoreQuery);
+                    const { messages } = await executeQueryWithMessages(config, restoreQuery);
+
+                    // Log SQL Server progress/info messages
+                    for (const msg of messages) {
+                        if (msg.message) {
+                            log(`SQL Server: ${msg.message}`, "info", "general");
+                        }
+                    }
+
                     log(`Restore completed for: ${targetDb.target}`);
                 } catch (error: unknown) {
                     const message = error instanceof Error ? error.message : String(error);

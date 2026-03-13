@@ -7,6 +7,7 @@ import { MSSQLConfig } from "@/lib/adapters/definitions";
 const {
     mockExecuteQuery,
     mockExecuteParameterizedQuery,
+    mockExecuteQueryWithMessages,
     mockSshConnect,
     mockSshUpload,
     mockSshDeleteRemote,
@@ -21,6 +22,7 @@ const {
     return {
         mockExecuteQuery: vi.fn(),
         mockExecuteParameterizedQuery: vi.fn(),
+        mockExecuteQueryWithMessages: vi.fn(),
         mockSshConnect: vi.fn(),
         mockSshUpload: vi.fn(),
         mockSshDeleteRemote: vi.fn(),
@@ -36,6 +38,7 @@ const {
 vi.mock("@/lib/adapters/database/mssql/connection", () => ({
     executeQuery: (...args: any[]) => mockExecuteQuery(...args),
     executeParameterizedQuery: (...args: any[]) => mockExecuteParameterizedQuery(...args),
+    executeQueryWithMessages: (...args: any[]) => mockExecuteQueryWithMessages(...args),
 }));
 
 // Mock SSH transfer (use a class so it's constructable with `new`)
@@ -138,9 +141,12 @@ describe("MSSQL Restore", () => {
                     ],
                 };
             }
-            // RESTORE DATABASE returns empty
+            // Other queries return empty
             return { recordset: [] };
         });
+
+        // Default mock: RESTORE DATABASE succeeds
+        mockExecuteQueryWithMessages.mockResolvedValue({ result: { recordset: [] }, messages: [] });
 
         mockFsStat.mockResolvedValue({ size: 1024 * 1024 });
         mockFsUnlink.mockResolvedValue(undefined);
@@ -202,9 +208,10 @@ describe("MSSQL Restore", () => {
 
             expect(result.success).toBe(true);
 
-            // Should execute RESTORE FILELISTONLY + RESTORE DATABASE
-            expect(mockExecuteQuery).toHaveBeenCalledTimes(2);
-            const restoreQuery = mockExecuteQuery.mock.calls[1][1];
+            // Should execute RESTORE FILELISTONLY (via executeQuery) + RESTORE DATABASE (via executeQueryWithMessages)
+            expect(mockExecuteQuery).toHaveBeenCalledTimes(1);
+            expect(mockExecuteQueryWithMessages).toHaveBeenCalledTimes(1);
+            const restoreQuery = mockExecuteQueryWithMessages.mock.calls[0][1];
             expect(restoreQuery).toContain("RESTORE DATABASE [testdb]");
         });
 
@@ -269,17 +276,9 @@ describe("MSSQL Restore", () => {
 
         it("should clean up on restore failure", async () => {
             // RESTORE DATABASE fails
-            mockExecuteQuery.mockImplementation((_config: any, query: string) => {
-                if (query.includes("RESTORE FILELISTONLY")) {
-                    return {
-                        recordset: [
-                            { LogicalName: "testdb_data", Type: "D", PhysicalName: "/data/testdb.mdf" },
-                            { LogicalName: "testdb_log", Type: "L", PhysicalName: "/data/testdb.ldf" },
-                        ],
-                    };
-                }
-                throw new Error("RESTORE failed: exclusive access could not be obtained");
-            });
+            mockExecuteQueryWithMessages.mockRejectedValue(
+                new Error("RESTORE failed: exclusive access could not be obtained")
+            );
 
             const config = buildConfig({
                 fileTransferMode: "ssh",
@@ -342,7 +341,7 @@ describe("MSSQL Restore", () => {
             expect(result.success).toBe(true);
 
             // RESTORE should target the mapped name
-            const restoreQuery = mockExecuteQuery.mock.calls[1][1];
+            const restoreQuery = mockExecuteQueryWithMessages.mock.calls[0][1];
             expect(restoreQuery).toContain("[testdb_copy]");
         });
 
@@ -399,7 +398,7 @@ describe("MSSQL Restore", () => {
             expect(result.success).toBe(true);
 
             // RESTORE query should include MOVE clauses for file relocation
-            const restoreQuery = mockExecuteQuery.mock.calls[1][1];
+            const restoreQuery = mockExecuteQueryWithMessages.mock.calls[0][1];
             expect(restoreQuery).toContain("MOVE");
             expect(restoreQuery).toContain("staging");
         });

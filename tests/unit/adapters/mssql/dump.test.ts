@@ -5,7 +5,7 @@ import { MSSQLConfig } from "@/lib/adapters/definitions";
 
 // Use vi.hoisted for variables referenced inside vi.mock factories
 const {
-    mockExecuteQuery,
+    mockExecuteQueryWithMessages,
     mockSupportsCompression,
     mockSshConnect,
     mockSshDownload,
@@ -19,7 +19,7 @@ const {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { PassThrough } = require("stream") as { PassThrough: typeof import("stream").PassThrough };
     return {
-        mockExecuteQuery: vi.fn(),
+        mockExecuteQueryWithMessages: vi.fn(),
         mockSupportsCompression: vi.fn(),
         mockSshConnect: vi.fn(),
         mockSshDownload: vi.fn(),
@@ -34,7 +34,7 @@ const {
 
 // Mock connection module
 vi.mock("@/lib/adapters/database/mssql/connection", () => ({
-    executeQuery: (...args: any[]) => mockExecuteQuery(...args),
+    executeQueryWithMessages: (...args: any[]) => mockExecuteQueryWithMessages(...args),
     supportsCompression: (...args: any[]) => mockSupportsCompression(...args),
 }));
 
@@ -139,7 +139,7 @@ describe("MSSQL Dump", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockSupportsCompression.mockResolvedValue(true);
-        mockExecuteQuery.mockResolvedValue({ recordset: [] });
+        mockExecuteQueryWithMessages.mockResolvedValue({ result: { recordset: [] }, messages: [] });
         mockFsStat.mockResolvedValue({ size: 1024 * 1024 }); // 1 MB
         mockFsUnlink.mockResolvedValue(undefined);
         mockExistsSync.mockReturnValue(true);
@@ -159,10 +159,10 @@ describe("MSSQL Dump", () => {
             const result = await dump(config, "/dest/backup.bak");
 
             expect(result.success).toBe(true);
-            expect(mockExecuteQuery).toHaveBeenCalledOnce();
+            expect(mockExecuteQueryWithMessages).toHaveBeenCalledOnce();
 
             // Verify BACKUP DATABASE query was executed
-            const query = mockExecuteQuery.mock.calls[0][1];
+            const query = mockExecuteQueryWithMessages.mock.calls[0][1];
             expect(query).toContain("BACKUP DATABASE [testdb]");
             expect(query).toContain("COMPRESSION");
         });
@@ -298,9 +298,9 @@ describe("MSSQL Dump", () => {
             expect(result.success).toBe(true);
 
             // Two BACKUP DATABASE queries should be executed
-            expect(mockExecuteQuery).toHaveBeenCalledTimes(2);
-            expect(mockExecuteQuery.mock.calls[0][1]).toContain("[db1]");
-            expect(mockExecuteQuery.mock.calls[1][1]).toContain("[db2]");
+            expect(mockExecuteQueryWithMessages).toHaveBeenCalledTimes(2);
+            expect(mockExecuteQueryWithMessages.mock.calls[0][1]).toContain("[db1]");
+            expect(mockExecuteQueryWithMessages.mock.calls[1][1]).toContain("[db2]");
 
             // Two SFTP downloads
             expect(mockSshDownload).toHaveBeenCalledTimes(2);
@@ -330,7 +330,7 @@ describe("MSSQL Dump", () => {
             await dump(config, "/dest/backup.bak", (msg) => logs.push(msg));
 
             expect(logs.some((l) => l.includes("Compression enabled"))).toBe(true);
-            const query = mockExecuteQuery.mock.calls[0][1];
+            const query = mockExecuteQueryWithMessages.mock.calls[0][1];
             expect(query).toContain("COMPRESSION");
         });
 
@@ -355,7 +355,7 @@ describe("MSSQL Dump", () => {
         });
 
         it("should return failure result when SQL query fails", async () => {
-            mockExecuteQuery.mockRejectedValue(new Error("Login failed"));
+            mockExecuteQueryWithMessages.mockRejectedValue(new Error("Login failed"));
             const config = buildConfig({ fileTransferMode: "ssh", sshUsername: "deploy" });
 
             const result = await dump(config, "/dest/backup.bak");
