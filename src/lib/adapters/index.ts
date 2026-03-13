@@ -25,6 +25,7 @@ import { NtfyAdapter } from "./notification/ntfy";
 import { TelegramAdapter } from "./notification/telegram";
 import { TwilioSmsAdapter } from "./notification/twilio-sms";
 import { EmailAdapter } from "./notification/email";
+import { initMysqlTools } from "./database/mysql/tools";
 import { logger } from "@/lib/logger";
 
 const log = logger.child({ module: "Adapters" });
@@ -34,6 +35,9 @@ let initialized = false;
 // Register all available adapters here
 export function registerAdapters() {
     if (initialized) return;
+
+    // Pre-detect MySQL/MariaDB commands asynchronously (non-blocking)
+    initMysqlTools().catch(() => { /* fallback to defaults */ });
 
     registry.register(MySQLAdapter);
     registry.register(MariaDBAdapter);

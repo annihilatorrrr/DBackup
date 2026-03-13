@@ -6,6 +6,21 @@ import { wrapError, getErrorMessage } from "@/lib/errors";
 
 const log = logger.child({ service: "HealthCheckService" });
 
+// Timeout for individual adapter health checks (15 seconds)
+const ADAPTER_CHECK_TIMEOUT_MS = 15_000;
+// Maximum number of concurrent health checks
+const MAX_CONCURRENT_CHECKS = 5;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(`Health check timed out after ${ms}ms for ${label}`)), ms);
+        promise.then(
+            (val) => { clearTimeout(timer); resolve(val); },
+            (err) => { clearTimeout(timer); reject(err); }
+        );
+    });
+}
+
 export class HealthCheckService {
     async performHealthCheck() {
         log.debug("Starting health check cycle");
@@ -18,8 +33,10 @@ export class HealthCheckService {
             }
         });
 
-        for (const config of configs) {
-            await this.checkAdapter(config);
+        // Run checks in parallel batches to avoid blocking the event loop serially
+        for (let i = 0; i < configs.length; i += MAX_CONCURRENT_CHECKS) {
+            const batch = configs.slice(i, i + MAX_CONCURRENT_CHECKS);
+            await Promise.allSettled(batch.map(config => this.checkAdapter(config)));
         }
 
         // Retention Policy: Delete logs older than 48 hours
@@ -69,7 +86,11 @@ export class HealthCheckService {
             }
 
             const start = Date.now();
-            const result = await adapter.test(config);
+            const result = await withTimeout(
+                adapter.test(config),
+                ADAPTER_CHECK_TIMEOUT_MS,
+                configRow.name || configRow.id
+            );
             const end = Date.now();
             latency = end - start;
 

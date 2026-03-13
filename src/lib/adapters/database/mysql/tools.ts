@@ -1,15 +1,20 @@
-import { execSync } from "child_process";
+import { execFile } from "child_process";
+import util from "util";
+
+const execFileAsync = util.promisify(execFile);
 
 // Cache detection results to avoid spawning processes repeatedly
 let cachedMysqlCmd: string | null = null;
 let cachedMysqldumpCmd: string | null = null;
 let cachedMysqladminCmd: string | null = null;
 
-function detectCommand(candidates: string[]): string {
+// Initialization promise to detect commands once asynchronously
+let initPromise: Promise<void> | null = null;
+
+async function detectCommand(candidates: string[]): Promise<string> {
     for (const cmd of candidates) {
         try {
-            // "command -v" is a shell builtin, but execSync executes via shell (/bin/sh)
-            execSync(`command -v ${cmd}`, { stdio: 'ignore' });
+            await execFileAsync("which", [cmd]);
             return cmd;
         } catch {
             continue;
@@ -19,23 +24,34 @@ function detectCommand(candidates: string[]): string {
     return candidates[0];
 }
 
+async function initCommands(): Promise<void> {
+    if (!initPromise) {
+        initPromise = (async () => {
+            const [mysql, mysqldump, mysqladmin] = await Promise.all([
+                detectCommand(['mariadb', 'mysql']),
+                detectCommand(['mariadb-dump', 'mysqldump']),
+                detectCommand(['mariadb-admin', 'mysqladmin']),
+            ]);
+            cachedMysqlCmd = mysql;
+            cachedMysqldumpCmd = mysqldump;
+            cachedMysqladminCmd = mysqladmin;
+        })();
+    }
+    return initPromise;
+}
+
 export function getMysqlCommand(): string {
-    if (cachedMysqlCmd) return cachedMysqlCmd;
-    // Prefer strict 'mariadb' if available (Alpine/MariaDB clients), then 'mysql'
-    cachedMysqlCmd = detectCommand(['mariadb', 'mysql']);
-    return cachedMysqlCmd;
+    // Return cached value or fallback — initCommands() should be called before first use
+    return cachedMysqlCmd ?? 'mysql';
 }
 
 export function getMysqldumpCommand(): string {
-    if (cachedMysqldumpCmd) return cachedMysqldumpCmd;
-    // Prefer 'mariadb-dump' (Alpine), then 'mysqldump'
-    cachedMysqldumpCmd = detectCommand(['mariadb-dump', 'mysqldump']);
-    return cachedMysqldumpCmd;
+    return cachedMysqldumpCmd ?? 'mysqldump';
 }
 
 export function getMysqladminCommand(): string {
-    if (cachedMysqladminCmd) return cachedMysqladminCmd;
-    // Prefer 'mariadb-admin', then 'mysqladmin'
-    cachedMysqladminCmd = detectCommand(['mariadb-admin', 'mysqladmin']);
-    return cachedMysqladminCmd;
+    return cachedMysqladminCmd ?? 'mysqladmin';
 }
+
+/** Call once during startup or before first adapter use to detect available commands */
+export { initCommands as initMysqlTools };

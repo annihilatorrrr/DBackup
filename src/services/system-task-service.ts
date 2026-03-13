@@ -16,6 +16,19 @@ import { wrapError } from "@/lib/errors";
 
 const log = logger.child({ service: "SystemTaskService" });
 
+// Timeout for individual adapter connection tests (15 seconds)
+const ADAPTER_TEST_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(`Adapter test timed out after ${ms}ms for ${label}`)), ms);
+        promise.then(
+            (val) => { clearTimeout(timer); resolve(val); },
+            (err) => { clearTimeout(timer); reject(err); }
+        );
+    });
+}
+
 // Ensure adapters are registered for worker context
 registerAdapters();
 
@@ -416,7 +429,11 @@ export class SystemTaskService {
                 }
 
                 log.debug("Testing connection", { sourceName: source.name, adapterId: source.adapterId });
-                const result = await adapter.test(config);
+                const result = await withTimeout(
+                    adapter.test(config),
+                    ADAPTER_TEST_TIMEOUT_MS,
+                    source.name
+                );
                 log.debug("Connection test result", { sourceName: source.name, success: result.success, version: result.version });
 
                 if (result.success && result.version) {

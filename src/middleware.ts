@@ -26,7 +26,9 @@ async function syncRateLimitConfig(origin: string): Promise<void> {
 
     _fetchInFlight = (async () => {
         try {
-            const res = await fetch(new URL("/api/internal/rate-limit-config", origin));
+            const res = await fetch(new URL("/api/internal/rate-limit-config", origin), {
+                signal: AbortSignal.timeout(3000),
+            });
             if (res.ok) {
                 const config: RateLimitConfig = await res.json();
                 applyExternalConfig(config);
