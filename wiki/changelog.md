@@ -25,6 +25,7 @@ All notable changes to DBackup are documented here.
 
 ### 📝 Documentation
 
+- **Interactive API Documentation** — Added a full OpenAPI 3.1 specification and interactive API reference powered by [Scalar](https://scalar.com). Available in-app at `/docs/api` and hosted at [api.dbackup.app](https://api.dbackup.app). Covers all endpoints with request/response schemas, authentication details, and example payloads
 - **README & Wiki updated** — Feature list revised to be more accurate and less marketing-heavy. Added Multi-Destination Jobs, Storage Monitoring & Alerts, and Storage Explorer as explicit feature entries. Notification count updated to `9+`. Community & Support section added with Discord, GitLab Issues, support email (`support@dbackup.app`), and security disclosure address (`security@dbackup.app`)
 - **User Guide rework** — The Getting Started guide has been rewritten and expanded into a multi-page User Guide section:
   - **Getting Started** — Overview of features, prerequisites, installation options, and next steps

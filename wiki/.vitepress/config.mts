@@ -75,6 +75,7 @@ export default defineConfig({
       { text: 'Home', link: '/' },
       { text: 'User Guide', link: '/user-guide/getting-started' },
       { text: 'Developer Guide', link: '/developer-guide/' },
+      { text: 'API Reference', link: 'https://api.dbackup.app' },
       {
         text: 'Resources',
         items: [

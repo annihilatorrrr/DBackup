@@ -12,6 +12,9 @@ hero:
     - theme: alt
       text: Developer Guide
       link: /developer-guide/
+    - theme: alt
+      text: API Reference
+      link: https://api.dbackup.app
 
 features:
   - icon: 🗄️
@@ -164,7 +167,8 @@ The plugin-based adapter architecture makes it easy to add new databases, storag
 
 - 💬 **Discord**: Join our community at [https://dc.skyfay.ch](https://dc.skyfay.ch)
 - 📝 **Documentation**: Full guides and API reference in this wiki
-- 🐛 **Issues**: Report bugs or request features on [GitLab Issues](https://gitlab.com/skyfay/dbackup/-/issues)
+- � **API Reference**: Interactive API docs at [api.dbackup.app](https://api.dbackup.app) or in-app at `/docs/api`
+- �🐛 **Issues**: Report bugs or request features on [GitLab Issues](https://gitlab.com/skyfay/dbackup/-/issues)
 - 📧 **Support**: General questions and support via [support@dbackup.app](mailto:support@dbackup.app)
 - 🔒 **Security**: Report vulnerabilities responsibly via [security@dbackup.app](mailto:security@dbackup.app) (please do **not** open public issues for security reports)
 

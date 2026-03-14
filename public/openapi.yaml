@@ -1,0 +1,1714 @@
+openapi: 3.1.0
+info:
+  title: DBackup API
+  version: 1.0.1
+  description: |
+    REST API for DBackup — a self-hosted database backup automation platform with encryption, compression, and smart retention.
+
+    ## Authentication
+
+    DBackup supports two authentication methods:
+
+    - **Session Authentication** — Used automatically when logged in via the web UI. Session cookies are sent with each request.
+    - **API Key Authentication** — For scripts, CI/CD pipelines, and external integrations. Create an API key under **Access Management → API Keys**.
+
+    > API keys do not inherit SuperAdmin privileges. Only explicitly assigned permissions are available.
+
+    ## Rate Limits
+
+    | Request Type | Default Limit |
+    |---|---|
+    | Authentication (login, etc.) | 5/min per IP |
+    | GET requests | 100/min per IP |
+    | POST / PUT / DELETE | 20/min per IP |
+
+    Rate limits are configurable in Settings → Rate Limits.
+  contact:
+    name: DBackup Support
+    email: support@dbackup.app
+    url: https://dbackup.app
+  license:
+    name: GPL-3.0
+    url: https://www.gnu.org/licenses/gpl-3.0.html
+
+servers:
+  - url: "{protocol}://{host}/api"
+    description: DBackup Instance
+    variables:
+      protocol:
+        default: https
+        enum: [http, https]
+      host:
+        default: your-dbackup-instance.com
+
+security:
+  - BearerAuth: []
+  - SessionAuth: []
+
+tags:
+  - name: Jobs
+    description: Manage backup jobs — CRUD operations and manual triggers
+  - name: Executions
+    description: Poll execution status for running or completed backups/restores
+  - name: History
+    description: View execution history and notification logs
+  - name: Adapters
+    description: "Manage database sources, storage destinations, and notification channels"
+  - name: Connection Testing
+    description: Test adapter connections and discover databases
+  - name: Storage Explorer
+    description: "Browse, download, delete, and restore backup files"
+  - name: Vault
+    description: Encryption profiles and recovery kits
+  - name: Settings
+    description: System tasks and configuration
+  - name: Health
+    description: Health check endpoint (public)
+
+paths:
+  # ─── Jobs ──────────────────────────────────────────────────────
+  /jobs:
+    get:
+      tags: [Jobs]
+      summary: List Jobs
+      description: Returns all backup jobs with their source, destination, and encryption profile details.
+      operationId: listJobs
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Job"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Jobs]
+      summary: Create Job
+      operationId: createJob
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateJobRequest"
+      responses:
+        "201":
+          description: Job created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "409":
+          description: Job with this name already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /jobs/{id}:
+    put:
+      tags: [Jobs]
+      summary: Update Job
+      operationId: updateJob
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateJobRequest"
+      responses:
+        "200":
+          description: Job updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "409":
+          description: Another job with this name already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    delete:
+      tags: [Jobs]
+      summary: Delete Job
+      operationId: deleteJob
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Job deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /jobs/{id}/run:
+    post:
+      tags: [Jobs]
+      summary: Trigger Job
+      description: |
+        Manually trigger a backup job execution. The job is added to the execution queue.
+        If the max concurrent jobs limit is reached, it will remain in `Pending` status until a slot is available.
+
+        Use the returned `executionId` to poll execution status via the Executions endpoint.
+
+        **Required permission:** `jobs:execute`
+      operationId: triggerJob
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Job queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  executionId:
+                    type: string
+                    example: "clx1abc..."
+                  message:
+                    type: string
+                    example: "Job queued successfully"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ─── Executions ────────────────────────────────────────────────
+  /executions/{id}:
+    get:
+      tags: [Executions]
+      summary: Get Execution
+      description: |
+        Poll the status of a running or completed execution.
+        Use `includeLogs=true` to include full execution log entries.
+
+        **Required permission:** `history:read`
+      operationId: getExecution
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+        - name: includeLogs
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Include full execution log entries
+      responses:
+        "200":
+          description: Execution details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/ExecutionDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── History ───────────────────────────────────────────────────
+  /history:
+    get:
+      tags: [History]
+      summary: List Execution History
+      description: Returns the last 100 executions, newest first, including job name.
+      operationId: listHistory
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Execution history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Execution"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /notification-logs:
+    get:
+      tags: [History]
+      summary: List Notification Logs
+      description: Paginated list of all sent notifications with optional filters.
+      operationId: listNotificationLogs
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: adapterId
+          in: query
+          schema:
+            type: string
+          description: Filter by notification adapter type
+        - name: eventType
+          in: query
+          schema:
+            type: string
+          description: Filter by event type
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [success, error]
+      responses:
+        "200":
+          description: Notification logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/NotificationLog"
+                  pagination:
+                    $ref: "#/components/schemas/Pagination"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /notification-logs/{id}:
+    get:
+      tags: [History]
+      summary: Get Notification Log
+      description: Returns a single notification log entry with full payload.
+      operationId: getNotificationLog
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Notification log entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationLog"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── Adapters ──────────────────────────────────────────────────
+  /adapters:
+    get:
+      tags: [Adapters]
+      summary: List Adapters
+      description: |
+        List all adapter configurations of a given type. Config fields are automatically decrypted in the response.
+
+        **Permission depends on type:**
+        - `database` → `sources:read`
+        - `storage` → `destinations:read`
+        - `notification` → `notifications:read`
+      operationId: listAdapters
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [database, storage, notification]
+          description: Adapter category
+      responses:
+        "200":
+          description: Adapter list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdapterConfig"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Adapters]
+      summary: Create Adapter
+      description: |
+        Create a new adapter configuration. Sensitive config fields (passwords, keys) are automatically encrypted before storage.
+
+        **Permission depends on type:**
+        - `database` → `sources:write`
+        - `storage` → `destinations:write`
+        - `notification` → `notifications:write`
+      operationId: createAdapter
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAdapterRequest"
+      responses:
+        "201":
+          description: Adapter created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdapterConfig"
+        "409":
+          description: Adapter with this name and type already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /adapters/{id}:
+    put:
+      tags: [Adapters]
+      summary: Update Adapter
+      operationId: updateAdapter
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAdapterRequest"
+      responses:
+        "200":
+          description: Adapter updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdapterConfig"
+        "409":
+          description: Another adapter with this name and type already exists
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    delete:
+      tags: [Adapters]
+      summary: Delete Adapter
+      description: Deletes an adapter configuration. Returns error 400 if the adapter is still referenced by active jobs.
+      operationId: deleteAdapter
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Adapter deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: Adapter is still in use by jobs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /adapters/{id}/databases:
+    get:
+      tags: [Adapters]
+      summary: List Databases
+      description: Fetch available database names from a saved database source.
+      operationId: listAdapterDatabases
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Database list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  databases:
+                    type: array
+                    items:
+                      type: string
+                    example: ["mydb", "app_production", "analytics"]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /adapters/{id}/health-history:
+    get:
+      tags: [Adapters]
+      summary: Health Check History
+      description: Returns health check history and uptime statistics for a database source or storage destination.
+      operationId: getHealthHistory
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+          description: Maximum entries to return
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Filter from this date (ISO 8601)
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Health history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  history:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/HealthCheckEntry"
+                  stats:
+                    type: object
+                    properties:
+                      uptime:
+                        type: number
+                        description: Uptime percentage
+                        example: 99.5
+                      avgLatency:
+                        type: number
+                        description: Average latency in ms
+                        example: 42
+                      totalChecks:
+                        type: integer
+                        example: 1440
+
+  # ─── Connection Testing ────────────────────────────────────────
+  /adapters/test-connection:
+    post:
+      tags: [Connection Testing]
+      summary: Test Connection
+      description: Tests connectivity for a given adapter configuration. If `configId` is provided and the test succeeds, the adapter metadata is updated.
+      operationId: testConnection
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [adapterId, config]
+              properties:
+                adapterId:
+                  type: string
+                  description: Adapter type identifier
+                  example: mysql
+                config:
+                  type: object
+                  description: Adapter-specific connection configuration
+                configId:
+                  type: string
+                  description: Existing adapter ID (updates metadata on success)
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Connection result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: Connection successful
+                  version:
+                    type: string
+                    example: "8.0.35"
+
+  /adapters/access-check:
+    post:
+      tags: [Connection Testing]
+      summary: Access Check (List Databases)
+      description: Tests connection and discovers available databases.
+      operationId: accessCheck
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [adapterId, config]
+              properties:
+                adapterId:
+                  type: string
+                  example: postgres
+                config:
+                  type: object
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Databases found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  databases:
+                    type: array
+                    items:
+                      type: string
+                    example: ["mydb", "app_production"]
+
+  /adapters/database-stats:
+    post:
+      tags: [Connection Testing]
+      summary: Database Statistics
+      description: |
+        Fetches database size and table count information. Provide either `sourceId` (existing adapter) or `adapterId` + `config` (ad-hoc connection).
+      operationId: getDatabaseStats
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                adapterId:
+                  type: string
+                  description: Required if no `sourceId`
+                config:
+                  type: object
+                  description: Required if no `sourceId`
+                sourceId:
+                  type: string
+                  description: Existing source adapter ID (alternative)
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Database statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  databases:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DatabaseInfo"
+                  serverVersion:
+                    type: string
+                    example: "8.0.35"
+                  serverEdition:
+                    type: string
+                    example: "MySQL Community Server"
+
+  /adapters/test-ssh:
+    post:
+      tags: [Connection Testing]
+      summary: Test SSH Connection (MSSQL)
+      description: Tests SSH connectivity and verifies backup path access for MSSQL file transfer mode.
+      operationId: testSsh
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [config]
+              properties:
+                config:
+                  type: object
+                  description: MSSQL configuration with SSH settings
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: SSH test result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: "Backup path is readable and writable"
+
+  # ─── Storage Explorer ──────────────────────────────────────────
+  /storage/{id}/files:
+    get:
+      tags: [Storage Explorer]
+      summary: List Backup Files
+      description: Lists all backup files in a storage destination with enriched metadata.
+      operationId: listBackupFiles
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+        - name: typeFilter
+          in: query
+          schema:
+            type: string
+          description: Filter by file type
+      responses:
+        "200":
+          description: Backup file list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FileInfo"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    delete:
+      tags: [Storage Explorer]
+      summary: Delete Backup File
+      operationId: deleteBackupFile
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [path]
+              properties:
+                path:
+                  type: string
+                  description: File path to delete
+                  example: "backups/mydb_2025-01-15.sql.gz.enc"
+      responses:
+        "200":
+          description: File deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /storage/{id}/download:
+    get:
+      tags: [Storage Explorer]
+      summary: Download Backup
+      description: Downloads a backup file. Optionally decrypts the file if it was encrypted.
+      operationId: downloadBackup
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+        - name: file
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Backup file path
+        - name: decrypt
+          in: query
+          schema:
+            type: boolean
+            default: true
+          description: Auto-decrypt the file
+      responses:
+        "200":
+          description: Binary file stream
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+                example: "attachment; filename=\"mydb_2025-01-15.sql.gz\""
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /storage/{id}/download-url:
+    post:
+      tags: [Storage Explorer]
+      summary: Generate Download URL
+      description: |
+        Creates a temporary, single-use download link that works without authentication.
+        The token expires after 5 minutes and is consumed on first use.
+      operationId: generateDownloadUrl
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  description: Backup file path
+                  example: "backups/mydb_2025-01-15.sql.gz.enc"
+                decrypt:
+                  type: boolean
+                  default: true
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Download URL generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  url:
+                    type: string
+                    example: "https://your-instance.com/api/storage/public-download?token=..."
+                  expiresIn:
+                    type: string
+                    example: "5 minutes"
+                  singleUse:
+                    type: boolean
+                    example: true
+
+  /storage/public-download:
+    get:
+      tags: [Storage Explorer]
+      summary: Public Download
+      description: Download a backup using a single-use token. No authentication required. Token is consumed on use.
+      operationId: publicDownload
+      security: []
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Single-use download token from `/download-url`
+      responses:
+        "200":
+          description: Binary file stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "401":
+          description: Token invalid or expired
+
+  /storage/{id}/restore:
+    post:
+      tags: [Storage Explorer]
+      summary: Restore Backup
+      description: |
+        Start an asynchronous restore process. Poll the returned `executionId` to track progress.
+
+        - `privilegedAuth` provides elevated credentials for `CREATE DATABASE` permissions.
+        - A version guard prevents restoring newer dump formats to older database servers.
+        - `databaseMapping` allows renaming databases during multi-DB restores.
+      operationId: restoreBackup
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RestoreRequest"
+      responses:
+        "202":
+          description: Restore started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  executionId:
+                    type: string
+                  message:
+                    type: string
+                    example: "Restore started"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /storage/{id}/analyze:
+    post:
+      tags: [Storage Explorer]
+      summary: Analyze Backup
+      description: Extract database names from a backup file (used for restore UI).
+      operationId: analyzeBackup
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  description: Backup file path
+                type:
+                  type: string
+                  description: Database type hint (e.g., `mysql`)
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Databases in backup
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  databases:
+                    type: array
+                    items:
+                      type: string
+                    example: ["mydb", "app_production"]
+
+  /storage/{id}/history:
+    get:
+      tags: [Storage Explorer]
+      summary: Storage Usage History
+      description: Returns storage size and file count snapshots over time.
+      operationId: getStorageHistory
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 30
+            minimum: 1
+            maximum: 365
+          description: Number of days of history
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Storage history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        totalSize:
+                          type: integer
+                          description: Total size in bytes
+                        fileCount:
+                          type: integer
+                        createdAt:
+                          type: string
+                          format: date-time
+
+  # ─── Vault ─────────────────────────────────────────────────────
+  /vault/{id}/recovery-kit:
+    get:
+      tags: [Vault]
+      summary: Download Recovery Kit
+      description: |
+        Download a ZIP file containing the master encryption key and helper scripts for offline decryption.
+
+        The ZIP contains:
+        - `master.key` — Hex-encoded encryption key
+        - `decrypt_backup.js` — Node.js decryption script
+        - `decrypt_drag_drop_windows.bat` — Windows drag & drop helper
+        - `decrypt_linux_mac.sh` — Linux/macOS helper script
+        - `README.txt` — Usage instructions
+
+        > This is a sensitive operation. An audit log entry is created.
+      operationId: downloadRecoveryKit
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: ZIP file download
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ─── Settings ──────────────────────────────────────────────────
+  /settings/system-tasks:
+    get:
+      tags: [Settings]
+      summary: List System Tasks
+      operationId: listSystemTasks
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: System tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SystemTask"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Settings]
+      summary: Update System Task
+      operationId: updateSystemTask
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [taskId]
+              properties:
+                taskId:
+                  type: string
+                schedule:
+                  type: string
+                  description: Cron expression
+                  example: "*/5 * * * *"
+                runOnStartup:
+                  type: boolean
+                enabled:
+                  type: boolean
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+    put:
+      tags: [Settings]
+      summary: Run System Task Now
+      description: Manually trigger a system task (non-blocking).
+      operationId: runSystemTask
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [taskId]
+              properties:
+                taskId:
+                  type: string
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "200":
+          description: Task started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: "Task started"
+
+  # ─── Health ────────────────────────────────────────────────────
+  /health:
+    get:
+      tags: [Health]
+      summary: Health Check
+      description: |
+        Public endpoint for monitoring and Docker `HEALTHCHECK`. No authentication required.
+
+        Returns `200` if healthy, `503` if database is disconnected.
+      operationId: healthCheck
+      security: []
+      responses:
+        "200":
+          description: Application is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "503":
+          description: Application is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        API Key authentication. Create an API key under **Access Management → API Keys**.
+
+        Format: `dbackup_xxxxxxxx`
+    SessionAuth:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+      description: Session cookie (browser login)
+
+  parameters:
+    ResourceId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Resource ID
+
+  responses:
+    Unauthorized:
+      description: Missing, invalid, disabled, or expired credentials
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: Valid credentials but insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Human-readable error message"
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+
+    # ─── Jobs ────────────────────────────────────────────────────
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: "Daily MySQL Backup"
+        schedule:
+          type: string
+          example: "0 2 * * *"
+        enabled:
+          type: boolean
+        sourceId:
+          type: string
+        compression:
+          type: string
+          enum: [NONE, GZIP, BROTLI]
+        encryptionProfileId:
+          type: [string, "null"]
+        databases:
+          type: string
+          description: JSON array of database names
+          example: '["mydb", "analytics"]'
+        destinations:
+          type: array
+          items:
+            $ref: "#/components/schemas/JobDestination"
+        source:
+          type: object
+          properties:
+            name:
+              type: string
+            type:
+              type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    JobDestination:
+      type: object
+      properties:
+        id:
+          type: string
+        configId:
+          type: string
+        priority:
+          type: integer
+        retention:
+          type: string
+          description: JSON retention policy
+        config:
+          type: object
+          properties:
+            name:
+              type: string
+            adapterId:
+              type: string
+
+    CreateJobRequest:
+      type: object
+      required: [name, schedule, sourceId, destinations]
+      properties:
+        name:
+          type: string
+          example: "Daily MySQL Backup"
+        schedule:
+          type: string
+          description: Cron expression
+          example: "0 2 * * *"
+        sourceId:
+          type: string
+          description: Database source adapter ID
+        destinations:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [configId]
+            properties:
+              configId:
+                type: string
+                description: Storage destination adapter ID
+              priority:
+                type: integer
+                default: 0
+              retention:
+                type: object
+                description: Retention policy for this destination
+        enabled:
+          type: boolean
+          default: true
+        compression:
+          type: string
+          enum: [NONE, GZIP, BROTLI]
+          default: GZIP
+        encryptionProfileId:
+          type: [string, "null"]
+        notificationIds:
+          type: array
+          items:
+            type: string
+          description: Notification channel IDs
+        notificationEvents:
+          type: object
+          description: Which events trigger notifications
+        databases:
+          type: array
+          items:
+            type: string
+          description: "Specific databases to back up (empty = all)"
+
+    UpdateJobRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        schedule:
+          type: string
+        sourceId:
+          type: string
+        destinations:
+          type: array
+          items:
+            type: object
+            required: [configId]
+            properties:
+              configId:
+                type: string
+              priority:
+                type: integer
+              retention:
+                type: object
+        enabled:
+          type: boolean
+        compression:
+          type: string
+          enum: [NONE, GZIP, BROTLI]
+        encryptionProfileId:
+          type: [string, "null"]
+        notificationIds:
+          type: array
+          items:
+            type: string
+        notificationEvents:
+          type: object
+        databases:
+          type: array
+          items:
+            type: string
+
+    # ─── Executions ──────────────────────────────────────────────
+    Execution:
+      type: object
+      properties:
+        id:
+          type: string
+        jobId:
+          type: string
+        type:
+          type: string
+          enum: [Backup, Restore]
+        status:
+          $ref: "#/components/schemas/ExecutionStatus"
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+          # nullable handled via type array
+        job:
+          type: object
+          properties:
+            name:
+              type: string
+
+    ExecutionDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        jobId:
+          type: string
+        jobName:
+          type: string
+        type:
+          type: string
+          enum: [Backup, Restore]
+        status:
+          $ref: "#/components/schemas/ExecutionStatus"
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        stage:
+          type: string
+          description: Current pipeline stage
+          example: "Uploading"
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+          # nullable handled via type array
+        duration:
+          type: [number, "null"]
+          description: Duration in seconds
+        size:
+          type: [integer, "null"]
+          description: Backup size in bytes
+        path:
+          type: [string, "null"]
+        error:
+          type: [string, "null"]
+        logs:
+          type: array
+          items:
+            type: object
+          description: Log entries (only if `includeLogs=true`)
+
+    ExecutionStatus:
+      type: string
+      enum: [Pending, Running, Success, Failed, Partial]
+      description: |
+        - `Pending` — Queued, waiting for an execution slot
+        - `Running` — Currently executing
+        - `Success` — Completed successfully
+        - `Failed` — Execution failed
+        - `Partial` — Some destinations succeeded, others failed
+
+    # ─── Adapters ────────────────────────────────────────────────
+    AdapterConfig:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: "Production MySQL"
+        type:
+          type: string
+          enum: [database, storage, notification]
+        adapterId:
+          type: string
+          description: Adapter type identifier
+          example: mysql
+        config:
+          type: object
+          description: Adapter-specific configuration (decrypted)
+        metadata:
+          type: [object, "null"]
+          description: "Auto-detected metadata (version, status, etc.)"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateAdapterRequest:
+      type: object
+      required: [name, type, adapterId, config]
+      properties:
+        name:
+          type: string
+          example: "Production MySQL"
+        type:
+          type: string
+          enum: [database, storage, notification]
+        adapterId:
+          type: string
+          description: |
+            Adapter type identifier. Available values:
+
+            **Database:** `mysql`, `mariadb`, `postgres`, `mongodb`, `sqlite`, `mssql`, `redis`
+
+            **Storage:** `local-filesystem`, `s3-aws`, `s3-generic`, `s3-r2`, `s3-hetzner`, `google-drive`, `dropbox`, `onedrive`, `sftp`, `ftp`, `webdav`, `smb`, `rsync`
+
+            **Notification:** `discord`, `slack`, `teams`, `generic-webhook`, `gotify`, `ntfy`, `telegram`, `twilio-sms`, `email`
+        config:
+          type: object
+          description: Adapter-specific configuration. See adapter documentation for fields.
+
+    UpdateAdapterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        config:
+          type: object
+          description: Updated configuration (merged with existing)
+
+    # ─── Storage ─────────────────────────────────────────────────
+    FileInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "mydb_2025-01-15.sql.gz.enc"
+        path:
+          type: string
+        size:
+          type: integer
+          description: Size in bytes
+        lastModified:
+          type: string
+          format: date-time
+        locked:
+          type: boolean
+          description: Whether the file is currently being written
+
+    RestoreRequest:
+      type: object
+      required: [file, targetSourceId]
+      properties:
+        file:
+          type: string
+          description: Backup file path
+          example: "backups/mydb_2025-01-15.sql.gz.enc"
+        targetSourceId:
+          type: string
+          description: Target database adapter ID
+        targetDatabaseName:
+          type: string
+          description: Override target DB name (single-DB backups)
+        databaseMapping:
+          type: object
+          additionalProperties:
+            type: string
+          description: "Rename mapping for multi-DB restores (`{ \"old_name\": \"new_name\" }`)"
+          example:
+            old_db: new_db
+        privilegedAuth:
+          type: object
+          properties:
+            user:
+              type: string
+            password:
+              type: string
+          description: Elevated credentials for CREATE DATABASE permissions
+
+    # ─── Other ───────────────────────────────────────────────────
+    DatabaseInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          example: mydb
+        sizeBytes:
+          type: integer
+          example: 1073741824
+        tableCount:
+          type: integer
+          example: 42
+
+    HealthCheckEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+        latencyMs:
+          type: integer
+          example: 45
+        createdAt:
+          type: string
+          format: date-time
+        error:
+          type: [string, "null"]
+
+    NotificationLog:
+      type: object
+      properties:
+        id:
+          type: string
+        adapterId:
+          type: string
+          description: Notification adapter type (discord, email, etc.)
+        channelName:
+          type: string
+        eventType:
+          type: string
+        status:
+          type: string
+          enum: [success, error]
+        title:
+          type: string
+        message:
+          type: string
+        payload:
+          type: object
+          description: Full notification payload as sent
+        error:
+          type: [string, "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    SystemTask:
+      type: object
+      properties:
+        id:
+          type: string
+          example: health-check
+        label:
+          type: string
+          example: "Health Check"
+        description:
+          type: string
+        schedule:
+          type: string
+          example: "*/5 * * * *"
+        runOnStartup:
+          type: boolean
+        enabled:
+          type: boolean
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+        uptime:
+          type: number
+          description: Uptime in seconds
+        timestamp:
+          type: string
+          format: date-time
+        database:
+          type: string
+          enum: [connected, disconnected]
+        memory:
+          type: object
+          properties:
+            rss:
+              type: number
+              description: Resident Set Size in MB
+            heapUsed:
+              type: number
+              description: Heap used in MB
+            heapTotal:
+              type: number
+              description: Total heap in MB
+        responseTime:
+          type: number
+          description: Response time in ms

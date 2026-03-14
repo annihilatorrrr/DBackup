@@ -29,6 +29,7 @@
 <p align="center">
   <a href="https://dbackup.app">Documentation</a> •
   <a href="https://dbackup.app/user-guide/getting-started">Quick Start</a> •
+  <a href="https://api.dbackup.app">API Reference</a> •
   <a href="https://dbackup.app/changelog">Changelog</a> •
   <a href="https://dbackup.app/roadmap">Roadmap</a>
 </p>
@@ -144,6 +145,7 @@ Open [http://localhost:3000](http://localhost:3000) and create your admin accoun
 Full documentation is available at **[dbackup.app](https://dbackup.app)**:
 
 - [User Guide](https://dbackup.app/user-guide/getting-started) — Installation, configuration, usage
+- [API Reference](https://api.dbackup.app) — Interactive REST API documentation
 - [Developer Guide](https://dbackup.app/developer-guide/) — Architecture, adapters, contributing
 - [Changelog](https://dbackup.app/changelog) — Release history
 - [Roadmap](https://dbackup.app/roadmap) — Planned features
