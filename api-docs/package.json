@@ -1,0 +1,7 @@
+{
+  "name": "dbackup-api-docs",
+  "private": true,
+  "scripts": {
+    "build": "mkdir -p dist && cp index.html openapi.yaml dist/ && curl -sL https://cdn.jsdelivr.net/npm/@scalar/api-reference -o dist/scalar.js"
+  }
+}
