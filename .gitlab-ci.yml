@@ -36,6 +36,8 @@ validate:lint:
 
 validate:type:
   extends: .validate-base
+  variables:
+    NODE_OPTIONS: "--max-old-space-size=4096"
   script:
     - pnpm type
 
