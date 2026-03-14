@@ -17,7 +17,13 @@ All notable changes to DBackup are documented here.
   - **Synchronous File I/O Throughout Codebase** — Multiple files used synchronous `fs` operations (`readFileSync`, `statSync`, `existsSync`, `unlinkSync`) that blocked the event loop during backups, downloads, and storage operations. Converted all hot paths to async equivalents (`fs.promises`): download routes now stream files via `ReadableStream` instead of buffering entire backups into memory; the backup upload pipeline uses `await fs.stat()` instead of `statSync`; the local storage adapter's `list()` function (called hourly for storage stats) used `statSync` in a loop over all files — now uses `await fs.stat()`; cleanup code across restore service, completion step, and analyze route replaced with `await fs.promises.unlink()`
   - **History Page — Aggressive 1-Second Polling** — The execution history page polled `/api/history` every 1 second unconditionally via `setInterval`. In development mode (where each request triggers JIT compilation taking 5-25 seconds), this caused ~24 concurrent requests to stack up, saturating the Node.js event loop entirely. Changed to adaptive polling: 5 seconds when idle, 2 seconds when a job is running. Added a guard (`fetchInFlight` ref) that prevents a new request from being sent while the previous one is still pending, eliminating request stacking
 
-### 📝 Documentation
+### � CI/CD
+
+- **GitLab CI — Quality Gate Stage** — Added a `validate` stage that runs `pnpm lint`, `pnpm type`, and `pnpm test` in three parallel jobs before any Docker build starts. Triggered on tags and merge requests to catch regressions early. Uses `node:20-alpine` with pnpm cache for fast installs
+- **GitLab CI — Parallel Multi-Arch Builds** — Split the single `docker buildx --platform linux/amd64,linux/arm64` build into two parallel jobs (`build:amd64`, `build:arm64`) that run simultaneously. A subsequent `manifest` stage combines both architecture images into multi-arch manifest lists using `docker buildx imagetools create`, preserving all existing tag logic (latest, dev, beta, major version)
+- **GitLab CI — Automatic Docker Hub README Sync** — Added a `deploy:readme` job that automatically pushes the repository `README.md` to Docker Hub after each release. Relative image paths (`wiki/public/logo.svg`, `wiki/public/overview.png`) are rewritten to absolute GitLab raw URLs so images render correctly on Docker Hub
+
+### �📝 Documentation
 
 - **README & Wiki updated** — Feature list revised to be more accurate and less marketing-heavy. Added Multi-Destination Jobs, Storage Monitoring & Alerts, and Storage Explorer as explicit feature entries. Notification count updated to `9+`. Community & Support section added with Discord, GitLab Issues, support email (`support@dbackup.app`), and security disclosure address (`security@dbackup.app`)
 - **User Guide rework** — The Getting Started guide has been rewritten and expanded into a multi-page User Guide section:
