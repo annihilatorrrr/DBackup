@@ -30,6 +30,8 @@ const eslintConfig = defineConfig([
     "wiki/.vitepress/dist/**",
     // Wiki theme is Vue, not React - exclude from React rules
     "wiki/.vitepress/theme/**",
+    // API docs build artifacts - bundled third-party code
+    "api-docs/dist/**",
   ]),
 ]);
 

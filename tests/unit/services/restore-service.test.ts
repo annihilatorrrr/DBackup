@@ -64,7 +64,7 @@ describe('RestoreService', () => {
         // Spy on FS methods instead of full module mock to avoid import issues
         vi.spyOn(fs, 'existsSync').mockReturnValue(true);
         vi.spyOn(fs, 'statSync').mockReturnValue({ size: 1024 } as any);
-        vi.spyOn(fs, 'unlinkSync').mockImplementation(() => {});
+        vi.spyOn(fs.promises, 'unlink').mockResolvedValue(undefined);
     });
 
     const flushPromises = () => new Promise(resolve => setTimeout(resolve, 20));
@@ -126,7 +126,7 @@ describe('RestoreService', () => {
             where: { id: executionId },
             data: expect.objectContaining({ status: 'Success' })
         });
-        expect(fs.unlinkSync).toHaveBeenCalled(); // Cleanup
+        expect(fs.promises.unlink).toHaveBeenCalled(); // Cleanup
     });
 
     it('should handle download failure', async () => {
@@ -210,7 +210,7 @@ describe('RestoreService', () => {
         }));
 
         // Ensure cleanup still happens
-        expect(fs.unlinkSync).toHaveBeenCalled();
+        expect(fs.promises.unlink).toHaveBeenCalled();
     });
 
     it('should throw if target source missing (Pre-flight check)', async () => {
