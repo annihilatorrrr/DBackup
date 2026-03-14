@@ -14,7 +14,7 @@ export interface Execution {
         name: string;
     };
     type?: string;
-    status: "Running" | "Success" | "Failed";
+    status: "Running" | "Success" | "Failed" | "Pending" | "Partial";
     startedAt: string;
     endedAt?: string;
     logs: string; // JSON string

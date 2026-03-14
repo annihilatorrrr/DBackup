@@ -1,5 +1,4 @@
-import { RunnerContext, DestinationContext } from "../types";
-import { decryptConfig } from "@/lib/crypto";
+import { RunnerContext } from "../types";
 import path from "path";
 import fs from "fs/promises";
 import { createReadStream, createWriteStream } from "fs";

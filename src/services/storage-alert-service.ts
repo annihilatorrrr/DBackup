@@ -201,7 +201,7 @@ export async function checkStorageAlerts(
   entries: StorageVolumeEntry[]
 ): Promise<void> {
   // Load notification config once to get per-event reminder intervals
-  let reminderCooldowns: Record<string, number> = {};
+  const reminderCooldowns: Record<string, number> = {};
   try {
     const notifConfig = await getNotificationConfig();
     for (const [eventId, eventCfg] of Object.entries(notifConfig.events)) {

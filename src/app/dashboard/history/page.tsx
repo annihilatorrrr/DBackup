@@ -50,7 +50,6 @@ function HistoryContent() {
             const updatedLog = executions.find(e => e.id === selectedLog.id);
             // Only update if the content has actually changed to prevent loops
             if (updatedLog && JSON.stringify(updatedLog) !== JSON.stringify(selectedLog)) {
-                // eslint-disable-next-line react-hooks/set-state-in-effect
                 setSelectedLog(updatedLog);
             }
         }
@@ -62,7 +61,6 @@ function HistoryContent() {
             // To prevent re-opening, we remove the query param immediately after finding the log
             const found = executions.find(e => e.id === executionId);
             if (found && !selectedLog) {
-                // eslint-disable-next-line react-hooks/set-state-in-effect
                 setSelectedLog(found);
                 // Clear the query param so it doesn't re-trigger on close
                 router.replace("/dashboard/history", { scroll: false });
@@ -104,7 +102,6 @@ function HistoryContent() {
     );
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchHistory();
         const interval = setInterval(fetchHistory, hasRunningJob ? 2000 : 5000);
         return () => clearInterval(interval);
@@ -113,7 +110,6 @@ function HistoryContent() {
     // Fetch notification logs when that tab becomes active
     useEffect(() => {
         if (activeTab === "notifications") {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
             fetchNotificationLogs();
             const interval = setInterval(fetchNotificationLogs, 5000);
             return () => clearInterval(interval);

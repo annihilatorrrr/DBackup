@@ -346,7 +346,7 @@ export class ConfigService {
             });
             if (existingByName && existingByName.id !== adapter.id) {
               // Update existing adapter in-place
-              const { id, ...updateFields } = adapterData;
+              const { id: _id, ...updateFields } = adapterData;
               await tx.adapterConfig.update({
                 where: { id: existingByName.id },
                 data: updateFields,
@@ -440,7 +440,7 @@ export class ConfigService {
             // Check if a job with the same name but different ID exists
             const existingJob = await tx.job.findFirst({ where: { name: job.name } });
             if (existingJob && existingJob.id !== job.id) {
-              const { id, ...updateFields } = job;
+              const { id: _id, ...updateFields } = job;
               await tx.job.update({
                 where: { id: existingJob.id },
                 data: updateFields as any,
@@ -523,7 +523,7 @@ export class ConfigService {
             // Check if a user with the same email but different ID already exists
             const existingUser = await tx.user.findUnique({ where: { email: user.email } });
             if (existingUser && existingUser.id !== user.id) {
-              const { id, email, ...updateFields } = userFields;
+              const { id: _id, email: _email, ...updateFields } = userFields;
               await tx.user.update({
                 where: { id: existingUser.id },
                 data: updateFields,
@@ -593,7 +593,7 @@ export class ConfigService {
             // Check if a provider with the same providerId but different ID exists
             const existingSso = await tx.ssoProvider.findUnique({ where: { providerId: providerData.providerId } });
             if (existingSso && existingSso.id !== providerData.id) {
-              const { id, ...ssoUpdateFields } = providerData;
+              const { id: _id, ...ssoUpdateFields } = providerData;
               await tx.ssoProvider.update({
                 where: { id: existingSso.id },
                 data: ssoUpdateFields,

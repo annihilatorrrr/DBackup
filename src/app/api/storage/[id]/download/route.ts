@@ -64,7 +64,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ id: strin
         const fileStream = fs.createReadStream(tempFile);
         const readableStream = new ReadableStream({
             start(controller) {
-                fileStream.on('data', (chunk: Buffer) => controller.enqueue(chunk));
+                fileStream.on('data', (chunk: Buffer | string) => controller.enqueue(typeof chunk === 'string' ? Buffer.from(chunk) : chunk));
                 fileStream.on('end', () => {
                     controller.close();
                     fsPromises.unlink(tempFile!).catch(() => {});
