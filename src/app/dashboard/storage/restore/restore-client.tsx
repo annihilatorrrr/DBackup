@@ -775,7 +775,7 @@ export function RestoreClient() {
                                         </div>
                                     ) : (
                                         <div className="border rounded-md overflow-hidden">
-                                            <ScrollArea className="[&>[data-slot=scroll-area-viewport]]:max-h-64">
+                                            <ScrollArea className="*:data-[slot=scroll-area-viewport]:max-h-64">
                                                 <Table>
                                                     <TableHeader className="bg-muted/50 sticky top-0">
                                                         <TableRow className="hover:bg-transparent border-b text-xs uppercase tracking-wider">
