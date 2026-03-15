@@ -14,6 +14,7 @@ All notable changes to DBackup are documented here.
 
 - **codebase**: Removed unused components, dead exports, stale commented-out code, and empty directories
 - **codebase**: Removed unused `ServiceResult` pattern file and its advisory lint test
+- **ui**: API Trigger dialog "Overview" tab now shows the correct `success` field in the trigger and poll JSON examples
 
 ### 🐳 Docker
 

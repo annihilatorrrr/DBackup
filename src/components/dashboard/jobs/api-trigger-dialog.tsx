@@ -619,7 +619,7 @@ trigger_backup:
                             <div>
                                 <h4 className="text-sm font-medium mb-2">Response Format</h4>
                                 <CopyBlock
-                                    code={`// Trigger response\n{ "executionId": "exec_abc123" }\n\n// Poll response\n{\n  "data": {\n    "status": "Running",\n    "progress": 45,\n    "stage": "Uploading"\n  }\n}`}
+                                    code={`// Trigger response\n{ "success": true, "executionId": "exec_abc123", "message": "Job queued successfully" }\n\n// Poll response\n{\n  "success": true,\n  "data": {\n    "status": "Running",\n    "progress": 45,\n    "stage": "Uploading"\n  }\n}`}
                                     language="typescript"
                                     label="JSON"
                                 />
