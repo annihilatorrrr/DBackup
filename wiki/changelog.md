@@ -8,6 +8,7 @@ All notable changes to DBackup are documented here.
 ### 🐛 Bug Fixes
 
 - **backup**: Backup files now use adapter-specific extensions (`.bak`, `.archive`, `.rdb`, `.db`) instead of always `.sql`
+- **restore**: "Existing Databases" panel now scrolls correctly when the target server has many databases
 
 ### 🎨 Improvements
 
