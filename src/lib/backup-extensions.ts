@@ -32,6 +32,8 @@ export function getBackupFileExtension(adapterId: string): string {
 /**
  * Get a human-readable description of the backup format
  *
+ * NOTE: Currently unused — kept for future UI integration (e.g. Storage Explorer, Backup Details).
+ *
  * @param adapterId - The adapter identifier
  * @returns Description of the backup format
  */

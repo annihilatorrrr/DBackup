@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { DateDisplay } from "@/components/utils/date-display";
 import { formatBytes } from "@/lib/utils";
 import { NameCell } from "@/components/dashboard/storage/cells/name-cell";
-// import { SourceJobCell } from "@/components/dashboard/storage/cells/source-job-cell";
 import { ActionsCell } from "@/components/dashboard/storage/cells/actions-cell";
 import { Badge } from "@/components/ui/badge";
 

@@ -1,4 +1,3 @@
-// import { DatabaseDialect } from "../../common/dialect";
 import { PostgresBaseDialect } from "./postgres-base";
 import { PostgresConfig } from "@/lib/adapters/definitions";
 

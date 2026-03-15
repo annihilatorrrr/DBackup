@@ -2,8 +2,17 @@
 
 All notable changes to DBackup are documented here.
 
-## v1.0.2 - Post-Release Hotfix
+## v1.0.2 - Cleanup & File Extension Fix
 *Release: In Progress*
+
+### 🐛 Bug Fixes
+
+- **backup**: Backup files now use adapter-specific extensions (`.bak`, `.archive`, `.rdb`, `.db`) instead of always `.sql`
+
+### 🎨 Improvements
+
+- **codebase**: Removed unused components, dead exports, stale commented-out code, and empty directories
+- **codebase**: Removed unused `ServiceResult` pattern file and its advisory lint test
 
 ### 🐳 Docker
 

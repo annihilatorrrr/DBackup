@@ -6,6 +6,7 @@ import fs from "fs/promises";
 import { isMultiDbTar, readTarManifest } from "@/lib/adapters/database/common/tar-utils";
 import { logger } from "@/lib/logger";
 import { wrapError } from "@/lib/errors";
+import { getBackupFileExtension } from "@/lib/backup-extensions";
 
 const log = logger.child({ step: "02-dump" });
 
@@ -19,7 +20,8 @@ export async function stepExecuteDump(ctx: RunnerContext) {
 
     // 1. Prepare Paths
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const fileName = `${job.name.replace(/[^a-z0-9]/gi, '_')}_${timestamp}.sql`;
+    const ext = getBackupFileExtension(job.source.adapterId);
+    const fileName = `${job.name.replace(/[^a-z0-9]/gi, '_')}_${timestamp}.${ext}`;
     const tempDir = getTempDir();
     const tempFile = path.join(tempDir, fileName);
 

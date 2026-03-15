@@ -269,11 +269,3 @@ function createLogger(defaultContext?: LogContext): Logger {
  * Use directly for simple logging or create a child for service-specific logging.
  */
 export const logger = createLogger();
-
-/**
- * Creates a new logger with default context.
- * Alias for logger.child() for explicit factory usage.
- */
-export function createChildLogger(context: LogContext): Logger {
-  return createLogger(context);
-}
