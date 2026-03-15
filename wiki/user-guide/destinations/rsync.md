@@ -1,310 +1,91 @@
-# Rsync (SSH)
+# Rsync
 
-Store backups on any remote server using rsync's efficient delta-transfer algorithm over SSH.
-
-## Overview
-
-Rsync is a fast, versatile file synchronization tool that uses SSH for secure transfer. Benefits:
-
-- ⚡ Delta transfers — only changed blocks are sent
-- 🔒 Encrypted transfer (SSH)
-- 🗜️ Built-in transfer compression
-- 🖥️ Works with any Linux/macOS server
-- 🔑 Multiple authentication methods (Password, SSH Key, SSH Agent)
-- ⚙️ Customizable with additional rsync flags
+Store backups on a remote server via rsync over SSH. Ideal for efficient incremental transfers and Unix/Linux servers.
 
 ## Prerequisites
 
-::: warning System Requirements
-The Rsync adapter requires the following CLI tools on the **DBackup host**:
+- `rsync` must be installed on **both** the DBackup server and the remote target
+- SSH access to the remote server
 
-- `rsync` — File synchronization (pre-installed on most systems)
-- `openssh-client` — SSH connectivity
-- `sshpass` — Only needed for password authentication
-
-These are pre-installed in the official Docker image. For local development on macOS, see the [setup section](#macos-development-setup) below.
+::: warning Docker Users
+The default DBackup Docker image includes rsync. If you're running DBackup outside Docker, ensure rsync is installed: `which rsync`
 :::
 
 ## Configuration
 
-| Field | Description | Default |
-| :--- | :--- | :--- |
-| **Name** | Friendly name | Required |
-| **Host** | Server hostname or IP | Required |
-| **Port** | SSH port | `22` |
-| **Username** | SSH username | Required |
-| **Auth Type** | Authentication method | `password` |
-| **Password** | SSH password | Conditional |
-| **Private Key** | SSH key (PEM format) | Conditional |
-| **Passphrase** | Key passphrase | Optional |
-| **Path Prefix** | Remote directory for backups | Required |
-| **Options** | Additional rsync flags | Optional |
+| Field | Description | Default | Required |
+| :--- | :--- | :--- | :--- |
+| **Name** | Friendly name for this destination | — | ✅ |
+| **Host** | Hostname or IP of the remote server | — | ✅ |
+| **Port** | SSH port | `22` | ❌ |
+| **Username** | SSH username | — | ✅ |
+| **Auth Type** | Authentication method | `password` | ❌ |
+| **Password** | User password (when Auth Type = `password`) | — | ❌ |
+| **Private Key** | PEM-encoded private key (when Auth Type = `privateKey`) | — | ❌ |
+| **Passphrase** | Passphrase for encrypted private keys | — | ❌ |
+| **Path Prefix** | Remote directory for backups | — | ✅ |
+| **Options** | Additional rsync flags (e.g. `--bwlimit=1000`) | — | ❌ |
 
-## Authentication Methods
+### Authentication Methods
 
-### Password Authentication
-
-Simplest setup — requires `sshpass` on the host:
-1. Select **Auth Type**: `password`
-2. Enter username and password
-
-::: tip Security
-Passwords are never passed as command-line arguments. DBackup uses the `SSHPASS` environment variable exclusively, preventing exposure in process listings.
-:::
-
-### SSH Key Authentication
-
-More secure, recommended for production:
-1. Select **Auth Type**: `privateKey`
-2. Paste your private key (PEM format)
-3. Enter passphrase if key is encrypted
-
-Supported key formats:
-```
------BEGIN OPENSSH PRIVATE KEY-----
-b3BlbnNzaC1rZXktdjEAAAAACmFlczI1Ni1jdHI...
------END OPENSSH PRIVATE KEY-----
-```
-
-```
------BEGIN RSA PRIVATE KEY-----
-MIIEpAIBAAKCAQEA...
------END RSA PRIVATE KEY-----
-```
-
-### SSH Agent
-
-For environments with SSH agent forwarding:
-1. Select **Auth Type**: `agent`
-2. Mount SSH socket in Docker:
-
-```yaml
-services:
-  dbackup:
-    volumes:
-      - ${SSH_AUTH_SOCK}:/ssh-agent:ro
-    environment:
-      - SSH_AUTH_SOCK=/ssh-agent
-```
-
-## Server Setup
-
-### Create Backup User
-
-```bash
-# Create user
-sudo useradd -m -s /bin/bash backupuser
-
-# Create backup directory
-sudo mkdir -p /backups/rsync
-sudo chown backupuser:backupuser /backups/rsync
-
-# Set password (if using password auth)
-sudo passwd backupuser
-```
-
-### SSH Key Setup
-
-```bash
-# Generate key pair (on your machine)
-ssh-keygen -t ed25519 -f ~/.ssh/dbackup_rsync_key
-
-# Copy public key to server
-ssh-copy-id -i ~/.ssh/dbackup_rsync_key.pub backupuser@server
-```
-
-### Install rsync on Target Server
-
-Most Linux distributions include rsync, but verify:
-
-```bash
-# Debian/Ubuntu
-sudo apt install rsync
-
-# RHEL/CentOS/Fedora
-sudo dnf install rsync
-
-# Alpine
-apk add rsync
-```
-
-## Path Prefix
-
-The **Path Prefix** defines the base directory on the remote server where all backups are stored. The user must have write permissions to this directory.
-
-::: warning Permission Denied
-If you see "Permission denied: Cannot create directory", the SSH user does not have write access to the specified path. Use a path within the user's home directory:
-- ✅ `/home/backupuser/backups`
-- ✅ `~/backups`
-- ❌ `/backups` (requires root or explicit permissions)
-:::
-
-## Additional Options
-
-The **Options** field allows passing extra rsync flags:
-
-| Option | Description |
+| Auth Type | Description |
 | :--- | :--- |
-| `--bwlimit=5000` | Limit bandwidth to 5000 KB/s |
-| `--timeout=300` | Set I/O timeout to 300 seconds |
-| `--exclude=*.tmp` | Exclude files matching pattern |
-| `--compress-level=9` | Maximum compression level |
+| `password` | Username + password via sshpass (default) |
+| `privateKey` | SSH private key (paste PEM content directly) |
+| `agent` | Use the host's SSH agent (keys loaded via `ssh-add`) |
 
-Example: `--bwlimit=10000 --timeout=600`
+## Setup Guide
 
-## Directory Structure
+1. Ensure the target server has rsync and SSH installed
+2. Create a dedicated user with write access to the backup directory:
+   ```bash
+   sudo useradd -m dbackup
+   sudo mkdir -p /backups/dbackup
+   sudo chown dbackup: /backups/dbackup
+   ```
+3. Go to **Destinations** → **Add Destination** → **Rsync**
+4. Enter Host, Username, and select your Auth Type
+5. Enter credentials (password or private key)
+6. Set **Path Prefix** to the remote directory (e.g. `/backups/dbackup`)
+7. (Optional) Add custom **Options** for bandwidth limiting or other flags
+8. Click **Test** to verify the connection
 
-After backups, your server will have:
+## How It Works
 
-```
-/home/backupuser/backups/
-├── mysql-daily/
-│   ├── backup_2026-02-14T12-00-00.sql.gz
-│   ├── backup_2026-02-14T12-00-00.sql.gz.meta.json
-│   └── ...
-└── postgres-weekly/
-    └── ...
-```
-
-## Docker Configuration
-
-The official Docker image includes all required tools. No additional configuration needed:
-
-```yaml
-services:
-  dbackup:
-    image: skyfay/dbackup:latest
-    # rsync, sshpass, openssh-client are pre-installed
-```
-
-For SSH Agent forwarding in Docker:
-
-```yaml
-services:
-  dbackup:
-    image: skyfay/dbackup:latest
-    volumes:
-      - ${SSH_AUTH_SOCK}:/ssh-agent:ro
-    environment:
-      - SSH_AUTH_SOCK=/ssh-agent
-```
-
-## macOS Development Setup
-
-For local development, install the required tools:
-
-```bash
-# rsync (macOS ships with an older version)
-brew install rsync
-
-# sshpass (only needed for password auth)
-brew install hudochenkov/sshpass/sshpass
-```
-
-## Rsync vs SFTP
-
-Both use SSH for transfer, but rsync has unique advantages:
-
-| Feature | Rsync | SFTP |
-| :--- | :--- | :--- |
-| Delta transfers | ✅ Only changed blocks | ❌ Full file transfer |
-| Transfer compression | ✅ Built-in | ❌ Via DBackup only |
-| Bandwidth limiting | ✅ `--bwlimit` flag | ❌ Not supported |
-| CLI dependency | ✅ Required on both ends | ❌ Uses npm package |
-| Custom options | ✅ Extensive | ❌ Limited |
-| Resume interrupted | ✅ `--partial` flag | ❌ Restart required |
-
-**Use Rsync when:** You need efficient incremental transfers, bandwidth control, or are syncing large backup files repeatedly.
-
-**Use SFTP when:** You want zero CLI dependencies, or the target server doesn't have rsync installed.
+- DBackup invokes `rsync -az` over SSH to transfer backup files
+- All transfers are encrypted in transit via SSH
+- Custom options are appended to the rsync command
+- All credentials (passwords, private keys) are stored AES-256-GCM encrypted in the database
 
 ## Troubleshooting
 
-### Connection Refused
-
-```
-connect ECONNREFUSED
-```
-
-**Solutions**:
-1. Verify SSH is running: `systemctl status sshd`
-2. Check firewall allows the SSH port
-3. Verify hostname/IP is correct
-
-### Too Many Authentication Failures
-
-```
-Too many authentication failures
-```
-
-**Solutions**:
-1. Ensure you're using **Password** auth type (not Agent)
-2. DBackup automatically disables public key auth for password connections
-3. Check that SSH agent isn't loaded with many keys
-
-### Permission Denied
-
-```
-Permission denied: Cannot create directory
-```
-
-**Solutions**:
-1. Use a path the user owns (e.g., `/home/user/backups`)
-2. Create the directory manually and set ownership:
-   ```bash
-   sudo mkdir -p /backups && sudo chown user:user /backups
-   ```
-3. Check SELinux/AppArmor policies
-
-### sshpass Not Found
-
-```
-Password authentication requires 'sshpass' to be installed
-```
-
-**Solutions**:
-1. Use the official Docker image (includes sshpass)
-2. Install manually:
-   - Debian/Ubuntu: `sudo apt install sshpass`
-   - macOS: `brew install hudochenkov/sshpass/sshpass`
-   - Alpine: `apk add sshpass`
-3. Or switch to SSH Key / Agent authentication
-
-### rsync Not Found on Remote
+### rsync: command not found
 
 ```
 rsync: command not found
 ```
 
-**Solution**: Install rsync on the target server:
-```bash
-sudo apt install rsync    # Debian/Ubuntu
-sudo dnf install rsync    # RHEL/Fedora
-apk add rsync             # Alpine
+**Solution:** Install rsync on both servers. On Debian/Ubuntu: `apt install rsync`. On the remote server, rsync must be in the default PATH.
+
+### Connection Refused
+
+```
+ssh: connect to host ... port 22: Connection refused
 ```
 
-## Security Best Practices
+**Solution:** Verify the host and port. Ensure SSH is running and the firewall allows the connection.
 
-1. **Use SSH keys** instead of passwords
-2. **Disable root login** via SSH
-3. **Restrict backup user** permissions to the backup directory only
-4. **Use non-standard SSH port** (security by obscurity)
-5. **Enable fail2ban** for brute-force protection
-6. **Limit bandwidth** with `--bwlimit` to avoid saturating the network
-7. **Firewall rules** to limit source IPs
+### Permission Denied
 
-## Comparison with Other Destinations
+```
+rsync: mkstemp failed: Permission denied (13)
+```
 
-| Feature | Rsync | SFTP | S3 | Local |
-| :--- | :--- | :--- | :--- | :--- |
-| Setup complexity | Medium | Medium | Easy | Easiest |
-| Self-hosted | ✅ | ✅ | ❌ | ✅ |
-| Delta transfers | ✅ | ❌ | ❌ | N/A |
-| Encryption in transit | ✅ | ✅ | ✅ | N/A |
-| Bandwidth control | ✅ | ❌ | ❌ | N/A |
-| Scalability | Limited | Limited | High | Limited |
-| CLI dependency | Yes | No | No | No |
-| Cost | Server cost | Server cost | Pay-per-use | Free |
+**Solution:** Ensure the SSH user has write access to the Path Prefix directory on the remote server.
+
+### Bandwidth Limiting
+
+To limit transfer speed, add `--bwlimit=1000` (KB/s) in the **Options** field. Useful for avoiding bandwidth saturation on shared connections.
 
 ## Next Steps
 

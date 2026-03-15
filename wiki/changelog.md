@@ -16,6 +16,11 @@ All notable changes to DBackup are documented here.
 - **codebase**: Removed unused `ServiceResult` pattern file and its advisory lint test
 - **ui**: API Trigger dialog "Overview" tab now shows the correct `success` field in the trigger and poll JSON examples
 
+### 📝 Documentation
+
+- **wiki**: Complete overhaul of all adapter guides — unified structure, 4-column config tables verified against code, and collapsible provider examples
+- **wiki**: Rewrote all 13 destination guides, 6 source guides, and 9 notification guides with accurate default values and required fields
+
 ### 🐳 Docker
 
 - **Image**: `skyfay/dbackup:v1.0.2`

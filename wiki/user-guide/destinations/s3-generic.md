@@ -1,55 +1,49 @@
-# S3 Compatible Storage
+# S3-Compatible Storage
 
-Store backups on any S3-compatible object storage service, including MinIO, DigitalOcean Spaces, Backblaze B2, and others.
-
-## Overview
-
-The S3 Generic adapter works with any storage service implementing the S3 API:
-
-- **MinIO** - Self-hosted object storage
-- **DigitalOcean Spaces** - Managed object storage
-- **Backblaze B2** - Low-cost cloud storage
-- **Wasabi** - Hot cloud storage
-- **Linode Object Storage**
-- **Scaleway Object Storage**
-- And many more...
+Store backups in any S3-compatible storage provider — MinIO, Wasabi, DigitalOcean Spaces, Backblaze B2, and more.
 
 ## Configuration
 
-| Field | Description | Default |
-| :--- | :--- | :--- |
-| **Name** | Friendly name for this destination | Required |
-| **Endpoint** | S3 API endpoint URL | Required |
-| **Region** | Region identifier | `us-east-1` |
-| **Bucket** | Bucket name | Required |
-| **Access Key ID** | Access key | Required |
-| **Secret Access Key** | Secret key | Required |
-| **Force Path Style** | Use path-style URLs | `false` |
-| **Path Prefix** | Folder within bucket | Optional |
+| Field | Description | Default | Required |
+| :--- | :--- | :--- | :--- |
+| **Name** | Friendly name for this destination | — | ✅ |
+| **Endpoint** | S3-compatible API endpoint URL | — | ✅ |
+| **Region** | Storage region | `us-east-1` | ❌ |
+| **Bucket** | Bucket name | — | ✅ |
+| **Access Key ID** | S3 access key | — | ✅ |
+| **Secret Access Key** | S3 secret key | — | ✅ |
+| **Force Path Style** | Use path-style URLs (`endpoint/bucket`) instead of virtual-hosted | `false` | ❌ |
+| **Path Prefix** | Folder path within the bucket | — | ❌ |
 
-### Force Path Style
+::: tip Force Path Style
+Enable this for providers that don't support virtual-hosted-style URLs (e.g. MinIO, Ceph). When enabled, requests go to `endpoint/bucket/key` instead of `bucket.endpoint/key`.
+:::
 
-Two URL styles exist for S3:
-- **Virtual-hosted**: `bucket.endpoint.com/object`
-- **Path-style**: `endpoint.com/bucket/object`
+## Setup Guide
 
-Enable **Force Path Style** for:
-- MinIO
-- Self-hosted S3 implementations
-- Services that don't support virtual-hosted style
+1. Create a bucket in your S3-compatible provider
+2. Generate access credentials (access key + secret key)
+3. Go to **Destinations** → **Add Destination** → **S3-Compatible**
+4. Enter the **Endpoint** URL, Bucket, Access Key ID, and Secret Access Key
+5. Enable **Force Path Style** if required by your provider
+6. (Optional) Set a **Path Prefix** for organizing backups
+7. Click **Test** to verify the connection
 
-## MinIO Setup
+<details>
+<summary>MinIO Setup</summary>
 
-### Deploy MinIO
+1. Access the MinIO Console (default: `http://your-server:9001`)
+2. Create a bucket under **Buckets** → **Create Bucket**
+3. Create an access key under **Access Keys** → **Create Access Key**
+4. Use endpoint `http://your-minio-host:9000` with **Force Path Style** enabled
+
+Common Docker setup:
 
 ```yaml
 services:
   minio:
     image: minio/minio
     command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -57,105 +51,53 @@ services:
       - minio-data:/data
 ```
 
-### Create Bucket
+</details>
 
-1. Open MinIO Console at `http://localhost:9001`
-2. Login with root credentials
-3. Create a bucket (e.g., `backups`)
-4. Create access key for DBackup
+<details>
+<summary>Wasabi Setup</summary>
 
-### Configure DBackup
+1. Create a bucket at [console.wasabisys.com](https://console.wasabisys.com/)
+2. Create an API access key under **Access Keys**
+3. Use the regional endpoint, e.g. `https://s3.eu-central-1.wasabisys.com`
+4. **Force Path Style**: off (Wasabi supports virtual-hosted style)
 
-- **Endpoint**: `http://minio:9000` (if in same Docker network)
-- **Region**: `us-east-1`
-- **Bucket**: `backups`
-- **Force Path Style**: `true` ✅
+</details>
 
-## DigitalOcean Spaces
+<details>
+<summary>DigitalOcean Spaces Setup</summary>
 
-### Create Space
+1. Create a Space in [DigitalOcean Console](https://cloud.digitalocean.com/spaces)
+2. Generate a Spaces access key under **API** → **Spaces Keys**
+3. Use endpoint `https://<region>.digitaloceanspaces.com` (e.g. `https://fra1.digitaloceanspaces.com`)
+4. **Force Path Style**: off
 
-1. Go to DigitalOcean Control Panel
-2. Click "Spaces" → "Create Space"
-3. Choose region and name
+</details>
 
-### Generate API Key
+<details>
+<summary>Backblaze B2 Setup</summary>
 
-1. Go to API → Spaces Keys
-2. Generate new key pair
+1. Create a bucket at [Backblaze Console](https://secure.backblaze.com/b2_buckets.htm)
+2. Create an **Application Key** with read/write access to your bucket
+3. Use endpoint `https://s3.<region>.backblazeb2.com` (e.g. `https://s3.us-west-002.backblazeb2.com`)
+4. **Force Path Style**: off
 
-### Configure DBackup
+</details>
 
-- **Endpoint**: `https://nyc3.digitaloceanspaces.com`
-- **Region**: `nyc3` (match your Space region)
-- **Bucket**: Your Space name
-- **Force Path Style**: `false`
+## How It Works
 
-## Backblaze B2
-
-### Create Bucket
-
-1. Login to Backblaze Console
-2. Go to Buckets → Create a Bucket
-3. Note the bucket name
-
-### Create Application Key
-
-1. Go to App Keys
-2. Create new key with read/write access
-
-### Configure DBackup
-
-- **Endpoint**: `https://s3.us-west-002.backblazeb2.com`
-- **Region**: `us-west-002` (from your bucket details)
-- **Bucket**: Your bucket name
-- **Access Key ID**: Application Key ID
-- **Secret Access Key**: Application Key
-- **Force Path Style**: `false`
-
-## Wasabi
-
-### Configure DBackup
-
-- **Endpoint**: `https://s3.wasabisys.com` (or regional)
-- **Region**: `us-east-1` (or your region)
-- **Bucket**: Your bucket name
-- **Force Path Style**: `false`
-
-Regional endpoints:
-- US East: `s3.us-east-1.wasabisys.com`
-- US West: `s3.us-west-1.wasabisys.com`
-- EU: `s3.eu-central-1.wasabisys.com`
-
-## Common Configuration Patterns
-
-### Self-Hosted (Force Path Style)
-
-```
-Endpoint: http://minio.local:9000
-Force Path Style: true
-```
-
-### Cloud Provider (Virtual-Hosted)
-
-```
-Endpoint: https://s3.region.provider.com
-Force Path Style: false
-```
+- Uses the S3-compatible API via the AWS SDK
+- Multipart upload for large files
+- All credentials are stored AES-256-GCM encrypted in the database
 
 ## Troubleshooting
 
-### Invalid Endpoint
+### Connection Refused
 
 ```
-getaddrinfo ENOTFOUND
+connect ECONNREFUSED
 ```
 
-**Solutions**:
-1. Verify endpoint URL is correct
-2. Include `https://` or `http://` prefix
-3. Check DNS resolution
-4. For Docker, use service name or IP
+**Solution:** Verify the endpoint URL is correct and reachable from the DBackup server. Include the protocol (`http://` or `https://`) and port if non-standard.
 
 ### SignatureDoesNotMatch
 
@@ -163,11 +105,7 @@ getaddrinfo ENOTFOUND
 The request signature we calculated does not match
 ```
 
-**Solutions**:
-1. Verify access key and secret are correct
-2. Check for leading/trailing spaces
-3. Ensure region matches endpoint
-4. Some providers require specific regions
+**Solution:** Usually caused by incorrect Secret Access Key. Re-enter the credentials. Some providers need specific region values.
 
 ### NoSuchBucket
 
@@ -175,71 +113,15 @@ The request signature we calculated does not match
 The specified bucket does not exist
 ```
 
-**Solutions**:
-1. Verify bucket name (exact match)
-2. Create bucket if it doesn't exist
-3. Check bucket is in correct region
-
-### AccessDenied
-
-```
-Access Denied
-```
-
-**Solutions**:
-1. Verify access key has bucket permissions
-2. Check bucket policy
-3. Ensure bucket exists
-4. Try enabling Force Path Style
+**Solution:** Create the bucket first in your provider's console. Bucket names must match exactly (case-sensitive).
 
 ### SSL Certificate Error
 
 ```
-self signed certificate in certificate chain
+self-signed certificate / UNABLE_TO_VERIFY_LEAF_SIGNATURE
 ```
 
-**Solutions**:
-1. Use valid SSL certificate
-2. For development, add CA to trust store
-3. Or use HTTP instead of HTTPS (not recommended)
-
-## Performance Tuning
-
-### Multipart Uploads
-
-Large files are automatically uploaded in parts:
-- Chunk size: 5MB-5GB per part
-- Parallel uploads for speed
-
-### Network Optimization
-
-- Use endpoint in same region/datacenter
-- Enable DBackup compression
-- Consider dedicated network for backups
-
-## Security
-
-### Access Control
-
-Most S3-compatible services support:
-- IAM-style policies
-- Bucket policies
-- ACLs (Access Control Lists)
-
-Create minimal permissions:
-- `s3:PutObject` - Upload backups
-- `s3:GetObject` - Download/restore
-- `s3:DeleteObject` - Retention cleanup
-- `s3:ListBucket` - Browse backups
-
-### Encryption
-
-Layers of encryption:
-1. **Transfer**: TLS (HTTPS endpoint)
-2. **Server-side**: Provider encryption
-3. **Client-side**: DBackup Encryption Profiles
-
-Enable all three for maximum security.
+**Solution:** For self-signed certificates (e.g. local MinIO), set the `NODE_TLS_REJECT_UNAUTHORIZED=0` environment variable. Not recommended for production.
 
 ## Next Steps
 
