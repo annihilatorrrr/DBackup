@@ -6,7 +6,7 @@
 name: Sync to GitLab
 
 on:
-  # Daily at 04:00 UTC
+  # Daily at 04:00 UTC – skipped if no commits in the last 24h
   schedule:
     - cron: "0 4 * * *"
   # Allow manual trigger
@@ -21,7 +21,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check for recent commits (scheduled runs only)
+        if: github.event_name == 'schedule'
+        run: |
+          LAST_COMMIT=$(git log -1 --format=%ct)
+          NOW=$(date +%s)
+          if [ $((NOW - LAST_COMMIT)) -gt 86400 ]; then
+            echo "No commits in the last 24h, skipping sync."
+            echo "SKIP=true" >> $GITHUB_ENV
+          fi
+
       - name: Push mirror to GitLab
+        if: env.SKIP != 'true'
         env:
           GITLAB_USERNAME: ${{ vars.GITLAB_USERNAME }}
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
