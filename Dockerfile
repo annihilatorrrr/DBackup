@@ -1,5 +1,5 @@
-# Base Image: Node.js 20 on Alpine Linux (small & secure)
-FROM node:20-alpine AS base
+# Base Image: Node.js 24 on Alpine Linux (small & secure)
+FROM node:24-alpine AS base
 
 # Install necessary system tools for backups
 # mysql-client -> mysqldump

@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="wiki/public/logo.svg" alt="DBackup Logo" width="120">
+  <img src="https://raw.githubusercontent.com/Skyfay/DBackup/main/wiki/public/logo.svg" alt="DBackup Logo" width="120">
 </div>
 
 <h1 align="center">DBackup</h1>
@@ -45,7 +45,7 @@ Whether you're running a single MySQL database or managing multiple PostgreSQL, 
 > **Note**: This project is primarily developed on GitLab. This GitHub repository is a mirror.
 > **Main Repository**: [https://gitlab.com/Skyfay/dbackup](https://gitlab.com/Skyfay/dbackup)
 
-![Dashboard Preview](wiki/public/overview.png)
+![Dashboard Preview](https://raw.githubusercontent.com/Skyfay/DBackup/main/wiki/public/overview.png)
 
 ## ✨ Features
 
