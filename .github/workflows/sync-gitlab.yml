@@ -30,4 +30,5 @@ jobs:
           # Inject credentials into the URL: https://... → https://user:token@...
           AUTHENTICATED_URL="${GITLAB_REPO_URL/https:\/\//https:\/\/${GITLAB_USERNAME}:${GITLAB_TOKEN}@}"
           git remote add gitlab "$AUTHENTICATED_URL"
-          git push --mirror gitlab
+          git push --force --all gitlab
+          git push --force --tags gitlab
