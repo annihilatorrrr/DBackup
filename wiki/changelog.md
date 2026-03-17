@@ -3,7 +3,7 @@
 All notable changes to DBackup are documented here.
 
 ## v1.0.2 - Cleanup & File Extension Fix
-*Release: In Progress*
+*Released: March 17, 2026*
 
 ### 🐛 Bug Fixes
 
