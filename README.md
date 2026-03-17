@@ -41,10 +41,6 @@ DBackup is a comprehensive, self-hosted backup solution designed to automate and
 
 Whether you're running a single MySQL database or managing multiple PostgreSQL, MongoDB, and SQL Server instances, DBackup offers a unified interface with real-time monitoring, granular access control, and seamless restore capabilities.
 
-
-> **Note**: This project is primarily developed on GitLab. This GitHub repository is a mirror.
-> **Main Repository**: [https://gitlab.com/Skyfay/dbackup](https://gitlab.com/Skyfay/dbackup)
-
 ![Dashboard Preview](https://raw.githubusercontent.com/Skyfay/DBackup/main/wiki/public/overview.png)
 
 ## ✨ Features
@@ -154,7 +150,7 @@ Full documentation is available at **[dbackup.app](https://dbackup.app)**:
 
 ```bash
 # Clone & install
-git clone https://gitlab.com/Skyfay/dbackup.git && cd dbackup
+git clone https://github.com/Skyfay/DBackup.git && cd DBackup
 pnpm install
 
 # Configure environment
@@ -173,7 +169,7 @@ For testing infrastructure and contribution guidelines, see the [Developer Guide
 
 - 💬 **Discord**: Join our community at [https://dc.skyfay.ch](https://dc.skyfay.ch)
 - 📝 **Documentation**: Full guides and API reference at [dbackup.app](https://dbackup.app)
-- 🐛 **Issues**: Report bugs or request features on [GitLab Issues](https://gitlab.com/skyfay/dbackup/-/issues)
+- 🐛 **Issues**: Report bugs or request features on [GitHub Issues](https://github.com/Skyfay/DBackup/issues)
 - 📧 **Support**: General questions and support via [support@dbackup.app](mailto:support@dbackup.app)
 - 🔒 **Security**: Report vulnerabilities responsibly via [security@dbackup.app](mailto:security@dbackup.app) (please do **not** open public issues for security reports)
 
@@ -199,7 +195,7 @@ While DBackup is functionally robust, heavily tested for daily use, and built on
 
 If you are a software developer or cybersecurity professional, your expertise is highly welcome! We invite the open-source community to review the code, submit PRs, and help us elevate DBackup to a fully verified, enterprise-ready standard.
 
-> **Security Disclosure**: If you discover a security vulnerability, please **do not** open a public GitLab or GitHub issue. Instead, report it responsibly via email to **[security@dbackup.app](mailto:security@dbackup.app)**.
+> **Security Disclosure**: If you discover a security vulnerability, please **do not** open a public GitHub issue. Instead, report it responsibly via email to **[security@dbackup.app](mailto:security@dbackup.app)**.
 
 ## 📝 License
 

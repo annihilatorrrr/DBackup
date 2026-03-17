@@ -53,8 +53,8 @@ sudo apt-get install mysql-client postgresql-client mongodb-database-tools
 
 ```bash
 # Clone repository
-git clone https://gitlab.com/Skyfay/dbackup.git
-cd dbackup
+git clone https://github.com/Skyfay/DBackup.git
+cd DBackup
 
 # Install dependencies
 pnpm install

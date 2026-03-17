@@ -1,11 +1,11 @@
 # Update Service
 
-The Update Service checks for new versions of Database Backup Manager by querying the GitLab Container Registry API.
+The Update Service checks for new versions of Database Backup Manager by querying the GitHub Container Registry (GHCR) API.
 
 ## How It Works
 
 1. **Configuration Check**: Reads `general.checkForUpdates` from SystemSettings
-2. **API Query**: Fetches the last 20 tags from GitLab API
+2. **API Query**: Fetches tags from GHCR API
 3. **Channel Detection**: Determines the stability channel of the current installation
 4. **Filtering**: Filters available updates based on current channel
 5. **SemVer Comparison**: Sorts tags and checks for newer versions
@@ -70,8 +70,11 @@ class UpdateService {
 
   private async fetchTags(): Promise<string[]> {
     const response = await fetch(
-      'https://gitlab.com/api/v4/projects/12345/registry/repositories/67890/tags',
-      { next: { revalidate: 3600 } } // Cache for 1 hour
+      'https://api.github.com/repos/Skyfay/DBackup/tags?per_page=100',
+      {
+        headers: { "Accept": "application/vnd.github+json" },
+        next: { revalidate: 3600 }, // Cache for 1 hour
+      }
     );
     return response.json();
   }
@@ -90,7 +93,7 @@ GET /api/system/updates
   "available": true,
   "currentVersion": "0.8.3-beta",
   "latestVersion": "0.9.0-beta",
-  "releaseUrl": "https://gitlab.com/Skyfay/dbackup/-/releases/v0.9.0-beta",
+  "releaseUrl": "https://github.com/Skyfay/DBackup/releases/tag/v0.9.0-beta",
   "releaseNotes": "Microsoft SQL Server support..."
 }
 ```

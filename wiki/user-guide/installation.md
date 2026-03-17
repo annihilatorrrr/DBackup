@@ -246,8 +246,8 @@ For contributing or local development:
 
 ```bash
 # Clone repository
-git clone https://gitlab.com/Skyfay/dbackup.git
-cd dbackup
+git clone https://github.com/Skyfay/DBackup.git
+cd DBackup
 
 # Install dependencies
 pnpm install

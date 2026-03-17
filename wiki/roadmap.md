@@ -149,4 +149,4 @@ For a full list of completed features, see the [Changelog](/changelog).
 
 ## 💡 Feature Requests
 
-Have an idea for a new feature? Open an issue on [GitLab](https://gitlab.com/Skyfay/dbackup/-/issues) or [GitHub](https://github.com/Skyfay/dbackup/issues).
+Have an idea for a new feature? Open an issue on [GitHub](https://github.com/Skyfay/DBackup/issues).

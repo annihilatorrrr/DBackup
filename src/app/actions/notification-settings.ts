@@ -197,7 +197,7 @@ function buildTestData(eventType: string): any {
       data: {
         latestVersion: "99.0.0",
         currentVersion: "1.0.0",
-        releaseUrl: "https://gitlab.com/Skyfay/dbackup/-/releases",
+        releaseUrl: "https://github.com/Skyfay/DBackup/releases",
         timestamp: now,
       },
     },

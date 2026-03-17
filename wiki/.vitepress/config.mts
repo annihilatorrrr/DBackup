@@ -82,8 +82,7 @@ export default defineConfig({
           { text: 'Screenshots', link: '/screenshots' },
           { text: 'Changelog', link: '/changelog' },
           { text: 'Roadmap', link: '/roadmap' },
-          { text: 'GitHub', link: 'https://github.com/Skyfay/dbackup' },
-          { text: 'GitLab', link: 'https://gitlab.com/Skyfay/dbackup' }
+          { text: 'GitHub', link: 'https://github.com/Skyfay/DBackup' }
         ]
       }
     ],
@@ -251,8 +250,7 @@ export default defineConfig({
     },
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/Skyfay/dbackup' },
-      { icon: 'gitlab', link: 'https://gitlab.com/Skyfay/dbackup' },
+      { icon: 'github', link: 'https://github.com/Skyfay/DBackup' },
       { icon: 'discord', link: 'https://dc.skyfay.ch' }
     ],
 
@@ -266,8 +264,8 @@ export default defineConfig({
     },
 
     editLink: {
-      pattern: 'https://gitlab.com/Skyfay/dbackup/-/edit/main/wiki/:path',
-      text: 'Edit this page on GitLab'
+      pattern: 'https://github.com/Skyfay/DBackup/edit/main/wiki/:path',
+      text: 'Edit this page on GitHub'
     }
   },
 

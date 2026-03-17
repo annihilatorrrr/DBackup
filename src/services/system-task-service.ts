@@ -77,7 +77,7 @@ export const DEFAULT_TASK_CONFIG = {
         runOnStartup: true,
         enabled: true,
         label: "Check for Updates",
-        description: "Checks if a new version of the application is available in the GitLab Container Registry."
+        description: "Checks if a new version of the application is available in the GitHub Container Registry."
     },
     [SYSTEM_TASKS.CONFIG_BACKUP]: {
         interval: "0 3 * * *", // 3 AM
@@ -366,7 +366,7 @@ export class SystemTaskService {
                 data: {
                     latestVersion,
                     currentVersion,
-                    releaseUrl: "https://gitlab.com/Skyfay/dbackup/-/releases",
+                    releaseUrl: "https://github.com/Skyfay/DBackup/releases",
                     timestamp: new Date().toISOString(),
                 },
             });

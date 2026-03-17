@@ -171,7 +171,7 @@ export function Sidebar({ permissions = [], isSuperAdmin = false, updateAvailabl
                     <span>v{currentVersion}</span>
                     {updateAvailable && (
                          <button
-                            onClick={() => window.open('https://gitlab.com/Skyfay/dbackup/-/releases', '_blank')}
+                            onClick={() => window.open('https://github.com/Skyfay/DBackup/releases', '_blank')}
                             className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 cursor-pointer bg-transparent border-0 p-0"
                         >
                             <ArrowUpCircle className="h-3 w-3" />
@@ -235,7 +235,7 @@ export function Sidebar({ permissions = [], isSuperAdmin = false, updateAvailabl
                             <DropdownMenuSeparator />
                              <DropdownMenuGroup>
                                 {updateAvailable && isSuperAdmin && (
-                                    <DropdownMenuItem className="text-blue-500 focus:text-blue-500" onClick={() => window.open('https://gitlab.com/Skyfay/dbackup/-/releases', '_blank')}>
+                                    <DropdownMenuItem className="text-blue-500 focus:text-blue-500" onClick={() => window.open('https://github.com/Skyfay/DBackup/releases', '_blank')}>
                                         <div className="flex items-center w-full">
                                             <ArrowUpCircle className="mr-2 h-4 w-4" />
                                             <span>Update available {latestVersion ? `(${latestVersion})` : ''}</span>

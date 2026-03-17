@@ -168,7 +168,7 @@ The plugin-based adapter architecture makes it easy to add new databases, storag
 - 💬 **Discord**: Join our community at [https://dc.skyfay.ch](https://dc.skyfay.ch)
 - 📝 **Documentation**: Full guides and API reference in this wiki
 - � **API Reference**: Interactive API docs at [api.dbackup.app](https://api.dbackup.app) or in-app at `/docs/api`
-- �🐛 **Issues**: Report bugs or request features on [GitLab Issues](https://gitlab.com/skyfay/dbackup/-/issues)
+- 🐛 **Issues**: Report bugs or request features on [GitHub Issues](https://github.com/Skyfay/DBackup/issues)
 - 📧 **Support**: General questions and support via [support@dbackup.app](mailto:support@dbackup.app)
 - 🔒 **Security**: Report vulnerabilities responsibly via [security@dbackup.app](mailto:security@dbackup.app) (please do **not** open public issues for security reports)
 
@@ -194,4 +194,4 @@ While DBackup is functionally robust, heavily tested for daily use, and built on
 
 If you are a software developer or cybersecurity professional, your expertise is highly welcome! We invite the open-source community to review the code, submit PRs, and help us elevate DBackup to a fully verified, enterprise-ready standard.
 
-> **Security Disclosure**: If you discover a security vulnerability, please **do not** open a public GitLab or GitHub issue. Instead, report it responsibly via email to **[security@dbackup.app](mailto:security@dbackup.app)**.
+> **Security Disclosure**: If you discover a security vulnerability, please **do not** open a public GitHub issue. Instead, report it responsibly via email to **[security@dbackup.app](mailto:security@dbackup.app)**.

@@ -12,8 +12,8 @@ interface UpdateInfo {
   error?: string;
 }
 
-const GITLAB_PROJECT_ID = "66715081";
-const REGISTRY_ID = "9667280";
+const GITHUB_OWNER = "Skyfay";
+const GITHUB_REPO = "DBackup";
 
 export const updateService = {
   async checkForUpdates(): Promise<UpdateInfo> {
@@ -35,16 +35,20 @@ export const updateService = {
         };
       }
 
-      // 2. Fetch tags from GitLab Registry API
-      // We use the public API since it's a public repository
+      // 2. Fetch tags from GitHub API
+      // Public repos don't require authentication
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5000);
 
       let response: Response;
       try {
         response = await fetch(
-          `https://gitlab.com/api/v4/projects/${GITLAB_PROJECT_ID}/registry/repositories/${REGISTRY_ID}/tags?per_page=100&order_by=name&sort=desc`,
-          { next: { revalidate: 3600 }, signal: controller.signal }
+          `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/tags?per_page=100`,
+          {
+            headers: { "Accept": "application/vnd.github+json" },
+            next: { revalidate: 3600 },
+            signal: controller.signal,
+          }
         );
       } finally {
         clearTimeout(timeout);
@@ -54,15 +58,19 @@ export const updateService = {
         throw new Error(`Failed to fetch tags: ${response.statusText}`);
       }
 
-      const tags: { name: string }[] = await response.json();
+      const data: { name: string }[] = await response.json();
 
-      if (!tags || tags.length === 0) {
+      if (!data || data.length === 0) {
         return {
             updateAvailable: false,
             latestVersion: currentVersion,
             currentVersion,
         };
       }
+
+      const tags = data
+        .filter(t => /^v?\d+\.\d+\.\d+/.test(t.name))
+        .map(t => ({ name: t.name }));
 
 // 3. Find latest relevant version
 
