@@ -16,6 +16,12 @@ All notable changes to DBackup are documented here.
 - **codebase**: Removed unused `ServiceResult` pattern file and its advisory lint test
 - **ui**: API Trigger dialog "Overview" tab now shows the correct `success` field in the trigger and poll JSON examples
 
+### 🛠 CI/CD
+
+- **pipeline**: Migrated CI/CD from GitLab CI to GitHub Actions with parallel lint, type-check, and unit test jobs
+- **pipeline**: Multi-arch Docker builds (amd64/arm64) now push to GHCR and Docker Hub with identical tag strategy
+- **GitLab**: Added GitHub Action to mirror all branches and tags to GitLab for commit activity sync
+
 ### 📝 Documentation
 
 - **wiki**: Complete overhaul of all adapter guides — unified structure, 4-column config tables verified against code, and collapsible provider examples

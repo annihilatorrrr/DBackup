@@ -1,0 +1,28 @@
+# ─── Sync to GitLab ──────────────────────────────────────────
+# Mirrors all commits and tags to GitLab so activity is
+# reflected in the GitLab profile.
+# Uses: https://github.com/marketplace/actions/sync-to-gitlab
+
+name: Sync to GitLab
+
+on:
+  # Daily at 04:00 UTC
+  schedule:
+    - cron: "0 4 * * *"
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  sync:
+    name: Mirror to GitLab
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: wangchucheng/git-repo-sync@v0.1.0
+        with:
+          target-url: ${{ vars.GITLAB_REPO_URL }}
+          target-username: ${{ vars.GITLAB_USERNAME }}
+          target-token: ${{ secrets.GITLAB_TOKEN }}
