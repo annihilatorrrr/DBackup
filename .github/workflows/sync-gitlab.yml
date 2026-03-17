@@ -21,8 +21,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: wangchucheng/git-repo-sync@v0.1.0
-        with:
-          target-url: ${{ vars.GITLAB_REPO_URL }}
-          target-username: ${{ vars.GITLAB_USERNAME }}
-          target-token: ${{ secrets.GITLAB_TOKEN }}
+      - name: Push mirror to GitLab
+        env:
+          GITLAB_USERNAME: ${{ vars.GITLAB_USERNAME }}
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+          GITLAB_REPO_URL: ${{ vars.GITLAB_REPO_URL }}
+        run: |
+          # Inject credentials into the URL: https://... → https://user:token@...
+          AUTHENTICATED_URL="${GITLAB_REPO_URL/https:\/\//https:\/\/${GITLAB_USERNAME}:${GITLAB_TOKEN}@}"
+          git remote add gitlab "$AUTHENTICATED_URL"
+          git push --mirror gitlab
