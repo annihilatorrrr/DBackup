@@ -42,8 +42,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: docker/setup-qemu-action@v3
-
       - uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR
@@ -67,8 +65,8 @@ jobs:
           platforms: ${{ matrix.platform }}
           push: true
           tags: ${{ env.GHCR_IMAGE }}:${{ github.ref_name }}-${{ matrix.suffix }}
-          cache-from: type=registry,ref=${{ env.GHCR_IMAGE }}:buildcache-${{ matrix.suffix }}
-          cache-to: type=registry,ref=${{ env.GHCR_IMAGE }}:buildcache-${{ matrix.suffix }},mode=max
+          cache-from: type=gha,scope=build-${{ matrix.suffix }}
+          cache-to: type=gha,scope=build-${{ matrix.suffix }},mode=max
 
   # ── Create multi-arch manifests ─────────────────────────────
   manifest:

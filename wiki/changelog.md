@@ -5,6 +5,17 @@ All notable changes to DBackup are documented here.
 ## v1.0.3 - **Title need to be changed later**
 *Release: In Progress*
 
+### 🛠 CI/CD
+
+- **pipeline**: GitHub Releases are now auto-generated from `wiki/changelog.md` on every version tag push — no manual copy-paste required
+- **pipeline**: Removed QEMU from Docker builds — amd64 and arm64 now build natively on their respective GitHub runners
+- **pipeline**: Switched Docker layer cache from GHCR registry to GitHub Actions cache for faster cache hits
+
+### 🎨 Improvements
+
+- **Dockerfile**: corepack activated in the base stage so all build stages inherit pnpm without reinstalling
+- **Dockerfile**: Build now uses `pnpm run build` and `pnpm prisma generate` consistently instead of `npm`/`npx`
+
 ### 🐳 Docker
 
 - **Image**: `skyfay/dbackup:v1.0.3`

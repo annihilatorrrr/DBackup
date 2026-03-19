@@ -31,6 +31,9 @@ RUN echo 'http://dl-cdn.alpinelinux.org/alpine/v3.17/main' >> /etc/apk/repositor
     zip \
     su-exec
 
+# Enable corepack for pnpm support
+RUN corepack enable && corepack prepare pnpm@10.29.3 --activate
+
 # Create symlinks for strategic PostgreSQL binaries
 # Alpine provides postgresql14-client (v3.17), postgresql16-client (v3.23)
 # postgresql-client provides latest (18)
@@ -49,8 +52,6 @@ RUN mkdir -p /opt/pg14/bin /opt/pg16/bin /opt/pg18/bin && \
 FROM base AS deps
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
-# Pin pnpm version for consistent builds and caching
-RUN corepack enable && corepack prepare pnpm@10.29.3 --activate
 RUN pnpm install --frozen-lockfile
 
 # 2. Builder Phase
@@ -64,8 +65,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Generate Prisma Client and build Next.js app
-RUN npx prisma generate
-RUN npm run build
+RUN pnpm prisma generate
+RUN pnpm run build
 
 # 3. Runner Phase (The actual image)
 FROM base AS runner
