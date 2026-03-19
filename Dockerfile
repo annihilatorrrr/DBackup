@@ -31,10 +31,11 @@ RUN echo 'http://dl-cdn.alpinelinux.org/alpine/v3.17/main' >> /etc/apk/repositor
     zip \
     su-exec
 
-# Create symlinks for strategic PostgreSQL binaries
+# Enable corepack for pnpm support and create PostgreSQL symlinks
 # Alpine provides postgresql14-client (v3.17), postgresql16-client (v3.23)
 # postgresql-client provides latest (18)
-RUN mkdir -p /opt/pg14/bin /opt/pg16/bin /opt/pg18/bin && \
+RUN corepack enable && corepack prepare pnpm@10.29.3 --activate && \
+    mkdir -p /opt/pg14/bin /opt/pg16/bin /opt/pg18/bin && \
     ln -sf /usr/libexec/postgresql14/pg_dump /opt/pg14/bin/pg_dump && \
     ln -sf /usr/libexec/postgresql14/pg_restore /opt/pg14/bin/pg_restore && \
     ln -sf /usr/libexec/postgresql14/psql /opt/pg14/bin/psql && \
@@ -49,9 +50,8 @@ RUN mkdir -p /opt/pg14/bin /opt/pg16/bin /opt/pg18/bin && \
 FROM base AS deps
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
-# Pin pnpm version for consistent builds and caching
-RUN corepack enable && corepack prepare pnpm@10.29.3 --activate
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
 
 # 2. Builder Phase
 FROM base AS builder
@@ -64,8 +64,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Generate Prisma Client and build Next.js app
-RUN npx prisma generate
-RUN npm run build
+RUN pnpm prisma generate
+RUN pnpm run build
 
 # 3. Runner Phase (The actual image)
 FROM base AS runner
@@ -82,21 +82,16 @@ ENV LOG_LEVEL="info"
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy built files
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-# Copy Prisma Schema for runtime access (if needed) or migrations
-COPY --from=builder /app/prisma ./prisma
+# Copy built files (--link for better layer caching)
+COPY --from=builder --link /app/public ./public
+COPY --from=builder --link --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --link --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --link /app/prisma ./prisma
 
-# Permissions for backup folder (optional, if stored locally)
-# Also prepare storage folder for avatars
-# Explicitly create db folder for SQLite persistence
+# Create runtime dirs + install Prisma CLI for migrations
 RUN mkdir -p /backups /app/storage/avatars /app/db && \
-    chown -R nextjs:nodejs /backups /app/storage /app/db
-
-# Install Prisma globally to run migrations at startup
-RUN npm install -g prisma@5
+    chown -R nextjs:nodejs /backups /app/storage /app/db && \
+    pnpm add -g prisma@5
 
 # Health check: verify app + database are reachable
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
