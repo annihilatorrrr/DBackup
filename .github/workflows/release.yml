@@ -174,3 +174,39 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: skyfay/dbackup
           readme-filepath: README.md
+
+  # ── Create GitHub Release ───────────────────────────────────
+  github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: manifest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Extract Release Notes from Changelog
+        run: |
+          TAG="${{ github.ref_name }}"
+          echo "Extracting release notes for $TAG..."
+
+          awk -v tag="^## $TAG" '
+            $0 ~ tag {flag=1; next}
+            /^## v[0-9]/ {if(flag) exit}
+            flag {print}
+          ' wiki/changelog.md > release_notes.md
+
+          if [ ! -s release_notes.md ]; then
+            echo "No release notes found for $TAG in wiki/changelog.md"
+            exit 1
+          fi
+
+          echo "Found release notes:"
+          cat release_notes.md
+
+      - name: Publish Release to GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release_notes.md
+          prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-dev') }}
