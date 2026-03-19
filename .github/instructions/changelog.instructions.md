@@ -17,20 +17,20 @@ Every changelog entry uses a **bold component prefix** followed by a description
 
 ## Section Headings
 
-Entries are grouped under emoji-prefixed `###` headings within each version. Only include sections that have entries.
+Entries are grouped under emoji-prefixed `###` headings within each version. Only include sections that have entries. Sections must appear in **exactly this order** — never rearrange:
 
-| Section | Use for |
-|---|---|
-| `### ✨ Features` | New features, new adapters, new capabilities |
-| `### 🐛 Bug Fixes` | Bug fixes |
-| `### 🔒 Security` | Security-related changes |
-| `### 🎨 Improvements` | Performance, UX, quality improvements |
-| `### 🔄 Changed` | Changed behavior (non-breaking) |
-| `### 🗑️ Removed` | Removed features, deprecated code |
-| `### 📝 Documentation` | Documentation changes |
-| `### 🧪 Tests` | Tests added or changed |
-| `### 🔧 CI/CD` | CI/CD pipeline changes |
-| `### 🐳 Docker` | Docker image info (always last, see below) |
+| Order | Section | Use for |
+|---|---|---|
+| 1 | `### ✨ Features` | New features, new adapters, new capabilities |
+| 2 | `### 🐛 Bug Fixes` | Bug fixes |
+| 3 | `### 🔒 Security` | Security-related changes |
+| 4 | `### 🎨 Improvements` | Performance, UX, quality improvements |
+| 5 | `### 🔄 Changed` | Changed behavior (non-breaking) |
+| 6 | `### 🗑️ Removed` | Removed features, deprecated code |
+| 7 | `### 📝 Documentation` | Documentation changes |
+| 8 | `### 🧪 Tests` | Tests added or changed |
+| 9 | `### 🔧 CI/CD` | CI/CD pipeline changes |
+| 10 | `### 🐳 Docker` | Docker image info (always last) |
 
 Do **not** invent new sections. Use exactly these headings.
 

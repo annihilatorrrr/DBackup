@@ -5,12 +5,6 @@ All notable changes to DBackup are documented here.
 ## v1.0.3 - Docker Optimization & MSSQL Improvements
 *Released: March 19, 2026*
 
-### 🛠 CI/CD
-
-- **pipeline**: GitHub Releases are now auto-generated from `wiki/changelog.md` on every version tag push — no manual copy-paste required
-- **pipeline**: Removed QEMU from Docker builds — amd64 and arm64 now build natively on their respective GitHub runners
-- **pipeline**: Switched Docker layer cache from GHCR registry to GitHub Actions cache for faster cache hits
-
 ### 🐛 Bug Fixes
 
 - **MSSQL**: Backup and restore errors now show the actual SQL Server cause instead of only "terminating abnormally" by extracting preceding error messages
@@ -23,6 +17,13 @@ All notable changes to DBackup are documented here.
 - **Dockerfile**: Build now uses `pnpm run build` and `pnpm prisma generate` consistently instead of `npm`/`npx`
 - **Dockerfile**: Combined base-stage RUN layers (corepack + PG symlinks), added `COPY --link` for layer-independent caching, merged runner RUN layers, and added pnpm store mount-cache for faster dependency installs
 - **Dockerfile**: `.dockerignore` extended to exclude `wiki/`, `api-docs/`, `README.md`, and `LICENSE` to reduce build context size
+
+### 🛠 CI/CD
+
+- **pipeline**: GitHub Releases are now auto-generated from `wiki/changelog.md` on every version tag push — no manual copy-paste required
+- **pipeline**: Removed QEMU from Docker builds — amd64 and arm64 now build natively on their respective GitHub runners
+- **pipeline**: Switched Docker layer cache from GHCR registry to GitHub Actions cache for faster cache hits
+- **Dockerfile**: Fixed ARM64 build failure (`invalid user index: -1`) by using numeric UID/GID (`1001:1001`) instead of user/group names in `COPY --link --chown` directives
 
 ### 📝 Documentation
 

@@ -84,8 +84,8 @@ RUN addgroup --system --gid 1001 nodejs && \
 
 # Copy built files (--link for better layer caching)
 COPY --from=builder --link /app/public ./public
-COPY --from=builder --link --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --link --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --link --chown=1001:1001 /app/.next/standalone ./
+COPY --from=builder --link --chown=1001:1001 /app/.next/static ./.next/static
 COPY --from=builder --link /app/prisma ./prisma
 
 # Create runtime dirs + install Prisma CLI for migrations
