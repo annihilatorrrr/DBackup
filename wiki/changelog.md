@@ -18,8 +18,11 @@ All notable changes to DBackup are documented here.
 
 ### 🎨 Improvements
 
+- **Dockerfile**: Global Prisma install switched from `npm` to `pnpm` for consistency and smaller image size
 - **Dockerfile**: corepack activated in the base stage so all build stages inherit pnpm without reinstalling
 - **Dockerfile**: Build now uses `pnpm run build` and `pnpm prisma generate` consistently instead of `npm`/`npx`
+- **Dockerfile**: Combined base-stage RUN layers (corepack + PG symlinks), added `COPY --link` for layer-independent caching, merged runner RUN layers, and added pnpm store mount-cache for faster dependency installs
+- **Dockerfile**: `.dockerignore` extended to exclude `wiki/`, `api-docs/`, `README.md`, and `LICENSE` to reduce build context size
 
 ### 📝 Documentation
 
