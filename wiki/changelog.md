@@ -2,8 +2,8 @@
 
 All notable changes to DBackup are documented here.
 
-## v1.0.3 - **Title need to be changed later**
-*Release: In Progress*
+## v1.0.3 - **Docker Optimization & MSSQL Improvements**
+*Released: March 19, 2026*
 
 ### 🛠 CI/CD
 
