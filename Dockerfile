@@ -73,6 +73,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
 
 # Default environment variables (can be overridden at runtime)
 ENV DATABASE_URL="file:/app/db/dbackup.db"
