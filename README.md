@@ -21,12 +21,13 @@
   <br>
   <img src="https://img.shields.io/badge/license-GPL--3.0-blue.svg" alt="License">
   <img src="https://img.shields.io/docker/pulls/skyfay/dbackup?logo=docker&logoColor=white" alt="Docker Pulls">
-  <img src="https://img.shields.io/badge/docker-multi--arch-2496ED?logo=docker&logoColor=white" alt="Docker">
   <img src="https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-lightgrey" alt="Platform">
   <img src="https://img.shields.io/badge/self--hosted-yes-brightgreen" alt="Self-hosted">
   <img src="https://img.shields.io/badge/open_source-%E2%9D%A4%EF%B8%8F-red" alt="Open Source">
   <br>
   <a href="https://github.com/Skyfay/DBackup/actions/workflows/release.yml"><img src="https://github.com/Skyfay/DBackup/actions/workflows/release.yml/badge.svg" alt="Release"></a>
+  <a href="https://github.com/Skyfay/DBackup/commits"><img src="https://img.shields.io/github/last-commit/Skyfay/DBackup" alt="Last Commit"></a>
+  <a href="https://discord.com/invite/YvgPyky"><img src="https://img.shields.io/discord/580801656707350529?label=Discord&color=%235865f2" alt="Discord"></a>
 </p>
 
 <p align="center">
