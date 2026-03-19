@@ -191,9 +191,13 @@ jobs:
           TAG="${{ github.ref_name }}"
           echo "Extracting release notes for $TAG..."
 
+          # Extract everything from the version header (inclusive) to the next version
+          # Skip the "*Released: ..." date line (GitHub shows this already)
+          # Strip "v1.0.2 - " prefix from the title, keeping just the description
           awk -v tag="^## $TAG" '
-            $0 ~ tag {flag=1; next}
+            $0 ~ tag {flag=1; sub(/^## v[^ ]+ - /, "## "); print; next}
             /^## v[0-9]/ {if(flag) exit}
+            flag && /^\*Released:/ {next}
             flag {print}
           ' wiki/changelog.md > release_notes.md
 
