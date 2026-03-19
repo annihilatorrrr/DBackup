@@ -148,11 +148,11 @@ export async function getDatabasesWithStats(config: MSSQLConfig): Promise<Databa
         const connConfig = buildConnectionConfig(config);
         pool = await sql.connect(connConfig);
 
-        const result = await pool.request().query(`
+        // Get database names and sizes from master catalog views
+        const sizeResult = await pool.request().query(`
             SELECT
                 d.name,
-                SUM(mf.size) * 8 * 1024 AS size_bytes,
-                (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES t WHERE t.TABLE_CATALOG = d.name) AS table_count
+                SUM(mf.size) * 8 * 1024 AS size_bytes
             FROM sys.databases d
             LEFT JOIN sys.master_files mf ON d.database_id = mf.database_id
             WHERE d.database_id > 4
@@ -161,11 +161,31 @@ export async function getDatabasesWithStats(config: MSSQLConfig): Promise<Databa
             ORDER BY d.name
         `);
 
-        return result.recordset.map((row: any) => ({
-            name: row.name,
-            sizeInBytes: row.size_bytes ?? 0,
-            tableCount: row.table_count ?? 0,
-        }));
+        // Get table counts per database via cross-database sys.tables queries.
+        // INFORMATION_SCHEMA.TABLES only returns tables for the current DB context,
+        // so we query each database individually.
+        const databases: DatabaseInfo[] = [];
+
+        for (const row of sizeResult.recordset) {
+            let tableCount = 0;
+            try {
+                const safeName = row.name.replace(/\]/g, "]]");
+                const tableResult = await pool.request().query(
+                    `SELECT COUNT(*) AS cnt FROM [${safeName}].sys.tables`
+                );
+                tableCount = tableResult.recordset[0]?.cnt ?? 0;
+            } catch {
+                // Database may be inaccessible (permission, offline) — default to 0
+            }
+
+            databases.push({
+                name: row.name,
+                sizeInBytes: row.size_bytes ?? 0,
+                tableCount,
+            });
+        }
+
+        return databases;
     } catch (error: unknown) {
         log.error("Failed to get databases with stats", {}, wrapError(error));
         return [];
@@ -253,6 +273,24 @@ export async function executeQueryWithMessages(
             .filter((m) => m.class > 0)
             .map((m) => m.message)
             .filter(Boolean);
+
+        // Extract preceding errors from mssql RequestError.
+        // SQL Server sends the actual cause (e.g. "Cannot open backup device..."
+        // or "Operating system error 5") as a preceding error BEFORE the generic
+        // "BACKUP DATABASE is terminating abnormally" message.
+        if (error && typeof error === "object" && "precedingErrors" in error) {
+            const precedingErrors = (error as { precedingErrors?: unknown[] }).precedingErrors;
+            if (Array.isArray(precedingErrors)) {
+                for (const pe of precedingErrors) {
+                    const msg = pe && typeof pe === "object" && "message" in pe
+                        ? (pe as { message: string }).message
+                        : undefined;
+                    if (msg) {
+                        serverMessages.unshift(msg);
+                    }
+                }
+            }
+        }
 
         if (serverMessages.length > 0 && error instanceof Error) {
             // Prepend detail messages so the actual cause is visible

@@ -11,6 +11,11 @@ All notable changes to DBackup are documented here.
 - **pipeline**: Removed QEMU from Docker builds — amd64 and arm64 now build natively on their respective GitHub runners
 - **pipeline**: Switched Docker layer cache from GHCR registry to GitHub Actions cache for faster cache hits
 
+### 🐛 Bug Fixes
+
+- **MSSQL**: Backup and restore errors now show the actual SQL Server cause instead of only "terminating abnormally" by extracting preceding error messages
+- **MSSQL**: Database Explorer now correctly shows table counts by querying each database individually instead of using a broken cross-database `INFORMATION_SCHEMA` subquery
+
 ### 🎨 Improvements
 
 - **Dockerfile**: corepack activated in the base stage so all build stages inherit pnpm without reinstalling
