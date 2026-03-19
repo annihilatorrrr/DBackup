@@ -16,6 +16,10 @@ All notable changes to DBackup are documented here.
 - **Dockerfile**: corepack activated in the base stage so all build stages inherit pnpm without reinstalling
 - **Dockerfile**: Build now uses `pnpm run build` and `pnpm prisma generate` consistently instead of `npm`/`npx`
 
+### 📝 Documentation
+
+- **wiki**: New user guide article — [Encryption Key](https://dbackup.app/user-guide/security/encryption-key): explains what `ENCRYPTION_KEY` protects, what happens when the key is lost or mismatched, and recovery options
+
 ### 🐳 Docker
 
 - **Image**: `skyfay/dbackup:v1.0.3`
