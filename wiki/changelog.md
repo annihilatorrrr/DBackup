@@ -2,8 +2,8 @@
 
 All notable changes to DBackup are documented here.
 
-## v1.0.5 -
-*Release: In Progress*
+## v1.0.5 - Docker Permissions & Environment Variables
+*Released: March 20, 2026*
 
 ### ✨ Features
 
