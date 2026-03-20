@@ -22,6 +22,8 @@ Complete reference for all environment variables in DBackup.
 | `TZ` | Server timezone (for logs and cron scheduling) | `UTC` |
 | `TMPDIR` | Temporary directory for backup processing | `/tmp` |
 | `LOG_LEVEL` | Logging verbosity level | `info` |
+| `PUID` | User ID the container runs as (for volume permissions) | `1001` |
+| `PGID` | Group ID the container runs as (for volume permissions) | `1001` |
 
 ### Notes
 
@@ -34,6 +36,7 @@ Complete reference for all environment variables in DBackup.
 - **DATABASE_URL** has a sensible default and typically doesn't need to be set
 - **TMPDIR** is useful for mounting larger storage for temporary backup files (e.g., NFS)
 - **TZ** only affects server-side logs. User-facing dates use the timezone from user profile settings
+- **PUID/PGID** control which UID/GID the application process runs as. Set these to match your host user (e.g., `PUID=1000 PGID=1000`) to avoid volume permission issues. The entrypoint adjusts the internal user at startup
 - **LOG_LEVEL** controls logging verbosity:
   - `debug` - All logs including detailed debugging information
   - `info` - Normal operation logs (default, recommended for production)

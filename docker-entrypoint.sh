@@ -1,0 +1,47 @@
+#!/bin/sh
+set -e
+
+# ─── Configurable UID/GID ────────────────────────────────────
+# Defaults match the build-time user (1001:1001).
+# Override with PUID/PGID env vars to match host user permissions.
+PUID=${PUID:-1001}
+PGID=${PGID:-1001}
+
+# Validate PUID/PGID are numeric and non-root
+case "$PUID" in
+  ''|*[!0-9]*) echo "Error: PUID must be a positive integer, got '$PUID'"; exit 1 ;;
+esac
+case "$PGID" in
+  ''|*[!0-9]*) echo "Error: PGID must be a positive integer, got '$PGID'"; exit 1 ;;
+esac
+if [ "$PUID" = "0" ] || [ "$PGID" = "0" ]; then
+  echo "Error: Running as root (PUID/PGID=0) is not supported"; exit 1
+fi
+
+# Adjust group ID in /etc/group if changed
+if [ "$PGID" != "1001" ]; then
+  sed -i "s/^nodejs:x:1001:/nodejs:x:${PGID}:/" /etc/group
+fi
+
+# Adjust user ID and/or group reference in /etc/passwd if changed
+if [ "$PUID" != "1001" ] || [ "$PGID" != "1001" ]; then
+  sed -i "s/^nextjs:x:1001:1001:/nextjs:x:${PUID}:${PGID}:/" /etc/passwd
+fi
+
+# ─── Fix internal directory permissions ───────────────────────
+# Only fix directories that are always part of the app.
+# User-configured mount points (e.g. /backups) are managed by
+# the host via PUID/PGID matching the host user.
+mkdir -p /app/db /app/storage
+
+chown -R "$PUID:$PGID" /app/db /app/storage
+
+# Only chown /pnpm if ownership doesn't match (avoids slow recursive walk on every start)
+if [ "$(stat -c '%u' /pnpm 2>/dev/null)" != "$PUID" ]; then
+  chown -R "$PUID:$PGID" /pnpm
+fi
+
+# ─── Start application ───────────────────────────────────────
+# Run database migrations first, then exec node as PID 1 for proper signal handling
+su-exec "$PUID:$PGID" prisma migrate deploy
+exec su-exec "$PUID:$PGID" node server.js
