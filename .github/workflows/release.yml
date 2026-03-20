@@ -88,8 +88,8 @@ jobs:
         run: |
           docker run -d --name smoke \
             -e DATABASE_URL="file:/app/db/test.db" \
-            -e BETTER_AUTH_SECRET="smoke-test-secret" \
-            -e ENCRYPTION_KEY="49a592e35e084a50a7a81fbe6a1a7762" \
+            -e BETTER_AUTH_SECRET="$(openssl rand -base64 32)" \
+            -e ENCRYPTION_KEY="$(openssl rand -hex 32)" \
             -p 3000:3000 \
             "${{ env.GHCR_IMAGE }}:${{ github.ref_name }}-amd64"
 
