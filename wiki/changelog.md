@@ -2,6 +2,23 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.0.4 - Hotfix Release
+*Released: March 20, 2026*
+
+### 🐛 Bug Fixes
+
+- **Dockerfile**: Fixed container crash on startup (`Can't write to @prisma/engines`) caused by globally installed Prisma being owned by root instead of the runtime user
+
+### 🔧 CI/CD
+
+- **pipeline**: Added build verification job to release workflow — starts the built image and polls `/api/health` before publishing, catching runtime permission and startup failures
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.0.4`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
 ## v1.0.3 - Docker Optimization & MSSQL Improvements
 *Released: March 19, 2026*
 

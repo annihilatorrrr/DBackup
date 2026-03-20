@@ -68,11 +68,55 @@ jobs:
           cache-from: type=gha,scope=build-${{ matrix.suffix }}
           cache-to: type=gha,scope=build-${{ matrix.suffix }},mode=max
 
+  # ── Build verification ──────────────────────────────────────
+  # Starts the built amd64 image and verifies the app boots
+  # successfully as the non-root runtime user. Catches permission
+  # issues, missing binaries, and broken migrations before publish.
+  build-verification:
+    name: Build Test
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Start container
+        run: |
+          docker run -d --name smoke \
+            -e DATABASE_URL="file:/app/db/test.db" \
+            -e BETTER_AUTH_SECRET="smoke-test-secret" \
+            -e ENCRYPTION_KEY="49a592e35e084a50a7a81fbe6a1a7762" \
+            -p 3000:3000 \
+            "${{ env.GHCR_IMAGE }}:${{ github.ref_name }}-amd64"
+
+      - name: Wait for healthy
+        run: |
+          echo "Waiting for container to become healthy..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/api/health > /dev/null 2>&1; then
+              echo "Health check passed after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Container failed to start within 30s"
+          echo "--- Container logs ---"
+          docker logs smoke
+          exit 1
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f smoke || true
+
   # ── Create multi-arch manifests ─────────────────────────────
   manifest:
     name: Create Manifests
     runs-on: ubuntu-latest
-    needs: build
+    needs: build-verification
     environment:
       name: ${{ contains(github.ref_name, '-dev') && 'dev' || contains(github.ref_name, '-beta') && 'beta' || 'production' }}
       url: https://hub.docker.com/r/skyfay/dbackup/tags
