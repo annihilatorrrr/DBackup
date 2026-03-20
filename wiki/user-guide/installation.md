@@ -79,25 +79,6 @@ docker-compose up -d
 
 Access the application at [http://localhost:3000](http://localhost:3000).
 
-## Docker Run
-
-For quick testing, you can use `docker run`:
-
-```bash
-docker run -d \
-  --name dbackup \
-  --restart always \
-  -p 3000:3000 \
-  -e DATABASE_URL="file:/app/db/prod.db" \
-  -e ENCRYPTION_KEY="$(openssl rand -hex 32)" \
-  -e BETTER_AUTH_SECRET="$(openssl rand -base64 32)" \
-  -e BETTER_AUTH_URL="http://localhost:3000" \
-  -v "$(pwd)/backups:/backups" \
-  -v "$(pwd)/db:/app/db" \
-  -v "$(pwd)/storage:/app/storage" \
-  skyfay/dbackup:latest
-```
-
 ## Environment Variables
 
 | Variable | Required | Description |
