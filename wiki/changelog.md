@@ -3,7 +3,7 @@
 All notable changes to DBackup are documented here.
 
 ## v1.0.4 - Hotfix Release
-*Release: In Progress*
+*Released: March 20, 2026*
 
 ### 🐛 Bug Fixes
 
