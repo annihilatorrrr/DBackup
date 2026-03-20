@@ -111,6 +111,8 @@ docker run -d \
 | `TZ` | ❌ | Server timezone for logs. Default: `UTC` |
 | `TMPDIR` | ❌ | Temp directory for large backups. Default: `/tmp` |
 | `LOG_LEVEL` | ❌ | Logging verbosity: `debug`, `info`, `warn`, `error`. Default: `info` |
+| `PUID` | ❌ | User ID the container runs as. Default: `1001` |
+| `PGID` | ❌ | Group ID the container runs as. Default: `1001` |
 
 → **[Full Environment Reference](/developer-guide/reference/environment)** for advanced configuration.
 
@@ -309,7 +311,14 @@ docker-compose up -d
 
 ### Permission Issues
 
-Ensure volume directories have correct permissions:
+If volume files are owned by a different user, set `PUID`/`PGID` to match your host user:
 ```bash
-sudo chown -R 1000:1000 ./db ./backups ./storage
+# Find your host user's UID/GID
+id
+# uid=1000(user) gid=1000(user)
+
+# Set in docker-compose.yml
+environment:
+  - PUID=1000
+  - PGID=1000
 ```

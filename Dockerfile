@@ -80,6 +80,8 @@ ENV PATH="$PNPM_HOME:$PATH"
 ENV DATABASE_URL="file:/app/db/dbackup.db"
 ENV TZ="UTC"
 ENV LOG_LEVEL="info"
+ENV PUID=1001
+ENV PGID=1001
 
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
@@ -93,21 +95,22 @@ COPY --from=builder --link /app/prisma ./prisma
 # Create runtime dirs + install Prisma CLI for migrations
 # Note: pnpm add -g runs as root, so we must chown /pnpm to the runtime user
 # to avoid "Can't write to @prisma/engines" errors at container startup
-RUN mkdir -p /backups /app/storage/avatars /app/db && \
-    chown -R nextjs:nodejs /backups /app/storage /app/db && \
+RUN mkdir -p /app/storage/avatars /app/db && \
+    chown -R 1001:1001 /app/storage /app/db && \
     pnpm add -g prisma@5 && \
     chown -R 1001:1001 /pnpm
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Health check: verify app + database are reachable
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:3000/api/health || exit 1
-
-# User nextjs removed to allow permission fix at runtime
 
 EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Fix permissions for volumes, then switch to nextjs user to run app
-CMD ["/bin/sh", "-c", "mkdir -p /app/db /app/storage /backups && chown -R nextjs:nodejs /app/db /app/storage /backups && su-exec nextjs:nodejs /bin/sh -c 'prisma migrate deploy && node server.js'"]
+ENTRYPOINT ["docker-entrypoint.sh"]

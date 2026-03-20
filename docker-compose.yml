@@ -11,6 +11,8 @@ services:
       - BETTER_AUTH_URL=http://localhost:3000
       - BETTER_AUTH_SECRET= # openssl rand -base64 32
       # - TZ=Europe/Zurich  # Optional: Server timezone
+      # - PUID=1001         # Optional: User ID for file permissions
+      # - PGID=1001         # Optional: Group ID for file permissions
     volumes:
       - ./backups:/backups      # Local backup storage
       - ./db:/app/db            # SQLite database

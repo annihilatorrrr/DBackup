@@ -2,6 +2,23 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.0.5 -
+*Release: In Progress*
+
+### ✨ Features
+
+- **Docker**: Configurable `PUID`/`PGID` environment variables (default: `1001`) — the entrypoint adjusts the runtime user at startup to match host volume permissions
+
+### 📝 Documentation
+
+- **wiki**: Documented `PUID`/`PGID` environment variables in the environment reference
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.0.5`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
 ## v1.0.4 - Hotfix Release
 *Released: March 20, 2026*
 
