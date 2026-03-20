@@ -114,11 +114,11 @@ Store it securely in a password manager or secrets vault.
 
 ## Volume Mounts
 
-| Mount Point | Purpose |
-| :--- | :--- |
-| `/backups` | Default path for local backup storage |
-| `/app/db` | SQLite database persistence |
-| `/app/storage` | User uploads (avatars, etc.) |
+| Mount Point | Required | Purpose |
+| :--- | :---: | :--- |
+| `/app/db` | ✅ | SQLite database persistence |
+| `/app/storage` | ✅ | User uploads (avatars, etc.) |
+| `/backups` | ❌ | Default path for local backup storage |
 
 ## Health Check
 
