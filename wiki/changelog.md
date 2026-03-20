@@ -9,6 +9,12 @@ All notable changes to DBackup are documented here.
 
 - **Docker**: Configurable `PUID`/`PGID` environment variables (default: `1001`) — the entrypoint adjusts the runtime user at startup to match host volume permissions
 
+### 🎨 Improvements
+
+- **Dockerfile**: Dedicated `docker-entrypoint.sh` replaces inline CMD — validates `PUID`/`PGID`, conditionally chowns `/pnpm` only when ownership differs, and runs `node` as PID 1 for proper signal handling
+- **Dockerfile**: Global Prisma CLI pinned to exact version (`5.22.0`) matching `package.json` to prevent version drift
+- **Dockerfile**: Merged Prisma generate and Next.js build into a single layer, consistent `--chown=1001:1001` on all COPY directives
+
 ### 📝 Documentation
 
 - **wiki**: Documented `PUID`/`PGID` environment variables in the environment reference

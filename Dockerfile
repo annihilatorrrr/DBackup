@@ -44,7 +44,7 @@ RUN corepack enable && corepack prepare pnpm@10.29.3 --activate && \
     ln -sf /usr/libexec/postgresql16/psql /opt/pg16/bin/psql && \
     ln -sf /usr/bin/pg_dump /opt/pg18/bin/pg_dump && \
     ln -sf /usr/bin/pg_restore /opt/pg18/bin/pg_restore && \
-    ln -sf /usr/bin/psql /opt/pg18/bin/psql || true
+    ln -sf /usr/bin/psql /opt/pg18/bin/psql
 
 # 1. Install Dependencies
 FROM base AS deps
@@ -64,8 +64,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Generate Prisma Client and build Next.js app
-RUN pnpm prisma generate
-RUN pnpm run build
+RUN pnpm prisma generate && pnpm run build
 
 # 3. Runner Phase (The actual image)
 FROM base AS runner
@@ -87,17 +86,17 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 # Copy built files (--link for better layer caching)
-COPY --from=builder --link /app/public ./public
+COPY --from=builder --link --chown=1001:1001 /app/public ./public
 COPY --from=builder --link --chown=1001:1001 /app/.next/standalone ./
 COPY --from=builder --link --chown=1001:1001 /app/.next/static ./.next/static
-COPY --from=builder --link /app/prisma ./prisma
+COPY --from=builder --link --chown=1001:1001 /app/prisma ./prisma
 
 # Create runtime dirs + install Prisma CLI for migrations
 # Note: pnpm add -g runs as root, so we must chown /pnpm to the runtime user
 # to avoid "Can't write to @prisma/engines" errors at container startup
 RUN mkdir -p /app/storage/avatars /app/db && \
     chown -R 1001:1001 /app/storage /app/db && \
-    pnpm add -g prisma@5 && \
+    pnpm add -g prisma@5.22.0 && \
     chown -R 1001:1001 /pnpm
 
 # Copy entrypoint script
