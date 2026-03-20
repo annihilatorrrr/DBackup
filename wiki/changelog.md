@@ -5,6 +5,14 @@ All notable changes to DBackup are documented here.
 ## v1.0.4 - Hotfix Release
 *Release: In Progress*
 
+### 🐛 Bug Fixes
+
+- **Dockerfile**: Fixed container crash on startup (`Can't write to @prisma/engines`) caused by globally installed Prisma being owned by root instead of the runtime user
+
+### 🔧 CI/CD
+
+- **pipeline**: Added build verification job to release workflow — starts the built image and polls `/api/health` before publishing, catching runtime permission and startup failures
+
 ### 🐳 Docker
 
 - **Image**: `skyfay/dbackup:v1.0.4`

@@ -91,9 +91,12 @@ COPY --from=builder --link --chown=1001:1001 /app/.next/static ./.next/static
 COPY --from=builder --link /app/prisma ./prisma
 
 # Create runtime dirs + install Prisma CLI for migrations
+# Note: pnpm add -g runs as root, so we must chown /pnpm to the runtime user
+# to avoid "Can't write to @prisma/engines" errors at container startup
 RUN mkdir -p /backups /app/storage/avatars /app/db && \
     chown -R nextjs:nodejs /backups /app/storage /app/db && \
-    pnpm add -g prisma@5
+    pnpm add -g prisma@5 && \
+    chown -R 1001:1001 /pnpm
 
 # Health check: verify app + database are reachable
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
