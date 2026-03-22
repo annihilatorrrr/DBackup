@@ -46,7 +46,7 @@ export function DatabasePicker({
                     <Button
                         variant="outline"
                         role="combobox"
-                        className="flex-1 justify-between h-auto min-h-[40px]"
+                        className="flex-1 justify-between h-auto min-h-10"
                     >
                         {currentValues.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
@@ -62,7 +62,7 @@ export function DatabasePicker({
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[400px] p-0" align="start">
+                <PopoverContent className="w-100 p-0" align="start">
                     <Command>
                         <CommandInput placeholder="Search databases..." />
                         <CommandList>
