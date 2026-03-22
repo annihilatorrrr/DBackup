@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: DBackup API
-  version: 1.0.1
+  version: 1.0.6
   description: |
     REST API for DBackup — a self-hosted database backup automation platform with encryption, compression, and smart retention.
 
@@ -23,13 +23,12 @@ info:
     | POST / PUT / DELETE | 20/min per IP |
 
     Rate limits are configurable in Settings → Rate Limits.
-  contact:
-    name: DBackup Support
-    email: support@dbackup.app
-    url: https://dbackup.app
   license:
     name: GPL-3.0
     url: https://www.gnu.org/licenses/gpl-3.0.html
+externalDocs:
+  description: DBackup Support
+  url: https://dbackup.app/#community-support
 
 servers:
   - url: "{protocol}://{host}/api"

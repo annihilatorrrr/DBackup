@@ -17,6 +17,7 @@ All notable changes to DBackup are documented here.
 
 - **README**: Replaced static dashboard screenshot with demo video showcasing backup and restore workflow
 - **wiki**: Added demo video to the documentation homepage
+- **API Docs**: Fixed DBackup Support link — now points to community support page instead of non-functional email
 
 ### 🐳 Docker
 
