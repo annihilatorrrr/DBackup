@@ -5,14 +5,28 @@ All notable changes to DBackup are documented here.
 ## v1.0.6 -
 *Release: In Progress*
 
-## v1.0.5 - Docker Permissions & Environment Variables
-*Released: March 20, 2026*
+### ✨ Features
+
+- **UI**: Documentation menu in the profile dropdown now expands into a submenu with three options: Dokumentation (external docs), API Docs Local (`/docs/api`), and API Docs Remote (`api.dbackup.app`)
+
+### 🐛 Bug Fixes
+
+- **quick-setup**: Added missing database selection picker to the job step for adapters that support it (MySQL, MariaDB, PostgreSQL, MongoDB, MSSQL)
+
+### 📝 Documentation
+
+- **README**: Replaced static dashboard screenshot with demo video showcasing backup and restore workflow
+- **wiki**: Added demo video to the documentation homepage
+- **API Docs**: Fixed DBackup Support link — now points to community support page instead of non-functional email
 
 ### 🐳 Docker
 
 - **Image**: `skyfay/dbackup:v1.0.6`
 - **Also tagged as**: `latest`, `v1`
 - **Platforms**: linux/amd64, linux/arm64
+
+## v1.0.5 - Docker Permissions & Environment Variables
+*Released: March 20, 2026*
 
 ### ✨ Features
 

@@ -33,6 +33,7 @@ describe("CompleteStep", () => {
     const fullWizardData: WizardData = {
         sourceId: "src-1",
         sourceName: "Production MySQL",
+        sourceAdapterId: "mysql",
         destinationId: "dst-1",
         destinationName: "AWS S3 Backup",
         encryptionProfileId: "enc-1",
