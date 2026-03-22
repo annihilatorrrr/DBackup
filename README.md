@@ -51,21 +51,67 @@ Whether you're running a single MySQL database or managing multiple PostgreSQL, 
 
 ## ✨ Features
 
-- **Multi-Database Support** — MySQL, MariaDB, PostgreSQL, MongoDB, SQLite, Redis, and Microsoft SQL Server
-- **Backup Encryption** — AES-256-GCM encryption for backup files with an Encryption Vault, key rotation, and offline Recovery Kits
-- **Compression** — Built-in GZIP and Brotli compression to reduce backup size and storage costs
-- **Flexible Storage** — 13+ adapters: S3, Google Drive, Dropbox, OneDrive, SFTP, Rsync, WebDAV, SMB, FTP, and more
-- **Multi-Destination Jobs** — Each backup job can target multiple storage destinations simultaneously — useful for redundancy or off-site copies
-- **Scheduling & Retention** — Cron-based job scheduling with GVS (Grandfather-Father-Son) retention policies for automatic rotation
-- **Notifications** — 9+ adapters including Discord, Slack, Teams, Telegram, Gotify, ntfy, Webhook, SMS, and Email (SMTP)
-- **Restore** — Browse backup history, verify checksums, download files, or restore directly to a database — including database remapping
-- **Storage Explorer** — Browse backup files across all destinations, inspect metadata, download files, or generate direct download links
-- **Storage Monitoring & Alerts** — Per-destination monitoring with configurable alerts for usage spikes, storage limit warnings, and missing backups within a defined time window
-- **SSO & RBAC** — OpenID Connect support (Authentik, PocketID, Generic), user groups, and granular permission system
-- **API & Webhooks** — Trigger backups via REST API with fine-grained API keys — includes ready-made cURL, Bash, and Ansible examples
-- **Dashboard & Analytics** — Interactive charts, real-time progress tracking, storage usage history, and auto-refreshing activity feeds
+### 🗄️ Database Backup
+
+- **7 Database Engines** — MySQL, MariaDB, PostgreSQL, MongoDB, SQLite, Redis, and Microsoft SQL Server
+- **Selective Database Backup** — Choose exactly which databases to back up per job instead of creating separate sources for each database
+- **Multi-Database Jobs** — Back up multiple databases from a single source in one job with a unified TAR archive format
+- **AES-256-GCM Encryption** — Encrypt backups with managed Encryption Profiles, key rotation, and downloadable Recovery Kits for offline decryption
+- **GZIP & Brotli Compression** — Reduce backup size and storage costs with built-in compression
+
+### ☁️ Storage & Destinations
+
+- **13+ Storage Adapters** — S3, Cloudflare R2, Hetzner, Google Drive, Dropbox, OneDrive, SFTP, FTP, WebDAV, SMB, Rsync, and local filesystem
+- **Multi-Destination Jobs** — Upload each backup to multiple storage destinations simultaneously for redundancy or off-site copies
+- **Storage Explorer** — Browse backup files across all destinations, inspect metadata, download files, or generate secure direct download links
+- **Storage Monitoring & Alerts** — Per-destination alerts for usage spikes, storage limit warnings, and missing backups within a defined time window
+
+### 🔄 Restore & Recovery
+
+- **One-Click Restore** — Restore directly from the Storage Explorer to any configured database target
+- **Database Remapping** — Restore databases under different names or map multiple databases to new targets
+- **Version Compatibility Check** — Pre-restore validation warns about version mismatches before execution
+- **SHA-256 Integrity Verification** — Checksums generated on backup and verified before restore
+
+### 📊 Monitoring & Visibility
+
+- **Live Backup Progress** — Real-time progress tracking shows exactly what's happening during backup and restore operations
+- **Interactive Dashboard** — Activity charts, job status overview, KPI cards, and auto-refreshing activity feeds
+- **Storage Usage History** — Track storage growth over time with area charts and trend indicators
+- **Execution History** — Full log of every backup and restore with duration, file size, status, and error details
+
+### 🔔 Notifications
+
+- **9 Notification Channels** — Discord, Slack, Teams, Telegram, Gotify, ntfy, Webhook, SMS (Twilio), and Email (SMTP)
+- **Per-Job Notification Settings** — Configure which notification channels fire for each backup job individually
+- **System Event Notifications** — Get notified about user logins, account creation, restore results, storage alerts, update availability, and system errors across all channels
+- **Repeat Intervals** — Configurable reminder intervals for recurring alerts (storage warnings, update notices)
+
+### ⏰ Scheduling & Retention
+
+- **Cron-based Scheduling** — Flexible job scheduling with a visual Schedule Picker (Simple Mode + Cron Mode)
+- **GVS Retention Policies** — Grandfather-Father-Son rotation with per-destination retention settings
+- **Automated Config Backups** — Self-backup of the entire DBackup configuration to any storage adapter
+
+### 👥 Access Control & Security
+
+- **SSO / OIDC** — OpenID Connect with pre-built adapters for Authentik, PocketID, Keycloak, and a generic OIDC option
+- **RBAC** — User groups with granular permissions, protected SuperAdmin group, and audit logging
+- **2FA / Passkeys** — Two-factor authentication and WebAuthn passkey support
 - **Configurable Rate Limits** — Per-category rate limiting (Auth, API Read, API Write) adjustable from the Settings UI
-- **Docker** — Multi-arch images (AMD64/ARM64), built-in health checks, and graceful shutdown with backup-safe SIGTERM handling
+
+### 🔗 API & Automation
+
+- **REST API** — Trigger backups, poll executions, manage adapters, and explore storage via API
+- **Fine-grained API Keys** — Scoped permissions and expiration dates for CI/CD pipelines and scripts
+- **Ready-made Examples** — cURL, Bash, and Ansible examples included in the API docs
+
+### 🎨 Designed for Simplicity
+
+- **Intuitive UI** — Clean, modern interface that makes complex backup workflows feel simple
+- **Quick Setup Wizard** — Guided 7-step first-run setup to get your first backup running in minutes
+- **Highly Configurable** — Session lifetimes, rate limits, retention periods, notification preferences, system tasks, and more
+- **Docker Ready** — Multi-arch images (AMD64/ARM64), health checks, graceful shutdown, and configurable PUID/PGID
 
 ## 🚀 Quick Start
 

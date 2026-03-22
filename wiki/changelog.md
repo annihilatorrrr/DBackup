@@ -3,7 +3,7 @@
 All notable changes to DBackup are documented here.
 
 ## v1.0.6 - Quick Setup fix & Developer Tooling
-*Release: In Progress*
+*Released: March 22, 2026*
 
 ### ✨ Features
 
@@ -16,6 +16,7 @@ All notable changes to DBackup are documented here.
 ### 📝 Documentation
 
 - **README**: Replaced static dashboard screenshot with demo video showcasing backup and restore workflow
+- **README**: Redesigned Features section with categorized subsections, icons, and unique selling points (selective DB backup, live progress, system notifications, UI simplicity)
 - **wiki**: Added demo video to the documentation homepage
 - **API Docs**: Fixed DBackup Support link — now points to community support page instead of non-functional email
 
