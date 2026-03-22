@@ -2,7 +2,7 @@
 
 All notable changes to DBackup are documented here.
 
-## v1.0.6 -
+## v1.0.6 - Quick Setup fix & Developer Tooling
 *Release: In Progress*
 
 ### ✨ Features
@@ -18,6 +18,10 @@ All notable changes to DBackup are documented here.
 - **README**: Replaced static dashboard screenshot with demo video showcasing backup and restore workflow
 - **wiki**: Added demo video to the documentation homepage
 - **API Docs**: Fixed DBackup Support link — now points to community support page instead of non-functional email
+
+### 🔧 CI/CD
+
+- **scripts**: Added `sync-version.sh` script and `pnpm version:sync` / `pnpm version:bump <patch|minor|major>` commands to sync version across all files automatically
 
 ### 🐳 Docker
 

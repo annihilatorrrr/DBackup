@@ -18,6 +18,8 @@
     "test:ui": "pnpm run test:env:up && sleep 30 && pnpm run test:seed",
     "test:stress:generate": "./scripts/generate-stress-data.sh",
     "test:stress": "pnpm run test:env:up && sleep 45 && pnpm run test:stress:generate",
+    "version:sync": "./scripts/sync-version.sh",
+    "version:bump": "./scripts/sync-version.sh",
     "database:deploy": "prisma db push && npx prisma generate",
     "wiki:install": "cd wiki && pnpm install",
     "wiki:dev": "cd wiki && pnpm dev",
