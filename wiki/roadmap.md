@@ -44,14 +44,6 @@ This page outlines planned features and improvements for DBackup. Features are s
 
 
 
-## 📚 Documentation
-
-### API Reference
-- OpenAPI / Swagger documentation for all API endpoints
-- Interactive API explorer
-
-
-
 ## 🧪 Testing & Quality
 
 ### End-to-End Test Suite
@@ -97,6 +89,9 @@ This page outlines planned features and improvements for DBackup. Features are s
 ## ✅ Completed
 
 For a full list of completed features, see the [Changelog](/changelog).
+
+### v1.0.1
+- ✅ Full OpenAPI 3.1 spec with interactive Scalar API reference at `/docs/api` and [api.dbackup.app](https://api.dbackup.app)
 
 ### v1.0.0
 - ✅ Automatic database migrations (Prisma migrate on startup)
