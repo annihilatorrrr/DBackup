@@ -45,7 +45,15 @@ DBackup is a comprehensive, self-hosted backup solution designed to automate and
 
 Whether you're running a single MySQL database or managing multiple PostgreSQL, MongoDB, and SQL Server instances, DBackup offers a unified interface with real-time monitoring, granular access control, and seamless restore capabilities.
 
-![Dashboard Preview](https://raw.githubusercontent.com/Skyfay/DBackup/main/wiki/public/overview.png)
+<div align="center">
+  <a href="https://raw.githubusercontent.com/Skyfay/DBackup/main/wiki/public/videos/dbackup-backup-restore.mp4">
+    <picture>
+      <source media="(min-width:1px)" srcset="" type="image/svg+xml">
+      <img src="https://raw.githubusercontent.com/Skyfay/DBackup/main/wiki/public/overview.png" alt="DBackup Demo" width="800">
+    </picture>
+  </a>
+  <video src="https://raw.githubusercontent.com/Skyfay/DBackup/main/wiki/public/videos/dbackup-backup-restore.mp4" autoplay muted playsinline width="800"></video>
+</div>
 
 ## ✨ Features
 

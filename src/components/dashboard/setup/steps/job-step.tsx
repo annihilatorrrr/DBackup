@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -29,9 +29,11 @@ import {
     ArrowLeft,
     CalendarClock,
     CheckCircle2,
+    Database,
     Lock,
     ArrowRight,
 } from "lucide-react";
+import { DatabasePicker } from "@/components/adapter/database-picker";
 import { WizardData } from "../setup-wizard";
 
 const SCHEDULE_PRESETS = [
@@ -47,6 +49,7 @@ const SCHEDULE_PRESETS = [
 const jobSchema = z.object({
     name: z.string().min(1, "Job name is required"),
     schedule: z.string().min(1, "Schedule is required"),
+    databases: z.array(z.string()),
     compression: z.enum(["NONE", "GZIP", "BROTLI"]),
     enabled: z.boolean(),
     notificationEvents: z.enum(["ALWAYS", "FAILURE_ONLY", "SUCCESS_ONLY"]),
@@ -64,12 +67,33 @@ interface JobStepProps {
 export function JobStep({ wizardData, onUpdate, onNext, onPrev }: JobStepProps) {
     const [isSaved, setIsSaved] = useState(!!wizardData.jobId);
     const [selectedPreset, setSelectedPreset] = useState("0 0 * * *");
+    const [availableDatabases, setAvailableDatabases] = useState<string[]>([]);
+    const [isLoadingDbs, setIsLoadingDbs] = useState(false);
+    const [isDbListOpen, setIsDbListOpen] = useState(false);
+
+    const showDatabasePicker = wizardData.sourceAdapterId
+        && !["sqlite", "redis"].includes(wizardData.sourceAdapterId);
+
+    const fetchDatabases = useCallback(async () => {
+        if (!wizardData.sourceId) return;
+        setIsLoadingDbs(true);
+        try {
+            const res = await fetch(`/api/adapters/${encodeURIComponent(wizardData.sourceId)}/databases`);
+            const data = await res.json();
+            if (data.success && Array.isArray(data.databases)) {
+                setAvailableDatabases(data.databases);
+            }
+        } finally {
+            setIsLoadingDbs(false);
+        }
+    }, [wizardData.sourceId]);
 
     const form = useForm<JobFormValues>({
         resolver: zodResolver(jobSchema),
         defaultValues: {
             name: "",
             schedule: "0 0 * * *",
+            databases: [],
             compression: "GZIP",
             enabled: true,
             notificationEvents: "ALWAYS",
@@ -82,6 +106,7 @@ export function JobStep({ wizardData, onUpdate, onNext, onPrev }: JobStepProps) 
                 name: data.name,
                 schedule: data.schedule,
                 sourceId: wizardData.sourceId,
+                databases: data.databases,
                 destinations: [{
                     configId: wizardData.destinationId,
                     priority: 0,
@@ -209,6 +234,37 @@ export function JobStep({ wizardData, onUpdate, onNext, onPrev }: JobStepProps) 
                             </FormItem>
                         )}
                     />
+
+                    {/* Database Selection */}
+                    {showDatabasePicker && (
+                        <FormField
+                            control={form.control}
+                            name="databases"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="flex items-center gap-2">
+                                        <Database className="h-3 w-3" />
+                                        Databases
+                                    </FormLabel>
+                                    <FormControl>
+                                        <DatabasePicker
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                            availableDatabases={availableDatabases}
+                                            isLoading={isLoadingDbs}
+                                            onLoad={fetchDatabases}
+                                            isOpen={isDbListOpen}
+                                            setIsOpen={setIsDbListOpen}
+                                        />
+                                    </FormControl>
+                                    <FormDescription>
+                                        Select specific databases to back up. Leave empty to back up all databases.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    )}
 
                     {/* Schedule */}
                     <Card>

@@ -29,6 +29,7 @@ import { CompleteStep } from "./steps/complete-step";
 export interface WizardData {
     sourceId: string | null;
     sourceName: string | null;
+    sourceAdapterId: string | null;
     destinationId: string | null;
     destinationName: string | null;
     encryptionProfileId: string | null;
@@ -89,6 +90,7 @@ export function SetupWizard({
     const [wizardData, setWizardData] = useState<WizardData>({
         sourceId: null,
         sourceName: null,
+        sourceAdapterId: null,
         destinationId: null,
         destinationName: null,
         encryptionProfileId: null,

@@ -97,6 +97,7 @@ export function SourceStep({ adapters, wizardData, onUpdate, onNext, onPrev }: S
                 onUpdate({
                     sourceId: result.id,
                     sourceName: data.name,
+                    sourceAdapterId: selectedAdapter!.id,
                 });
                 setIsSaved(true);
             } else {
