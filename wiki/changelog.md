@@ -9,6 +9,10 @@ All notable changes to DBackup are documented here.
 
 - **UI**: Documentation menu in the profile dropdown now expands into a submenu with three options: Dokumentation (external docs), API Docs Local (`/docs/api`), and API Docs Remote (`api.dbackup.app`)
 
+### 🐛 Bug Fixes
+
+- **quick-setup**: Added missing database selection picker to the job step for adapters that support it (MySQL, MariaDB, PostgreSQL, MongoDB, MSSQL)
+
 ### 📝 Documentation
 
 - **README**: Replaced static dashboard screenshot with demo video showcasing backup and restore workflow
