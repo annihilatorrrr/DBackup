@@ -2,6 +2,16 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.1.0
+*Release: In Progress*
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.1.0`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v1.0.6 - Quick Setup fix & Developer Tooling
 *Released: March 22, 2026*
 
