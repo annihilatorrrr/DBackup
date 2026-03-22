@@ -2,12 +2,20 @@
 
 All notable changes to DBackup are documented here.
 
-## v1.1.0
-*Release: In Progress*
+## v1.0.7
+*Released: March 22, 2026*
+
+### 🐛 Bug Fixes
+
+- **PostgreSQL**: Fixed pg_dump version mismatch in Docker container — PostgreSQL 17 backups failed because `postgresql17-client` and `postgresql18-client` were not installed, causing fallback to pg_dump 16
+
+### 🔧 CI/CD
+
+- **Docker**: Added build-time validation for all pg_dump versions — Docker build now fails immediately if any PostgreSQL client binary is missing or has the wrong version
 
 ### 🐳 Docker
 
-- **Image**: `skyfay/dbackup:v1.1.0`
+- **Image**: `skyfay/dbackup:v1.0.7`
 - **Also tagged as**: `latest`, `v1`
 - **Platforms**: linux/amd64, linux/arm64
 
