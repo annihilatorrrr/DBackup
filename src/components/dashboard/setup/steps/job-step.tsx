@@ -49,7 +49,7 @@ const SCHEDULE_PRESETS = [
 const jobSchema = z.object({
     name: z.string().min(1, "Job name is required"),
     schedule: z.string().min(1, "Schedule is required"),
-    databases: z.array(z.string()).default([]),
+    databases: z.array(z.string()),
     compression: z.enum(["NONE", "GZIP", "BROTLI"]),
     enabled: z.boolean(),
     notificationEvents: z.enum(["ALWAYS", "FAILURE_ONLY", "SUCCESS_ONLY"]),

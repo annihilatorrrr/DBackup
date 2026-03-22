@@ -64,6 +64,7 @@ const mockAdapters: AdapterDefinition[] = [
 const defaultWizardData: WizardData = {
     sourceId: "src-1",
     sourceName: "Test MySQL",
+    sourceAdapterId: "mysql",
     destinationId: "dst-1",
     destinationName: "Test S3",
     encryptionProfileId: null,

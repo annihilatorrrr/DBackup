@@ -77,6 +77,7 @@ const mockAdapters: AdapterDefinition[] = [
 const defaultWizardData: WizardData = {
     sourceId: null,
     sourceName: null,
+    sourceAdapterId: null,
     destinationId: null,
     destinationName: null,
     encryptionProfileId: null,
