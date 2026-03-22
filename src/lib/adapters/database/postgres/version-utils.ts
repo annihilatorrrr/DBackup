@@ -15,7 +15,7 @@ const log = logger.child({ adapter: "postgres", module: "version-utils" });
  * Uses intelligent fallback strategy:
  * - If exact version not found, uses next higher version (backward compatible)
  * - Example: PG 13 server → uses pg_dump 14 (if available)
- * - Strategic versions: 14 (covers 12-14), 16 (covers 15-16), 18 (covers 17-18)
+ * - Strategic versions: 14 (covers 12-14), 16 (covers 15-16), 17, 18
  *
  * Search order:
  * 1. Exact version match
@@ -39,8 +39,8 @@ export async function getPostgresBinary(tool: 'pg_dump' | 'pg_restore' | 'psql',
     }
     const majorVersion = parseInt(majorMatch[1], 10);
 
-    // Strategic versions we support (covers all via backward compatibility)
-    const strategicVersions = [14, 16, 18];
+    // Strategic versions we support (each installed explicitly in Dockerfile)
+    const strategicVersions = [14, 16, 17, 18];
 
     // Find the best matching version:
     // 1. Try exact match first
