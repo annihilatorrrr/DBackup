@@ -61,6 +61,7 @@ features:
     details: Multi-arch images (AMD64/ARM64), built-in health checks, graceful shutdown, and SHA-256 integrity verification.
 ---
 
+
 ## Quick Start
 
 Get DBackup running in minutes with Docker:
