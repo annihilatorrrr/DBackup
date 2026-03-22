@@ -2,7 +2,7 @@
 
 All notable changes to DBackup are documented here.
 
-## v1.0.7
+## v1.0.7 - PostgreSQL Version Mismatch Fix & Docker Build Validation
 *Released: March 22, 2026*
 
 ### 🐛 Bug Fixes
