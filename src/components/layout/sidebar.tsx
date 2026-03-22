@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, Database, HardDrive, FolderOpen, CalendarClock, History, Settings, Bell, ChevronsUpDown, LogOut, Moon, Sun, Monitor, Users, User, Lock, BookOpen, SearchCode, Rocket, ArrowUpCircle } from "lucide-react"
+import { LayoutDashboard, Database, HardDrive, FolderOpen, CalendarClock, History, Settings, Bell, ChevronsUpDown, LogOut, Moon, Sun, Monitor, Users, User, Lock, BookOpen, SearchCode, Rocket, ArrowUpCircle, FileCode2, Globe } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useSession, signOut } from "@/lib/auth-client"
@@ -270,10 +270,28 @@ export function Sidebar({ permissions = [], isSuperAdmin = false, updateAvailabl
                                 </DropdownMenuSub>
                             </DropdownMenuGroup>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => window.open('https://dbackup.app', '_blank')}>
-                                <BookOpen className="mr-2 h-4 w-4" />
-                                Documentation
-                            </DropdownMenuItem>
+                            <DropdownMenuSub>
+                                <DropdownMenuSubTrigger>
+                                    <BookOpen className="mr-2 h-4 w-4" />
+                                    <span>Documentation</span>
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuPortal>
+                                    <DropdownMenuSubContent>
+                                        <DropdownMenuItem onClick={() => window.open('https://dbackup.app', '_blank')}>
+                                            <BookOpen className="mr-2 h-4 w-4" />
+                                            <span>Dokumentation</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => window.open('/docs/api', '_blank')}>
+                                            <FileCode2 className="mr-2 h-4 w-4" />
+                                            <span>API Docs (Local)</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => window.open('https://api.dbackup.app', '_blank')}>
+                                            <Globe className="mr-2 h-4 w-4" />
+                                            <span>API Docs (Remote)</span>
+                                        </DropdownMenuItem>
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuPortal>
+                            </DropdownMenuSub>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={handleSignOut}>
                                 <LogOut className="mr-2 h-4 w-4" />
