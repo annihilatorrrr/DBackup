@@ -187,7 +187,7 @@ The plugin-based adapter architecture makes it easy to add new databases, storag
 
 - 💬 **Discord**: Join our community at [https://dc.skyfay.ch](https://dc.skyfay.ch)
 - 📝 **Documentation**: Full guides and API reference in this wiki
-- � **API Reference**: Interactive API docs at [api.dbackup.app](https://api.dbackup.app) or in-app at `/docs/api`
+- 🔗 **API Reference**: Interactive API docs at [api.dbackup.app](https://api.dbackup.app) or in-app at `/docs/api`
 - 🐛 **Issues**: Report bugs or request features on [GitHub Issues](https://github.com/Skyfay/DBackup/issues)
 - 📧 **Support**: General questions and support via [support@dbackup.app](mailto:support@dbackup.app)
 - 🔒 **Security**: Report vulnerabilities responsibly via [security@dbackup.app](mailto:security@dbackup.app) (please do **not** open public issues for security reports)

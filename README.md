@@ -22,11 +22,11 @@
   <img src="https://img.shields.io/badge/license-GPL--3.0-blue.svg" alt="License">
   <img src="https://img.shields.io/docker/pulls/skyfay/dbackup?logo=docker&logoColor=white" alt="Docker Pulls">
   <img src="https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-lightgrey" alt="Platform">
-  <img src="https://img.shields.io/badge/self--hosted-yes-brightgreen" alt="Self-hosted">
+  <img src="https://img.shields.io/badge/self--hosted-yes-%239B59B6" alt="Self-hosted">
   <img src="https://img.shields.io/badge/open_source-%E2%9D%A4%EF%B8%8F-red" alt="Open Source">
   <br>
   <a href="https://github.com/Skyfay/DBackup/actions/workflows/release.yml"><img src="https://github.com/Skyfay/DBackup/actions/workflows/release.yml/badge.svg" alt="Release"></a>
-  <a href="https://github.com/Skyfay/DBackup/commits"><img src="https://img.shields.io/github/last-commit/Skyfay/DBackup" alt="Last Commit"></a>
+  <a href="https://github.com/Skyfay/DBackup/commits"><img src="https://img.shields.io/github/last-commit/Skyfay/DBackup?color=%234B8BBE" alt="Last Commit"></a>
   <a href="https://discord.com/invite/YvgPyky"><img src="https://img.shields.io/discord/580801656707350529?label=Discord&color=%235865f2" alt="Discord"></a>
 </p>
 
@@ -41,7 +41,7 @@
 
 ### What is DBackup?
 
-DBackup is a comprehensive, self-hosted backup solution designed to automate and secure your database backups. It provides enterprise-grade encryption (AES-256-GCM), flexible storage options, and intelligent retention policies to ensure your data is always protected and recoverable.
+DBackup is a comprehensive, self-hosted backup solution designed to automate and secure your database backups. It provides AES-256-GCM encryption, flexible storage options, and intelligent retention policies to ensure your data is always protected and recoverable.
 
 Whether you're running a single MySQL database or managing multiple PostgreSQL, MongoDB, and SQL Server instances, DBackup offers a unified interface with real-time monitoring, granular access control, and seamless restore capabilities.
 
