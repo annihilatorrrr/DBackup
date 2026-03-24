@@ -15,6 +15,10 @@ All notable changes to DBackup are documented here.
 - **ui**: Empty state on Settings → Notifications now links directly to the Notifications page to create an adapter
 - **ui**: Redesigned permission picker for API Key and Group dialogs — replaced cramped scroll area with a spacious 3-column category card grid, global select/deselect all, and per-category count badges for much better overview
 
+### 📝 Documentation
+
+- **docs**: Added "No Vendor Lock-In" messaging to README and Wiki — highlights that backups are standard dumps, decryptable offline with the Recovery Kit and a standalone script
+
 ### 🐳 Docker
 
 - **Image**: `skyfay/dbackup:v1.1.0`
