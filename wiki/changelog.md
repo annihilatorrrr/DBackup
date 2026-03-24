@@ -22,6 +22,7 @@ All notable changes to DBackup are documented here.
 ### 🧪 Tests
 
 - **notifications**: Updated event count assertions to match new health check events (14 event types, 12 system event definitions, added `health` category)
+- **runner**: Fixed "Closing rpc while fetch was pending" CI failure in notification-logic tests — added missing mocks for `dashboard-service` and `notification-log-service` to prevent unresolved dynamic imports during test teardown
 
 ### 🔧 CI/CD
 
