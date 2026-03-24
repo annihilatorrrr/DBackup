@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bell, ChevronsUpDown, Mail, Send, Shield, Database, RotateCcw, Monitor, HardDrive, ArrowUpCircle, Clock } from "lucide-react";
+import { Bell, ChevronsUpDown, Mail, Send, Shield, Database, RotateCcw, Monitor, HardDrive, ArrowUpCircle, Clock, HeartPulse } from "lucide-react";
 import {
   getNotificationSettings,
   updateNotificationSettings,
@@ -81,6 +81,11 @@ const CATEGORY_META: Record<string, { label: string; icon: React.ReactNode; desc
     label: "Updates",
     icon: <ArrowUpCircle className="h-4 w-4" />,
     description: "Application update notifications.",
+  },
+  health: {
+    label: "Health Checks",
+    icon: <HeartPulse className="h-4 w-4" />,
+    description: "Connection health monitoring for sources and destinations.",
   },
 };
 

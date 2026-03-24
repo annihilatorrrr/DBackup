@@ -20,6 +20,8 @@ export const NOTIFICATION_EVENTS = {
   STORAGE_LIMIT_WARNING: "storage_limit_warning",
   STORAGE_MISSING_BACKUP: "storage_missing_backup",
   UPDATE_AVAILABLE: "update_available",
+  CONNECTION_OFFLINE: "connection_offline",
+  CONNECTION_ONLINE: "connection_online",
 } as const;
 
 export type NotificationEventType =
@@ -38,7 +40,7 @@ export interface NotificationEventDefinition {
   id: NotificationEventType;
   name: string;
   description: string;
-  category: "auth" | "backup" | "restore" | "system" | "storage" | "updates";
+  category: "auth" | "backup" | "restore" | "system" | "storage" | "updates" | "health";
   /** Default enabled state when first configured */
   defaultEnabled: boolean;
   /**
@@ -153,6 +155,23 @@ export interface UpdateAvailableData {
   timestamp: string;
 }
 
+export interface ConnectionOfflineData {
+  adapterName: string;
+  adapterType: "database" | "storage";
+  adapterId: string;
+  consecutiveFailures: number;
+  lastError?: string;
+  timestamp: string;
+}
+
+export interface ConnectionOnlineData {
+  adapterName: string;
+  adapterType: "database" | "storage";
+  adapterId: string;
+  downtime?: string;
+  timestamp: string;
+}
+
 /** Union of all event data types for type-safe template dispatch */
 export type NotificationEventData =
   | { eventType: typeof NOTIFICATION_EVENTS.USER_LOGIN; data: UserLoginData }
@@ -166,7 +185,9 @@ export type NotificationEventData =
   | { eventType: typeof NOTIFICATION_EVENTS.STORAGE_USAGE_SPIKE; data: StorageUsageSpikeData }
   | { eventType: typeof NOTIFICATION_EVENTS.STORAGE_LIMIT_WARNING; data: StorageLimitWarningData }
   | { eventType: typeof NOTIFICATION_EVENTS.STORAGE_MISSING_BACKUP; data: StorageMissingBackupData }
-  | { eventType: typeof NOTIFICATION_EVENTS.UPDATE_AVAILABLE; data: UpdateAvailableData };
+  | { eventType: typeof NOTIFICATION_EVENTS.UPDATE_AVAILABLE; data: UpdateAvailableData }
+  | { eventType: typeof NOTIFICATION_EVENTS.CONNECTION_OFFLINE; data: ConnectionOfflineData }
+  | { eventType: typeof NOTIFICATION_EVENTS.CONNECTION_ONLINE; data: ConnectionOnlineData };
 
 /** Persisted notification configuration (stored as JSON in SystemSetting) */
 export interface SystemNotificationConfig {

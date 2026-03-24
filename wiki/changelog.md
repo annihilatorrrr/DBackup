@@ -5,6 +5,11 @@ All notable changes to DBackup are documented here.
 ## v1.1.0
 *Release: In Progress*
 
+### ✨ Features
+
+- **notifications**: New "Connection Offline" system notification event — sends an alert when a source or destination becomes unreachable after repeated health check failures, with configurable repeat reminder (default 24h)
+- **notifications**: New "Connection Recovered" system notification event — sends an alert when a previously offline source or destination becomes reachable again, including downtime duration
+
 ### 🎨 Improvements
 
 - **ui**: Empty state on Settings → Notifications now links directly to the Notifications page to create an adapter

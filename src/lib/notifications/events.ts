@@ -98,6 +98,23 @@ export const EVENT_DEFINITIONS: NotificationEventDefinition[] = [
     defaultEnabled: true,
     supportsReminder: true,
   },
+
+  // ── Health Check Events ──────────────────────────────────────
+  {
+    id: NOTIFICATION_EVENTS.CONNECTION_OFFLINE,
+    name: "Connection Offline",
+    description: "A source or destination became unreachable after repeated health checks.",
+    category: "health",
+    defaultEnabled: true,
+    supportsReminder: true,
+  },
+  {
+    id: NOTIFICATION_EVENTS.CONNECTION_ONLINE,
+    name: "Connection Recovered",
+    description: "A previously offline source or destination is reachable again.",
+    category: "health",
+    defaultEnabled: true,
+  },
 ];
 
 /** Look up an event definition by its type string */

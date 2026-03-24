@@ -3,6 +3,8 @@ import { registry } from "@/lib/core/registry";
 import { decryptConfig } from "@/lib/crypto";
 import { logger } from "@/lib/logger";
 import { wrapError, getErrorMessage } from "@/lib/errors";
+import { notify, getNotificationConfig } from "@/services/system-notification-service";
+import { NOTIFICATION_EVENTS } from "@/lib/notifications/types";
 
 const log = logger.child({ service: "HealthCheckService" });
 
@@ -10,6 +12,21 @@ const log = logger.child({ service: "HealthCheckService" });
 const ADAPTER_CHECK_TIMEOUT_MS = 15_000;
 // Maximum number of concurrent health checks
 const MAX_CONCURRENT_CHECKS = 5;
+// Default cooldown between repeated offline notifications (24 hours)
+const DEFAULT_REMINDER_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+// SystemSetting key for offline notification state
+const OFFLINE_STATE_KEY = "healthcheck.offline.state";
+
+/** Per-adapter offline notification state */
+interface OfflineNotificationState {
+  /** Whether an offline notification has been sent and the adapter is still offline */
+  active: boolean;
+  /** ISO timestamp of the last notification sent */
+  lastNotifiedAt: string | null;
+}
+
+/** Map of adapter config ID → notification state */
+type OfflineStateMap = Record<string, OfflineNotificationState>;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
     return new Promise<T>((resolve, reject) => {
@@ -19,6 +36,35 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
             (err) => { clearTimeout(timer); reject(err); }
         );
     });
+}
+
+async function loadOfflineStates(): Promise<OfflineStateMap> {
+    const row = await prisma.systemSetting.findUnique({ where: { key: OFFLINE_STATE_KEY } });
+    if (!row) return {};
+    try {
+        return JSON.parse(row.value) as OfflineStateMap;
+    } catch {
+        return {};
+    }
+}
+
+async function saveOfflineStates(states: OfflineStateMap): Promise<void> {
+    await prisma.systemSetting.upsert({
+        where: { key: OFFLINE_STATE_KEY },
+        update: { value: JSON.stringify(states) },
+        create: {
+            key: OFFLINE_STATE_KEY,
+            value: JSON.stringify(states),
+            description: "Health check offline notification state tracking",
+        },
+    });
+}
+
+function shouldNotifyOffline(state: OfflineNotificationState | undefined, cooldownMs: number): boolean {
+    if (!state || !state.active) return true;
+    if (!state.lastNotifiedAt) return true;
+    if (cooldownMs === 0) return false;
+    return Date.now() - new Date(state.lastNotifiedAt).getTime() >= cooldownMs;
 }
 
 export class HealthCheckService {
@@ -33,10 +79,41 @@ export class HealthCheckService {
             }
         });
 
+        // Load offline notification state and reminder cooldown
+        let offlineStates = await loadOfflineStates();
+        let reminderCooldownMs = DEFAULT_REMINDER_COOLDOWN_MS;
+        try {
+            const notifConfig = await getNotificationConfig();
+            const eventCfg = notifConfig.events[NOTIFICATION_EVENTS.CONNECTION_OFFLINE];
+            if (eventCfg?.reminderIntervalHours !== undefined && eventCfg.reminderIntervalHours !== null) {
+                reminderCooldownMs = eventCfg.reminderIntervalHours * 60 * 60 * 1000;
+            }
+        } catch {
+            // Fall back to default cooldown
+        }
+
+        let stateChanged = false;
+
         // Run checks in parallel batches to avoid blocking the event loop serially
         for (let i = 0; i < configs.length; i += MAX_CONCURRENT_CHECKS) {
             const batch = configs.slice(i, i + MAX_CONCURRENT_CHECKS);
-            await Promise.allSettled(batch.map(config => this.checkAdapter(config)));
+            const results = await Promise.allSettled(
+                batch.map(config => this.checkAdapter(config, offlineStates, reminderCooldownMs))
+            );
+            for (const result of results) {
+                if (result.status === "fulfilled" && result.value) {
+                    stateChanged = true;
+                }
+            }
+        }
+
+        // Persist offline states if anything changed
+        if (stateChanged) {
+            try {
+                await saveOfflineStates(offlineStates);
+            } catch (e) {
+                log.error("Failed to save offline notification states", {}, wrapError(e));
+            }
         }
 
         // Retention Policy: Delete logs older than 48 hours
@@ -61,7 +138,14 @@ export class HealthCheckService {
         log.debug("Health check cycle completed");
     }
 
-    private async checkAdapter(configRow: any) {
+    /**
+     * Check a single adapter and return whether offline state changed.
+     */
+    private async checkAdapter(
+        configRow: any,
+        offlineStates: OfflineStateMap,
+        reminderCooldownMs: number,
+    ): Promise<boolean> {
         let latency = 0;
         let errorMsg: string | null = null;
         let success = false;
@@ -74,7 +158,7 @@ export class HealthCheckService {
 
             if (!adapter.test) {
                 // If ping/test not supported, we skip
-                return;
+                return false;
             }
 
              // Decrypt config
@@ -139,6 +223,63 @@ export class HealthCheckService {
         } catch (e) {
             log.error("Failed to update health check status", { configName: configRow.name }, wrapError(e));
         }
+
+        // ── Offline Notification Logic ─────────────────────────
+        let stateChanged = false;
+        const currentState = offlineStates[configRow.id];
+
+        if (newStatus === "OFFLINE") {
+            // Adapter just became or remains offline — check if we should notify
+            if (shouldNotifyOffline(currentState, reminderCooldownMs)) {
+                try {
+                    await notify({
+                        eventType: NOTIFICATION_EVENTS.CONNECTION_OFFLINE,
+                        data: {
+                            adapterName: configRow.name || configRow.id,
+                            adapterType: configRow.type as "database" | "storage",
+                            adapterId: configRow.adapterId,
+                            consecutiveFailures,
+                            lastError: errorMsg || undefined,
+                            timestamp: new Date().toISOString(),
+                        },
+                    });
+                } catch (e) {
+                    log.error("Failed to send offline notification", { configName: configRow.name }, wrapError(e));
+                }
+                offlineStates[configRow.id] = { active: true, lastNotifiedAt: new Date().toISOString() };
+                stateChanged = true;
+            } else if (!currentState?.active) {
+                offlineStates[configRow.id] = { active: true, lastNotifiedAt: currentState?.lastNotifiedAt ?? null };
+                stateChanged = true;
+            }
+        } else if (currentState?.active) {
+            // Adapter recovered — send recovery notification and reset state
+            let downtime: string | undefined;
+            if (currentState.lastNotifiedAt) {
+                const ms = Date.now() - new Date(currentState.lastNotifiedAt).getTime();
+                const hours = Math.floor(ms / (60 * 60 * 1000));
+                const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
+                downtime = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+            }
+            try {
+                await notify({
+                    eventType: NOTIFICATION_EVENTS.CONNECTION_ONLINE,
+                    data: {
+                        adapterName: configRow.name || configRow.id,
+                        adapterType: configRow.type as "database" | "storage",
+                        adapterId: configRow.adapterId,
+                        downtime,
+                        timestamp: new Date().toISOString(),
+                    },
+                });
+            } catch (e) {
+                log.error("Failed to send recovery notification", { configName: configRow.name }, wrapError(e));
+            }
+            delete offlineStates[configRow.id];
+            stateChanged = true;
+        }
+
+        return stateChanged;
     }
 }
 

@@ -20,6 +20,8 @@ import {
   StorageLimitWarningData,
   StorageMissingBackupData,
   UpdateAvailableData,
+  ConnectionOfflineData,
+  ConnectionOnlineData,
 } from "./types";
 
 // ── Individual Template Functions ──────────────────────────────
@@ -332,6 +334,49 @@ function updateAvailableTemplate(
   };
 }
 
+function connectionOfflineTemplate(
+  data: ConnectionOfflineData
+): NotificationPayload {
+  const typeLabel = data.adapterType === "database" ? "Source" : "Destination";
+  return {
+    title: `${typeLabel} Offline`,
+    message: `${typeLabel} '${data.adapterName}' is unreachable after ${data.consecutiveFailures} consecutive failed health checks.`,
+    fields: [
+      { name: typeLabel, value: data.adapterName, inline: true },
+      { name: "Type", value: data.adapterType, inline: true },
+      { name: "Failed Checks", value: String(data.consecutiveFailures), inline: true },
+      ...(data.lastError
+        ? [{ name: "Last Error", value: data.lastError, inline: false }]
+        : []),
+      { name: "Time", value: data.timestamp, inline: true },
+    ],
+    color: "#ef4444", // red
+    success: false,
+    badge: "Offline",
+  };
+}
+
+function connectionOnlineTemplate(
+  data: ConnectionOnlineData
+): NotificationPayload {
+  const typeLabel = data.adapterType === "database" ? "Source" : "Destination";
+  return {
+    title: `${typeLabel} Recovered`,
+    message: `${typeLabel} '${data.adapterName}' is back online.${data.downtime ? ` Downtime: ${data.downtime}.` : ""}`,
+    fields: [
+      { name: typeLabel, value: data.adapterName, inline: true },
+      { name: "Type", value: data.adapterType, inline: true },
+      ...(data.downtime
+        ? [{ name: "Downtime", value: data.downtime, inline: true }]
+        : []),
+      { name: "Time", value: data.timestamp, inline: true },
+    ],
+    color: "#22c55e", // green
+    success: true,
+    badge: "Recovered",
+  };
+}
+
 // ── Template Dispatcher ────────────────────────────────────────
 
 /**
@@ -367,6 +412,10 @@ export function renderTemplate(
       return storageMissingBackupTemplate(event.data);
     case NOTIFICATION_EVENTS.UPDATE_AVAILABLE:
       return updateAvailableTemplate(event.data);
+    case NOTIFICATION_EVENTS.CONNECTION_OFFLINE:
+      return connectionOfflineTemplate(event.data);
+    case NOTIFICATION_EVENTS.CONNECTION_ONLINE:
+      return connectionOnlineTemplate(event.data);
     default:
       // Fallback for unknown events
       return {
