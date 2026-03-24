@@ -13,6 +13,7 @@ All notable changes to DBackup are documented here.
 ### 🎨 Improvements
 
 - **ui**: Empty state on Settings → Notifications now links directly to the Notifications page to create an adapter
+- **ui**: Redesigned permission picker for API Key and Group dialogs — replaced cramped scroll area with a spacious 3-column category card grid, global select/deselect all, and per-category count badges for much better overview
 
 ### 🐳 Docker
 
