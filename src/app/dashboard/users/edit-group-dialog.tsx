@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
     Dialog,
     DialogContent,
@@ -80,12 +81,13 @@ export function EditGroupDialog({ group, open, onOpenChange }: EditGroupDialogPr
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[600px]">
-                <DialogHeader>
+            <DialogContent className="sm:max-w-4xl max-h-[90vh] p-0">
+                <DialogHeader className="p-6 pb-0">
                     <DialogTitle>Edit Group</DialogTitle>
                 </DialogHeader>
+                <ScrollArea className="max-h-[calc(90vh-8rem)] px-6">
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <form id="edit-group-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <FormField
                             control={form.control}
                             name="name"
@@ -121,17 +123,20 @@ export function EditGroupDialog({ group, open, onOpenChange }: EditGroupDialogPr
                             )}
                         />
 
-                        <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                                Cancel
-                            </Button>
-                            <Button type="submit" disabled={loading}>
-                                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Save Changes
-                            </Button>
-                        </DialogFooter>
                     </form>
                 </Form>
+                </ScrollArea>
+                <div className="p-6 pt-0">
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" form="edit-group-form" disabled={loading}>
+                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </div>
             </DialogContent>
         </Dialog>
     )

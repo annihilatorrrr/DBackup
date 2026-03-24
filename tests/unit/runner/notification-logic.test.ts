@@ -24,6 +24,14 @@ vi.mock('@/lib/crypto', () => ({
     decryptConfig: vi.fn((config) => config), // Return config as is
 }));
 
+vi.mock('@/services/dashboard-service', () => ({
+    refreshStorageStatsCache: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/services/notification-log-service', () => ({
+    recordNotificationLog: vi.fn().mockResolvedValue(undefined),
+}));
+
 describe('Runner Step: Finalize & Notifications', () => {
     let mockCtx: RunnerContext;
     let mockSend: any;

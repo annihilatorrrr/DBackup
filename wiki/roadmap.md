@@ -55,14 +55,43 @@ This page outlines planned features and improvements for DBackup. Features are s
 
 ## 🛠 Database Management & Playground
 
+### Table Browser & Schema Viewer
+- Click on a database to browse all tables with columns, data types, primary keys, and indexes
+- Row counts per table for quick anomaly detection
+- Visual schema overview for backup verification
+
+### Backup Drift Detection
+- Compare current database state with last backup timestamp
+- Show changes since last backup (new tables, size growth, dropped objects)
+- Alert when databases have drifted significantly from their last backup
+
+### Server Health Dashboard
+- Display server uptime, active connections, running queries, replication status
+- Per-adapter health metrics (MySQL: `SHOW STATUS`, PostgreSQL: `pg_stat_activity`)
+- Pre-backup health check indicator
+
 ### Direct SQL Execution
 - Connect directly to configured database sources
-- Execute custom SQL queries from the web UI
-- Query result visualization
+- Execute custom SQL queries from the web UI (read-only by default)
+- Query result visualization with export to CSV/JSON
+- Write mode behind separate permission (`SOURCES.QUERY_WRITE`)
 
 ### Query Library
 - Pre-built templates for common tasks (user management, table maintenance)
 - Quick-action buttons in the UI
+
+### Data Preview
+- Preview first 50 rows of any table without writing custom queries
+- Inline data viewer in the Table Browser
+
+### User & Privileges Viewer
+- Read-only view of database users and their permissions
+- Verify backup user has sufficient privileges
+- Security audit helper
+
+### Storage Trend Graph
+- Historical database size over time (derived from backup metadata)
+- Growth rate visualization for capacity planning
 
 
 

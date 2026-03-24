@@ -2,6 +2,39 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.1.0
+*Release: In Progress*
+
+### ✨ Features
+
+- **notifications**: New "Connection Offline" system notification event — sends an alert when a source or destination becomes unreachable after repeated health check failures, with configurable repeat reminder (default 24h)
+- **notifications**: New "Connection Recovered" system notification event — sends an alert when a previously offline source or destination becomes reachable again, including downtime duration
+
+### 🎨 Improvements
+
+- **ui**: Empty state on Settings → Notifications now links directly to the Notifications page to create an adapter
+- **ui**: Redesigned permission picker for API Key and Group dialogs — replaced cramped scroll area with a spacious 3-column category card grid, global select/deselect all, and per-category count badges for much better overview
+
+### 📝 Documentation
+
+- **docs**: Added "No Vendor Lock-In" messaging to README and Wiki — highlights that backups are standard dumps, decryptable offline with the Recovery Kit and a standalone script
+
+### 🧪 Tests
+
+- **notifications**: Updated event count assertions to match new health check events (14 event types, 12 system event definitions, added `health` category)
+- **runner**: Fixed "Closing rpc while fetch was pending" CI failure in notification-logic tests — added missing mocks for `dashboard-service` and `notification-log-service` to prevent unresolved dynamic imports during test teardown
+
+### 🔧 CI/CD
+
+- **pipeline**: Added Wiki Build stage to validate workflow — ensures the VitePress documentation builds without errors on every PR
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.1.0`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v1.0.7 - PostgreSQL Version Mismatch Fix & Docker Build Validation
 *Released: March 22, 2026*
 

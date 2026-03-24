@@ -201,6 +201,27 @@ function buildTestData(eventType: string): any {
         timestamp: now,
       },
     },
+    connection_offline: {
+      eventType: "connection_offline",
+      data: {
+        adapterName: "MySQL Production (Test)",
+        adapterType: "database",
+        adapterId: "mysql",
+        consecutiveFailures: 3,
+        lastError: "Connection refused (test)",
+        timestamp: now,
+      },
+    },
+    connection_online: {
+      eventType: "connection_online",
+      data: {
+        adapterName: "MySQL Production (Test)",
+        adapterType: "database",
+        adapterId: "mysql",
+        downtime: "2h 15m",
+        timestamp: now,
+      },
+    },
   };
 
   return testPayloads[eventType] ?? null;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   Card,
@@ -35,7 +36,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bell, ChevronsUpDown, Mail, Send, Shield, Database, RotateCcw, Monitor, HardDrive, ArrowUpCircle, Clock } from "lucide-react";
+import { Bell, ChevronsUpDown, Mail, Send, Shield, Database, RotateCcw, Monitor, HardDrive, ArrowUpCircle, Clock, HeartPulse } from "lucide-react";
 import {
   getNotificationSettings,
   updateNotificationSettings,
@@ -80,6 +81,11 @@ const CATEGORY_META: Record<string, { label: string; icon: React.ReactNode; desc
     label: "Updates",
     icon: <ArrowUpCircle className="h-4 w-4" />,
     description: "Application update notifications.",
+  },
+  health: {
+    label: "Health Checks",
+    icon: <HeartPulse className="h-4 w-4" />,
+    description: "Connection health monitoring for sources and destinations.",
   },
 };
 
@@ -297,7 +303,10 @@ export function NotificationSettings() {
         <CardContent className="space-y-4">
           {channels.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No notification channels configured yet. Create a Notification adapter
+              No notification channels configured yet.{" "}
+              <Link href="/dashboard/notifications" className="text-primary underline hover:text-primary/80">
+                Create a Notification adapter
+              </Link>{" "}
               (e.g. Email, Discord) first.
             </p>
           ) : (
