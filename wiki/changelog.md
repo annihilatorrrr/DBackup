@@ -2,7 +2,7 @@
 
 All notable changes to DBackup are documented here.
 
-## v1.1.0
+## v1.1.0 - Notification System Expansion & UI Improvements
 *Release: In Progress*
 
 ### ✨ Features
