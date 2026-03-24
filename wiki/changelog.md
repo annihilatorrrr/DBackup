@@ -19,6 +19,14 @@ All notable changes to DBackup are documented here.
 
 - **docs**: Added "No Vendor Lock-In" messaging to README and Wiki — highlights that backups are standard dumps, decryptable offline with the Recovery Kit and a standalone script
 
+### 🧪 Tests
+
+- **notifications**: Updated event count assertions to match new health check events (14 event types, 12 system event definitions, added `health` category)
+
+### 🔧 CI/CD
+
+- **pipeline**: Added Wiki Build stage to validate workflow — ensures the VitePress documentation builds without errors on every PR
+
 ### 🐳 Docker
 
 - **Image**: `skyfay/dbackup:v1.1.0`

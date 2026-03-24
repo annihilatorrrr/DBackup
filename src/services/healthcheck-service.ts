@@ -80,7 +80,7 @@ export class HealthCheckService {
         });
 
         // Load offline notification state and reminder cooldown
-        let offlineStates = await loadOfflineStates();
+        const offlineStates = await loadOfflineStates();
         let reminderCooldownMs = DEFAULT_REMINDER_COOLDOWN_MS;
         try {
             const notifConfig = await getNotificationConfig();
