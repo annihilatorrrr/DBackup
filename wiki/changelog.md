@@ -2,6 +2,16 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.1.0
+*Release: In Progress*
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.1.0`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v1.0.7 - PostgreSQL Version Mismatch Fix & Docker Build Validation
 *Released: March 22, 2026*
 
