@@ -5,6 +5,10 @@ All notable changes to DBackup are documented here.
 ## v1.1.0
 *Release: In Progress*
 
+### 🎨 Improvements
+
+- **ui**: Empty state on Settings → Notifications now links directly to the Notifications page to create an adapter
+
 ### 🐳 Docker
 
 - **Image**: `skyfay/dbackup:v1.1.0`

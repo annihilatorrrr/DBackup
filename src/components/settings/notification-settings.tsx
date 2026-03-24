@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   Card,
@@ -297,7 +298,10 @@ export function NotificationSettings() {
         <CardContent className="space-y-4">
           {channels.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No notification channels configured yet. Create a Notification adapter
+              No notification channels configured yet.{" "}
+              <Link href="/dashboard/notifications" className="text-primary underline hover:text-primary/80">
+                Create a Notification adapter
+              </Link>{" "}
               (e.g. Email, Discord) first.
             </p>
           ) : (
