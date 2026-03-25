@@ -7,7 +7,7 @@ import { wrapError } from "@/lib/errors";
 const log = logger.child({ service: "CertificateService" });
 
 /** Directory where TLS certificates are stored */
-const CERTS_DIR = process.env.CERTS_DIR || "/app/certs";
+const CERTS_DIR = process.env.CERTS_DIR || "/data/certs";
 const CERT_PATH = path.join(CERTS_DIR, "tls.crt");
 const KEY_PATH = path.join(CERTS_DIR, "tls.key");
 

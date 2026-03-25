@@ -15,7 +15,4 @@ services:
       # - PUID=1001         # Optional: User ID for file permissions
       # - PGID=1001         # Optional: Group ID for file permissions
     volumes:
-      - ./backups:/backups      # Local backup storage
-      - ./db:/app/db            # SQLite database
-      - ./storage:/app/storage  # Uploads & avatars
-      - ./certs:/app/certs      # TLS certificates
+      - ./data:/data  # All persistent data (db, storage, certs, backups)

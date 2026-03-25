@@ -136,10 +136,7 @@ services:
       - BETTER_AUTH_SECRET=   # openssl rand -base64 32
       # - DISABLE_HTTPS=true  # Optional: Use plain HTTP instead of HTTPS
     volumes:
-      - ./backups:/backups
-      - ./db:/app/db
-      - ./storage:/app/storage
-      - ./certs:/app/certs
+      - ./data:/data
 ```
 
 ```bash

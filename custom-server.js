@@ -9,7 +9,7 @@
  *   DISABLE_HTTPS  - "true" to use plain HTTP (default: false → HTTPS)
  *   PORT           - Listen port (default: 3000)
  *   HOSTNAME       - Bind address (default: "0.0.0.0")
- *   CERTS_DIR      - Directory for tls.crt/tls.key (default: "/app/certs")
+ *   CERTS_DIR      - Directory for tls.crt/tls.key (default: "/data/certs")
  */
 
 const { createServer: createHttpsServer } = require("node:https");
@@ -24,7 +24,7 @@ process.chdir(__dirname);
 const port = parseInt(process.env.PORT || "3000", 10);
 const hostname = process.env.HOSTNAME || "0.0.0.0";
 const disableHttps = process.env.DISABLE_HTTPS === "true";
-const certsDir = process.env.CERTS_DIR || "/app/certs";
+const certsDir = process.env.CERTS_DIR || "/data/certs";
 const certPath = path.join(certsDir, "tls.crt");
 const keyPath = path.join(certsDir, "tls.key");
 

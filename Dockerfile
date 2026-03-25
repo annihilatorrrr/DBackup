@@ -85,7 +85,7 @@ ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
 # Default environment variables (can be overridden at runtime)
-ENV DATABASE_URL="file:/app/db/dbackup.db"
+ENV DATABASE_URL="file:/data/db/dbackup.db"
 ENV TZ="UTC"
 ENV LOG_LEVEL="info"
 ENV PUID=1001
@@ -100,11 +100,11 @@ COPY --from=builder --link --chown=1001:1001 /app/.next/standalone ./
 COPY --from=builder --link --chown=1001:1001 /app/.next/static ./.next/static
 COPY --from=builder --link --chown=1001:1001 /app/prisma ./prisma
 
-# Create runtime dirs + install Prisma CLI for migrations
+# Create runtime data directory + install Prisma CLI for migrations
 # Note: pnpm add -g runs as root, so we must chown /pnpm to the runtime user
 # to avoid "Can't write to @prisma/engines" errors at container startup
-RUN mkdir -p /app/storage/avatars /app/db /app/certs && \
-    chown -R 1001:1001 /app/storage /app/db /app/certs && \
+RUN mkdir -p /data/storage/avatars /data/db /data/certs /data/backups && \
+    chown -R 1001:1001 /data && \
     pnpm add -g prisma@5.22.0 && \
     chown -R 1001:1001 /pnpm
 
@@ -125,5 +125,6 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 ENV DISABLE_HTTPS="false"
+ENV DATA_DIR="/data"
 
 ENTRYPOINT ["docker-entrypoint.sh"]

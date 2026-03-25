@@ -28,12 +28,11 @@ services:
     environment:
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
-      - BETTER_AUTH_URL=http://localhost:3000
+      - BETTER_AUTH_URL=https://localhost:3000
+      # - DISABLE_HTTPS=true  # Optional: Use plain HTTP instead of HTTPS
       # - TZ=Europe/Zurich  # Optional: Server timezone
     volumes:
-      - ./backups:/backups      # Local backup storage
-      - ./db:/app/db            # SQLite database
-      - ./storage:/app/storage  # Uploads & avatars
+      - ./data:/data  # All persistent data (db, storage, certs, backups)
 ```
 
 ```bash [Docker Run]
@@ -43,10 +42,8 @@ docker run -d \
   -p 3000:3000 \
   -e ENCRYPTION_KEY="$(openssl rand -hex 32)" \
   -e BETTER_AUTH_SECRET="$(openssl rand -base64 32)" \
-  -e BETTER_AUTH_URL="http://localhost:3000" \
-  -v "$(pwd)/backups:/backups" \
-  -v "$(pwd)/db:/app/db" \
-  -v "$(pwd)/storage:/app/storage" \
+  -e BETTER_AUTH_URL="https://localhost:3000" \
+  -v "$(pwd)/data:/data" \
   skyfay/dbackup:latest
 ```
 
@@ -77,7 +74,7 @@ BETTER_AUTH_SECRET=your-base64-secret-here
 docker-compose up -d
 ```
 
-Access the application at [http://localhost:3000](http://localhost:3000).
+Access the application at [https://localhost:3000](https://localhost:3000) (accept the self-signed certificate on first visit).
 
 ## Environment Variables
 
@@ -88,10 +85,11 @@ Access the application at [http://localhost:3000](http://localhost:3000).
 | `BETTER_AUTH_URL` | ✅ | **Primary** URL where users access DBackup (for auth redirects). |
 | `TRUSTED_ORIGINS` | ❌ | Additional access URLs, comma-separated (see below). |
 | `PORT` | ❌ | Internal server port. Default: `3000` |
-| `DATABASE_URL` | ❌ | SQLite path. Default: `file:/app/db/dbackup.db` |
+| `DATABASE_URL` | ❌ | SQLite path. Default: `file:/data/db/dbackup.db` |
 | `TZ` | ❌ | Server timezone for logs. Default: `UTC` |
 | `TMPDIR` | ❌ | Temp directory for large backups. Default: `/tmp` |
 | `LOG_LEVEL` | ❌ | Logging verbosity: `debug`, `info`, `warn`, `error`. Default: `info` |
+| `DISABLE_HTTPS` | ❌ | Set to `true` to use plain HTTP. Default: `false` (HTTPS) |
 | `PUID` | ❌ | User ID the container runs as. Default: `1001` |
 | `PGID` | ❌ | Group ID the container runs as. Default: `1001` |
 
@@ -116,9 +114,7 @@ Store it securely in a password manager or secrets vault.
 
 | Mount Point | Required | Purpose |
 | :--- | :---: | :--- |
-| `/app/db` | ✅ | SQLite database persistence |
-| `/app/storage` | ✅ | User uploads (avatars, etc.) |
-| `/backups` | ❌ | Default path for local backup storage |
+| `/data` | ✅ | All persistent data (database, uploads, certificates, backups) |
 
 ## Health Check
 

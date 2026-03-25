@@ -52,7 +52,8 @@ async function deleteOldAvatar(userImage: string | null) {
 
     try {
         // Try deleting from new location first
-        let filepath = path.join(process.cwd(), "storage", "avatars", filename);
+        const dataDir = process.env.DATA_DIR || path.join(process.cwd(), "data");
+        let filepath = path.join(dataDir, "storage", "avatars", filename);
 
         // If not found, try old location (migration support)
         try {
@@ -152,7 +153,8 @@ export async function uploadAvatar(formData: FormData) {
     const filename = `${session.user.id}-${Date.now()}${path.extname(file.name)}`;
 
     // Save to private storage
-    const uploadDir = path.join(process.cwd(), "storage", "avatars");
+    const dataDir = process.env.DATA_DIR || path.join(process.cwd(), "data");
+    const uploadDir = path.join(dataDir, "storage", "avatars");
     // Ensure dir exists
     if (!existsSync(uploadDir)){
         mkdirSync(uploadDir, { recursive: true });

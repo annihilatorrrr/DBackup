@@ -75,10 +75,8 @@ Get DBackup running in minutes with Docker:
 docker run -d --name dbackup -p 3000:3000 \
   -e ENCRYPTION_KEY="$(openssl rand -hex 32)" \
   -e BETTER_AUTH_SECRET="$(openssl rand -base64 32)" \
-  -e BETTER_AUTH_URL="http://localhost:3000" \
-  -v "$(pwd)/db:/app/db" \
-  -v "$(pwd)/backups:/backups" \
-  -v "$(pwd)/storage:/app/storage" \
+  -e BETTER_AUTH_URL="https://localhost:3000" \
+  -v "$(pwd)/data:/data" \
   skyfay/dbackup:latest
 ```
 
@@ -92,18 +90,16 @@ services:
       - "3000:3000"
     environment:
       - ENCRYPTION_KEY=  # openssl rand -hex 32
-      - BETTER_AUTH_URL=http://localhost:3000
+      - BETTER_AUTH_URL=https://localhost:3000
       - BETTER_AUTH_SECRET=  # openssl rand -base64 32
     volumes:
-      - ./backups:/backups      # Local backup storage
-      - ./db:/app/db            # SQLite database
-      - ./storage:/app/storage  # Uploads & avatars
+      - ./data:/data  # All persistent data (db, storage, certs, backups)
 ```
 
 :::
 
 
-Then open [http://localhost:3000](http://localhost:3000) and create your first admin account.
+Then open [https://localhost:3000](https://localhost:3000) and create your first admin account (accept the self-signed certificate on first visit).
 
 → **[Full Installation Guide](/user-guide/installation)** for Docker Compose, volumes, and production setup.
 

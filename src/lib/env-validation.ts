@@ -54,7 +54,11 @@ const envSchema = z.object({
 
     CERTS_DIR: z
         .string()
-        .default("/app/certs"),
+        .default("/data/certs"),
+
+    DATA_DIR: z
+        .string()
+        .default("/data"),
 });
 
 export type ValidatedEnv = z.infer<typeof envSchema>;
