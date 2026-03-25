@@ -2,8 +2,10 @@
 
 All notable changes to DBackup are documented here.
 
-## v1.1.1
+## v1.2.0
 *Release: In Progress*
+
+> ⚠️ **Breaking:** Volume mounts have changed. Replace `./db:/app/db` and `./storage:/app/storage` with a single `./data:/data` mount. Update `BETTER_AUTH_URL` to `https://` - HTTPS is now the default protocol. Set `DISABLE_HTTPS=true` if you use a TLS-terminating reverse proxy.
 
 ### ✨ Features
 
@@ -23,7 +25,7 @@ All notable changes to DBackup are documented here.
 
 ### 🐳 Docker
 
-- **Image**: `skyfay/dbackup:v1.1.1`
+- **Image**: `skyfay/dbackup:v1.2.0`
 - **Also tagged as**: `latest`, `v1`
 - **Platforms**: linux/amd64, linux/arm64
 
