@@ -41,26 +41,78 @@ const handler = app.getRequestHandler();
 
 // ── TLS Certificate Management ────────────────────────────────
 
+function isSelfSigned() {
+  try {
+    const info = execSync(`openssl x509 -in "${certPath}" -noout -issuer -subject`, {
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 5000,
+    });
+    const issuer = info.match(/issuer\s*=\s*(.*)/i)?.[1]?.trim() || "";
+    const subject = info.match(/subject\s*=\s*(.*)/i)?.[1]?.trim() || "";
+    return issuer === subject;
+  } catch {
+    return false;
+  }
+}
+
+function isExpired() {
+  try {
+    execSync(`openssl x509 -in "${certPath}" -noout -checkend 0`, {
+      stdio: "pipe",
+      timeout: 5000,
+    });
+    return false; // checkend 0 exits 0 if NOT expired
+  } catch {
+    return true; // exits 1 if expired
+  }
+}
+
+function generateSelfSignedCert() {
+  execSync(
+    `openssl req -x509 -newkey rsa:2048 -keyout "${keyPath}" -out "${certPath}" ` +
+      `-days 365 -nodes -subj "/CN=DBackup/O=DBackup Self-Signed" ` +
+      `-addext "subjectAltName=DNS:localhost,IP:127.0.0.1"`,
+    { stdio: "pipe", timeout: 30000 }
+  );
+  execSync(`chmod 600 "${keyPath}"`, { stdio: "pipe" });
+  execSync(`chmod 644 "${certPath}"`, { stdio: "pipe" });
+}
+
 function ensureCertificate() {
   if (!fs.existsSync(certsDir)) {
     fs.mkdirSync(certsDir, { recursive: true, mode: 0o700 });
   }
 
   if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
-    console.log("[TLS] Using existing certificate from " + certsDir);
+    // Check if existing cert is expired
+    if (isExpired()) {
+      if (isSelfSigned()) {
+        console.log("[TLS] Self-signed certificate expired — regenerating...");
+        try {
+          generateSelfSignedCert();
+          console.log("[TLS] Self-signed certificate renewed successfully");
+          return true;
+        } catch (err) {
+          console.error("[TLS] Failed to renew certificate:", err.message);
+          return false;
+        }
+      } else {
+        console.warn(
+          "[TLS] WARNING: Custom certificate has expired! " +
+            "Upload a new certificate via Settings → Certificate or replace files in " +
+            certsDir
+        );
+      }
+    } else {
+      console.log("[TLS] Using existing certificate from " + certsDir);
+    }
     return true;
   }
 
   console.log("[TLS] No certificate found. Generating self-signed certificate...");
   try {
-    execSync(
-      `openssl req -x509 -newkey rsa:2048 -keyout "${keyPath}" -out "${certPath}" ` +
-        `-days 365 -nodes -subj "/CN=DBackup/O=DBackup Self-Signed" ` +
-        `-addext "subjectAltName=DNS:localhost,IP:127.0.0.1"`,
-      { stdio: "pipe", timeout: 30000 }
-    );
-    execSync(`chmod 600 "${keyPath}"`, { stdio: "pipe" });
-    execSync(`chmod 644 "${certPath}"`, { stdio: "pipe" });
+    generateSelfSignedCert();
     console.log("[TLS] Self-signed certificate generated successfully");
     return true;
   } catch (err) {

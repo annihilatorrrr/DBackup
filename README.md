@@ -134,7 +134,7 @@ services:
       - ENCRYPTION_KEY=       # openssl rand -hex 32
       - BETTER_AUTH_URL=https://localhost:3000
       - BETTER_AUTH_SECRET=   # openssl rand -base64 32
-      # - DISABLE_HTTPS=true  # Optional: Use plain HTTP instead of HTTPS
+      # All additional environment variables: https://dbackup.app/user-guide/installation#environment-variables
     volumes:
       - ./data:/data              # All persistent data (db, storage, certs)
       - ./backups:/backups        # Optional: used for local backups
