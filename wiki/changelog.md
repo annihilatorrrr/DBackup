@@ -3,9 +3,9 @@
 All notable changes to DBackup are documented here.
 
 ## v1.2.0
-*Release: In Progress*
+*Released: March 25, 2026*
 
-> ⚠️ **Breaking:** Volume mounts have changed. Replace `./db:/app/db` and `./storage:/app/storage` with a single `./data:/data` mount. Update `BETTER_AUTH_URL` to `https://` - HTTPS is now the default protocol. Set `DISABLE_HTTPS=true` if you use a TLS-terminating reverse proxy.
+> ⚠️ **Breaking:** Volume mounts have changed. Replace `./db:/app/db` and `./storage:/app/storage` with a single `./data:/data` mount. Then move the current data to the new structure after first startup. Update `BETTER_AUTH_URL` to `https://` - HTTPS is now the default protocol. Set `DISABLE_HTTPS=true` if you use a TLS-terminating reverse proxy but its not recommended in terms of security.
 
 ### ✨ Features
 
