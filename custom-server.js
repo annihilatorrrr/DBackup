@@ -15,10 +15,12 @@
 const { createServer: createHttpsServer } = require("node:https");
 const { createServer: createHttpServer } = require("node:http");
 const { execSync } = require("node:child_process");
+const { parse: parseUrl } = require("node:url");
 const path = require("node:path");
 const fs = require("node:fs");
 
 // ── Configuration ──────────────────────────────────────────────
+process.env.NODE_ENV = "production";
 process.chdir(__dirname);
 
 const port = parseInt(process.env.PORT || "3000", 10);
@@ -29,20 +31,13 @@ const certPath = path.join(certsDir, "tls.crt");
 const keyPath = path.join(certsDir, "tls.key");
 
 // ── Next.js Setup ────────────────────────────────────────────
-// Load the Next.js standalone config and create server instance
-const config = require("./.next/required-server-files.json").config;
-const NextNodeServer = require("next/dist/server/next-server").default;
+// Set standalone config env BEFORE requiring next (matches generated server.js)
+const nextConfig = require("./.next/required-server-files.json").config;
+process.env.__NEXT_PRIVATE_STANDALONE_CONFIG = JSON.stringify(nextConfig);
 
-const nextApp = new NextNodeServer({
-  hostname,
-  port,
-  dir: __dirname,
-  dev: false,
-  customServer: true,
-  conf: config,
-});
-
-const handler = nextApp.getRequestHandler();
+const next = require("next");
+const app = next({ dev: false, hostname, port, dir: __dirname, conf: nextConfig });
+const handler = app.getRequestHandler();
 
 // ── TLS Certificate Management ────────────────────────────────
 
@@ -79,15 +74,24 @@ function ensureCertificate() {
 
 // ── Server Start ──────────────────────────────────────────────
 
-function start() {
+app.prepare().then(() => {
   let server;
   let protocol;
 
+  const requestHandler = async (req, res) => {
+    try {
+      const parsedUrl = parseUrl(req.url, true);
+      await handler(req, res, parsedUrl);
+    } catch (err) {
+      console.error("[Server] Request error:", err);
+      res.statusCode = 500;
+      res.end("Internal Server Error");
+    }
+  };
+
   if (disableHttps) {
     protocol = "http";
-    server = createHttpServer(async (req, res) => {
-      await handler(req, res);
-    });
+    server = createHttpServer(requestHandler);
     console.log("[Server] HTTPS disabled via DISABLE_HTTPS=true — using HTTP");
   } else {
     const certReady = ensureCertificate();
@@ -98,15 +102,11 @@ function start() {
         cert: fs.readFileSync(certPath),
         key: fs.readFileSync(keyPath),
       };
-      server = createHttpsServer(tlsOptions, async (req, res) => {
-        await handler(req, res);
-      });
+      server = createHttpsServer(tlsOptions, requestHandler);
       console.log("[Server] HTTPS enabled with certificate from " + certsDir);
     } else {
       protocol = "http";
-      server = createHttpServer(async (req, res) => {
-        await handler(req, res);
-      });
+      server = createHttpServer(requestHandler);
       console.warn(
         "[Server] WARNING: Falling back to HTTP — certificate generation failed"
       );
@@ -131,6 +131,4 @@ function start() {
 
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("SIGINT", () => shutdown("SIGINT"));
-}
-
-start();
+});
