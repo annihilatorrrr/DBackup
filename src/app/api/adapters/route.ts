@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const { name, type, adapterId, config } = body;
+        const { name, type, adapterId, config, metadata } = body;
 
         // Permission Check
         if (type === 'database') {
@@ -120,6 +120,7 @@ export async function POST(req: NextRequest) {
                 type,
                 adapterId,
                 config: configString,
+                ...(metadata ? { metadata: JSON.stringify(metadata) } : {}),
             },
         });
 

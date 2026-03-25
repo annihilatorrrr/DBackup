@@ -115,7 +115,7 @@ export async function PUT(
         checkPermissionWithContext(ctx, getWritePermissionForType(existingAdapter.type));
 
         const body = await req.json();
-        const { name, config } = body;
+        const { name, config, metadata } = body;
 
         // Check name uniqueness within the same type (excluding current adapter)
         if (name) {
@@ -136,7 +136,8 @@ export async function PUT(
             where: { id: params.id },
             data: {
                 name,
-                config: configString
+                config: configString,
+                ...(metadata !== undefined ? { metadata: JSON.stringify(metadata) } : {}),
             }
         });
 

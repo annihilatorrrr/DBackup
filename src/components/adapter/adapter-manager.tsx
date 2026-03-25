@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { ADAPTER_DEFINITIONS, AdapterDefinition } from "@/lib/adapters/definitions";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -348,19 +349,21 @@ export function AdapterManager({ type, title, description, canManage = true, per
 
             {/* Step 2: Adapter Form */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
+                <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0">
+                    <DialogHeader className="px-6 pt-6 pb-0">
                         <DialogTitle>{editingId ? "Edit Configuration" : (type === 'notification' ? "Add New Notification" : (type === 'database' ? "Add New Source" : (type === 'storage' ? "Add New Destination" : "Add New Configuration")))}</DialogTitle>
                     </DialogHeader>
-                    {isDialogOpen && (
-                        <AdapterForm
-                            type={type}
-                            adapters={selectedAdapterForNew ? availableAdapters.filter(a => a.id === selectedAdapterForNew) : availableAdapters}
-                            onSuccess={() => { setIsDialogOpen(false); setSelectedAdapterForNew(null); fetchConfigs(); }}
-                            initialData={editingId ? configs.find(c => c.id === editingId) : undefined}
-                            onBack={!editingId ? () => { setIsDialogOpen(false); setSelectedAdapterForNew(null); setIsPickerOpen(true); } : undefined}
-                        />
-                    )}
+                    <ScrollArea className="max-h-[calc(90vh-4rem)] px-6 pb-6">
+                        {isDialogOpen && (
+                            <AdapterForm
+                                type={type}
+                                adapters={selectedAdapterForNew ? availableAdapters.filter(a => a.id === selectedAdapterForNew) : availableAdapters}
+                                onSuccess={() => { setIsDialogOpen(false); setSelectedAdapterForNew(null); fetchConfigs(); }}
+                                initialData={editingId ? configs.find(c => c.id === editingId) : undefined}
+                                onBack={!editingId ? () => { setIsDialogOpen(false); setSelectedAdapterForNew(null); setIsPickerOpen(true); } : undefined}
+                            />
+                        )}
+                    </ScrollArea>
                 </DialogContent>
             </Dialog>
 

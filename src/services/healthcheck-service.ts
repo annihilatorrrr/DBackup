@@ -228,6 +228,12 @@ export class HealthCheckService {
         let stateChanged = false;
         const currentState = offlineStates[configRow.id];
 
+        // Skip notifications if explicitly disabled for this adapter
+        const meta = configRow.metadata ? JSON.parse(configRow.metadata) : {};
+        if (meta.healthNotificationsDisabled === true) {
+            return stateChanged;
+        }
+
         if (newStatus === "OFFLINE") {
             // Adapter just became or remains offline — check if we should notify
             if (shouldNotifyOffline(currentState, reminderCooldownMs)) {

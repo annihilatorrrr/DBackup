@@ -26,6 +26,10 @@ import { SchemaField } from "./schema-field";
 export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: { type: string, adapters: AdapterDefinition[], onSuccess: () => void, initialData?: AdapterConfig, onBack?: () => void }) {
     const [selectedAdapterId, setSelectedAdapterId] = useState<string>(initialData?.adapterId || "");
 
+    // Health check notification opt-out (database & storage only)
+    const initialMeta = initialData?.metadata ? JSON.parse(initialData.metadata) : {};
+    const [healthNotificationsDisabled, setHealthNotificationsDisabled] = useState<boolean>(initialMeta.healthNotificationsDisabled === true);
+
     const selectedAdapter = adapters.find(a => a.id === selectedAdapterId);
 
     // Group adapters by their group field (preserves insertion order)
@@ -97,10 +101,17 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
             const url = initialData ? `/api/adapters/${initialData.id}` : '/api/adapters';
             const method = initialData ? 'PUT' : 'POST';
 
+            // Build metadata with health notification preference for database/storage adapters
+            const existingMeta = initialData?.metadata ? JSON.parse(initialData.metadata) : {};
+            const metadata = (type === 'database' || type === 'storage')
+                ? { ...existingMeta, healthNotificationsDisabled }
+                : existingMeta;
+
             const payload = {
                 ...data, // name, adapterId
                 config: data.config,
-                type: type // ensure type is sent
+                type: type, // ensure type is sent
+                metadata,
             };
 
             const res = await fetch(url, {
@@ -269,11 +280,18 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
                     <DatabaseFormContent
                         adapter={selectedAdapter}
                         detectedVersion={detectedVersion}
+                        healthNotificationsDisabled={healthNotificationsDisabled}
+                        onHealthNotificationsDisabledChange={setHealthNotificationsDisabled}
                     />
                 )}
 
                 {selectedAdapter && type === 'storage' && (
-                    <StorageFormContent adapter={selectedAdapter} initialData={initialData} />
+                    <StorageFormContent
+                        adapter={selectedAdapter}
+                        initialData={initialData}
+                        healthNotificationsDisabled={healthNotificationsDisabled}
+                        onHealthNotificationsDisabledChange={setHealthNotificationsDisabled}
+                    />
                 )}
 
                 {selectedAdapter && type === 'notification' && (
