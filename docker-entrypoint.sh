@@ -29,12 +29,12 @@ if [ "$PUID" != "1001" ] || [ "$PGID" != "1001" ]; then
 fi
 
 # ─── Fix internal directory permissions ───────────────────────
-# Only fix directories that are always part of the app.
-# User-configured mount points (e.g. /backups) are managed by
-# the host via PUID/PGID matching the host user.
-mkdir -p /app/db /app/storage
+# All persistent data lives under /data (single mount point).
+# Subdirectories are created automatically if missing.
+DATA_DIR="${DATA_DIR:-/data}"
+mkdir -p "$DATA_DIR/db" "$DATA_DIR/storage/avatars" "$DATA_DIR/certs"
 
-chown -R "$PUID:$PGID" /app/db /app/storage
+chown -R "$PUID:$PGID" "$DATA_DIR"
 
 # Only chown /pnpm if ownership doesn't match (avoids slow recursive walk on every start)
 if [ "$(stat -c '%u' /pnpm 2>/dev/null)" != "$PUID" ]; then
@@ -44,4 +44,4 @@ fi
 # ─── Start application ───────────────────────────────────────
 # Run database migrations first, then exec node as PID 1 for proper signal handling
 su-exec "$PUID:$PGID" prisma migrate deploy
-exec su-exec "$PUID:$PGID" node server.js
+exec su-exec "$PUID:$PGID" node custom-server.js

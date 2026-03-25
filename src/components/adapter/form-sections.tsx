@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { Check, FolderOpen, Loader2 } from "lucide-react";
 import { AdapterDefinition } from "@/lib/adapters/definitions";
@@ -42,11 +43,41 @@ import { AdapterConfig } from "./types";
 interface SectionProps {
     adapter: AdapterDefinition;
     detectedVersion?: string | null;
+    healthNotificationsDisabled?: boolean;
+    onHealthNotificationsDisabledChange?: (disabled: boolean) => void;
+}
+
+function HealthCheckNotificationSwitch({
+    type,
+    disabled,
+    onChange,
+}: {
+    type: "database" | "storage";
+    disabled: boolean;
+    onChange: (disabled: boolean) => void;
+}) {
+    return (
+        <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+                <Label htmlFor="health-notifications-disabled">Disable Health Check Notifications</Label>
+                <p className="text-sm text-muted-foreground">
+                    Suppress offline and recovery alerts for this {type === "database" ? "source" : "destination"}. Health checks still run.
+                </p>
+            </div>
+            <Switch
+                id="health-notifications-disabled"
+                checked={disabled}
+                onCheckedChange={onChange}
+            />
+        </div>
+    );
 }
 
 export function DatabaseFormContent({
     adapter,
     detectedVersion,
+    healthNotificationsDisabled,
+    onHealthNotificationsDisabledChange,
 }: SectionProps) {
     const { watch } = useFormContext();
     const mode = watch("config.mode");
@@ -67,11 +98,20 @@ export function DatabaseFormContent({
                  )}
 
                  {mode === 'local' ? (
-                     <div className="space-y-4 border p-4 rounded-md bg-muted/10">
-                         <div className="space-y-4">
-                            <FieldList keys={['path']} adapter={adapter} />
-                            {/* sqliteBinaryPath hidden for local mode as requested */}
+                     <div className="space-y-4">
+                         <div className="space-y-4 border p-4 rounded-md bg-muted/10">
+                             <div className="space-y-4">
+                                <FieldList keys={['path']} adapter={adapter} />
+                                {/* sqliteBinaryPath hidden for local mode as requested */}
+                             </div>
                          </div>
+                         {onHealthNotificationsDisabledChange && (
+                             <HealthCheckNotificationSwitch
+                                 type="database"
+                                 disabled={healthNotificationsDisabled ?? false}
+                                 onChange={onHealthNotificationsDisabledChange}
+                             />
+                         )}
                      </div>
                  ) : (
                     <Tabs defaultValue="connection" className="w-full pt-2">
@@ -106,6 +146,13 @@ export function DatabaseFormContent({
                                 <FieldList keys={['path']} adapter={adapter} />
                                 <FieldList keys={['sqliteBinaryPath']} adapter={adapter} />
                              </div>
+                             {onHealthNotificationsDisabledChange && (
+                                 <HealthCheckNotificationSwitch
+                                     type="database"
+                                     disabled={healthNotificationsDisabled ?? false}
+                                     onChange={onHealthNotificationsDisabledChange}
+                                 />
+                             )}
                         </TabsContent>
                     </Tabs>
                  )}
@@ -162,6 +209,13 @@ export function DatabaseFormContent({
                     ]}
                     adapter={adapter}
                 />
+                {onHealthNotificationsDisabledChange && (
+                    <HealthCheckNotificationSwitch
+                        type="database"
+                        disabled={healthNotificationsDisabled ?? false}
+                        onChange={onHealthNotificationsDisabledChange}
+                    />
+                )}
             </TabsContent>
 
             {isMSSQL && (
@@ -257,10 +311,14 @@ function SshConfigSection({ adapter, sshAuthType }: { adapter: AdapterDefinition
 export function StorageFormContent({
     adapter,
     initialData,
-}: { adapter: AdapterDefinition; initialData?: AdapterConfig }) {
+    healthNotificationsDisabled,
+    onHealthNotificationsDisabledChange,
+}: { adapter: AdapterDefinition; initialData?: AdapterConfig; healthNotificationsDisabled?: boolean; onHealthNotificationsDisabledChange?: (disabled: boolean) => void }) {
     const { watch } = useFormContext();
     const authType = watch("config.authType");
-    const hasConfigKeys = hasFields(adapter, STORAGE_CONFIG_KEYS);
+    const hasRealConfigKeys = hasFields(adapter, STORAGE_CONFIG_KEYS);
+    // Always show Configuration tab for storage adapters (health check switch lives there)
+    const hasConfigKeys = hasRealConfigKeys || !!onHealthNotificationsDisabledChange;
     const isGoogleDrive = adapter.id === 'google-drive';
     const isDropbox = adapter.id === 'dropbox';
     const isOneDrive = adapter.id === 'onedrive';
@@ -369,8 +427,15 @@ export function StorageFormContent({
                             config={config}
                             hasRefreshToken={hasRefreshToken}
                         />
-                    ) : (
+                    ) : hasRealConfigKeys ? (
                         <FieldList keys={configKeys} adapter={adapter} />
+                    ) : null}
+                    {onHealthNotificationsDisabledChange && (
+                        <HealthCheckNotificationSwitch
+                            type="storage"
+                            disabled={healthNotificationsDisabled ?? false}
+                            onChange={onHealthNotificationsDisabledChange}
+                        />
                     )}
                 </TabsContent>
             )}

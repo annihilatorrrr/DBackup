@@ -132,19 +132,19 @@ services:
       - "3000:3000"
     environment:
       - ENCRYPTION_KEY=       # openssl rand -hex 32
-      - BETTER_AUTH_URL=http://localhost:3000
+      - BETTER_AUTH_URL=https://localhost:3000
       - BETTER_AUTH_SECRET=   # openssl rand -base64 32
+      # All additional environment variables: https://dbackup.app/user-guide/installation#environment-variables
     volumes:
-      - ./backups:/backups
-      - ./db:/app/db
-      - ./storage:/app/storage
+      - ./data:/data              # All persistent data (db, storage, certs)
+      - ./backups:/backups        # Optional: used for local backups
 ```
 
 ```bash
 docker-compose up -d
 ```
 
-Open [http://localhost:3000](http://localhost:3000) and create your admin account.
+Open [https://localhost:3000](https://localhost:3000) and create your admin account (accept the self-signed certificate warning on first visit).
 
 📖 **Full installation guide**: [dbackup.app/user-guide/getting-started](https://dbackup.app/user-guide/getting-started)
 

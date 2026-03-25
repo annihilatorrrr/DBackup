@@ -1,0 +1,364 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+// vi.hoisted runs before vi.mock hoisting, so the fns are available in factories
+const {
+  mockExecSync,
+  mockExistsSync,
+  mockWriteFileSync,
+  mockMkdirSync,
+  mockUnlinkSync,
+  mockRenameSync,
+} = vi.hoisted(() => ({
+  mockExecSync: vi.fn(),
+  mockExistsSync: vi.fn(),
+  mockWriteFileSync: vi.fn(),
+  mockMkdirSync: vi.fn(),
+  mockUnlinkSync: vi.fn(),
+  mockRenameSync: vi.fn(),
+}));
+
+vi.mock("node:child_process", () => ({
+  default: { execSync: mockExecSync },
+  execSync: mockExecSync,
+}));
+
+vi.mock("node:fs", () => ({
+  default: {
+    existsSync: mockExistsSync,
+    writeFileSync: mockWriteFileSync,
+    mkdirSync: mockMkdirSync,
+    unlinkSync: mockUnlinkSync,
+    renameSync: mockRenameSync,
+  },
+  existsSync: mockExistsSync,
+  writeFileSync: mockWriteFileSync,
+  mkdirSync: mockMkdirSync,
+  unlinkSync: mockUnlinkSync,
+  renameSync: mockRenameSync,
+}));
+
+vi.mock("@/lib/logger", () => ({
+  logger: { child: () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn() }) },
+}));
+
+vi.mock("@/lib/errors", () => ({
+  wrapError: (e: unknown) => e,
+}));
+
+import {
+  isHttpsEnabled,
+  certificateExists,
+  getCertificateInfo,
+  uploadCertificate,
+  regenerateSelfSignedCert,
+} from "@/services/certificate-service";
+
+describe("CertificateService", () => {
+  const originalEnv = { ...process.env };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env = { ...originalEnv };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  // ── isHttpsEnabled ─────────────────────────────────────────
+
+  describe("isHttpsEnabled", () => {
+    it("should return true when DISABLE_HTTPS is not set", () => {
+      delete process.env.DISABLE_HTTPS;
+      expect(isHttpsEnabled()).toBe(true);
+    });
+
+    it("should return false when DISABLE_HTTPS is 'true'", () => {
+      process.env.DISABLE_HTTPS = "true";
+      expect(isHttpsEnabled()).toBe(false);
+    });
+
+    it("should return true when DISABLE_HTTPS is 'false'", () => {
+      process.env.DISABLE_HTTPS = "false";
+      expect(isHttpsEnabled()).toBe(true);
+    });
+  });
+
+  // ── certificateExists ──────────────────────────────────────
+
+  describe("certificateExists", () => {
+    it("should return true when both cert and key exist", () => {
+      mockExistsSync.mockReturnValue(true);
+      expect(certificateExists()).toBe(true);
+    });
+
+    it("should return false when cert is missing", () => {
+      mockExistsSync.mockImplementation((p: string) =>
+        p.endsWith("tls.key")
+      );
+      expect(certificateExists()).toBe(false);
+    });
+
+    it("should return false when key is missing", () => {
+      mockExistsSync.mockImplementation((p: string) =>
+        p.endsWith("tls.crt")
+      );
+      expect(certificateExists()).toBe(false);
+    });
+  });
+
+  // ── getCertificateInfo ─────────────────────────────────────
+
+  describe("getCertificateInfo", () => {
+    it("should return empty info when no certificate exists", () => {
+      mockExistsSync.mockReturnValue(false);
+
+      const info = getCertificateInfo();
+
+      expect(info.exists).toBe(false);
+      expect(info.issuer).toBe("");
+      expect(info.subject).toBe("");
+      expect(info.daysRemaining).toBe(0);
+    });
+
+    it("should parse openssl output for a self-signed certificate", () => {
+      mockExistsSync.mockReturnValue(true);
+
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 300);
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 65);
+
+      const opensslOutput = [
+        "subject=CN = DBackup, O = DBackup Self-Signed",
+        "issuer=CN = DBackup, O = DBackup Self-Signed",
+        `notBefore=${pastDate.toUTCString()}`,
+        `notAfter=${futureDate.toUTCString()}`,
+        "serial=ABC123",
+        "SHA256 Fingerprint=AA:BB:CC:DD",
+      ].join("\n");
+
+      mockExecSync.mockReturnValue(opensslOutput);
+
+      const info = getCertificateInfo();
+
+      expect(info.exists).toBe(true);
+      expect(info.isSelfSigned).toBe(true);
+      expect(info.subject).toBe("CN = DBackup, O = DBackup Self-Signed");
+      expect(info.issuer).toBe("CN = DBackup, O = DBackup Self-Signed");
+      expect(info.serialNumber).toBe("ABC123");
+      expect(info.fingerprint).toBe("AA:BB:CC:DD");
+      expect(info.daysRemaining).toBeGreaterThan(290);
+      expect(info.daysRemaining).toBeLessThanOrEqual(300);
+    });
+
+    it("should detect non-self-signed certificate", () => {
+      mockExistsSync.mockReturnValue(true);
+
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 90);
+
+      const opensslOutput = [
+        "subject=CN = myapp.example.com",
+        "issuer=CN = Let's Encrypt Authority X3, O = Let's Encrypt",
+        `notBefore=${new Date().toUTCString()}`,
+        `notAfter=${futureDate.toUTCString()}`,
+        "serial=0123456789",
+        "SHA256 Fingerprint=11:22:33:44",
+      ].join("\n");
+
+      mockExecSync.mockReturnValue(opensslOutput);
+
+      const info = getCertificateInfo();
+
+      expect(info.isSelfSigned).toBe(false);
+      expect(info.issuer).toContain("Let's Encrypt");
+    });
+
+    it("should return error info when openssl fails", () => {
+      mockExistsSync.mockReturnValue(true);
+      mockExecSync.mockImplementation(() => {
+        throw new Error("openssl not found");
+      });
+
+      const info = getCertificateInfo();
+
+      expect(info.exists).toBe(true);
+      expect(info.issuer).toBe("Error reading certificate");
+      expect(info.daysRemaining).toBe(0);
+    });
+  });
+
+  // ── uploadCertificate ──────────────────────────────────────
+
+  describe("uploadCertificate", () => {
+    const validCert =
+      "-----BEGIN CERTIFICATE-----\nMIIBxTCCAW...\n-----END CERTIFICATE-----";
+    const validKey =
+      "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADA...\n-----END PRIVATE KEY-----";
+
+    it("should reject invalid certificate format", () => {
+      expect(() => uploadCertificate("not a cert", validKey)).toThrow(
+        "Invalid certificate format"
+      );
+    });
+
+    it("should reject invalid key format", () => {
+      expect(() => uploadCertificate(validCert, "not a key")).toThrow(
+        "Invalid private key format"
+      );
+    });
+
+    it("should create certs directory if it does not exist", () => {
+      mockExistsSync.mockImplementation((p: string) => {
+        // CERTS_DIR doesn't exist, but tmp files do after write
+        if (p.includes("tls.crt.tmp") || p.includes("tls.key.tmp"))
+          return true;
+        return false;
+      });
+      mockExecSync.mockReturnValue("");
+
+      uploadCertificate(validCert, validKey);
+
+      expect(mockMkdirSync).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ recursive: true })
+      );
+    });
+
+    it("should write temp files, validate, then rename to final paths", () => {
+      mockExistsSync.mockReturnValue(true);
+      mockExecSync.mockReturnValue("Modulus=ABC123");
+
+      uploadCertificate(validCert, validKey);
+
+      // Wrote temp files
+      expect(mockWriteFileSync).toHaveBeenCalledTimes(2);
+      expect(mockWriteFileSync).toHaveBeenCalledWith(
+        expect.stringContaining("tls.crt.tmp"),
+        validCert,
+        expect.any(Object)
+      );
+      expect(mockWriteFileSync).toHaveBeenCalledWith(
+        expect.stringContaining("tls.key.tmp"),
+        validKey,
+        expect.any(Object)
+      );
+
+      // Renamed to final paths
+      expect(mockRenameSync).toHaveBeenCalledTimes(2);
+      expect(mockRenameSync).toHaveBeenCalledWith(
+        expect.stringContaining("tls.crt.tmp"),
+        expect.stringContaining("tls.crt")
+      );
+    });
+
+    it("should throw when cert and key modulus do not match", () => {
+      mockExistsSync.mockReturnValue(true);
+      let callCount = 0;
+      mockExecSync.mockImplementation((cmd: string) => {
+        if (typeof cmd === "string" && cmd.includes("-modulus")) {
+          callCount++;
+          return callCount === 1 ? "Modulus=AAA" : "Modulus=BBB";
+        }
+        return "";
+      });
+
+      expect(() => uploadCertificate(validCert, validKey)).toThrow(
+        "do not match"
+      );
+    });
+
+    it("should clean up temp files on validation failure", () => {
+      mockExistsSync.mockReturnValue(true);
+      mockExecSync.mockImplementation((cmd: string) => {
+        // Fail on cert parse
+        if (typeof cmd === "string" && cmd.includes("x509") && cmd.includes("-noout")) {
+          throw new Error("unable to load certificate");
+        }
+        return "";
+      });
+
+      expect(() => uploadCertificate(validCert, validKey)).toThrow();
+
+      // Should attempt to clean up temp files
+      expect(mockUnlinkSync).toHaveBeenCalled();
+    });
+  });
+
+  // ── regenerateSelfSignedCert ───────────────────────────────
+
+  describe("regenerateSelfSignedCert", () => {
+    it("should create certs directory if missing", () => {
+      mockExistsSync.mockReturnValue(false);
+      mockExecSync.mockReturnValue("");
+
+      regenerateSelfSignedCert();
+
+      expect(mockMkdirSync).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ recursive: true })
+      );
+    });
+
+    it("should remove existing cert files before generating", () => {
+      // First call: CERTS_DIR exists, then cert exists, then key exists
+      mockExistsSync.mockReturnValue(true);
+      mockExecSync.mockReturnValue("");
+
+      regenerateSelfSignedCert();
+
+      expect(mockUnlinkSync).toHaveBeenCalledTimes(2);
+    });
+
+    it("should call openssl to generate a 365-day self-signed cert", () => {
+      mockExistsSync.mockReturnValue(true);
+      mockExecSync.mockReturnValue("");
+
+      regenerateSelfSignedCert();
+
+      expect(mockExecSync).toHaveBeenCalledWith(
+        expect.stringContaining("-days 365"),
+        expect.any(Object)
+      );
+      expect(mockExecSync).toHaveBeenCalledWith(
+        expect.stringContaining("DBackup Self-Signed"),
+        expect.any(Object)
+      );
+      expect(mockExecSync).toHaveBeenCalledWith(
+        expect.stringContaining("subjectAltName=DNS:localhost,IP:127.0.0.1"),
+        expect.any(Object)
+      );
+    });
+
+    it("should set correct file permissions", () => {
+      mockExistsSync.mockReturnValue(true);
+      mockExecSync.mockReturnValue("");
+
+      regenerateSelfSignedCert();
+
+      expect(mockExecSync).toHaveBeenCalledWith(
+        expect.stringContaining("chmod 600"),
+        expect.any(Object)
+      );
+      expect(mockExecSync).toHaveBeenCalledWith(
+        expect.stringContaining("chmod 644"),
+        expect.any(Object)
+      );
+    });
+
+    it("should throw when openssl is not available", () => {
+      mockExistsSync.mockReturnValue(false);
+      mockExecSync.mockImplementation((cmd: string) => {
+        if (typeof cmd === "string" && cmd.includes("openssl req")) {
+          throw new Error("openssl: command not found");
+        }
+        return "";
+      });
+
+      expect(() => regenerateSelfSignedCert()).toThrow(
+        "Failed to generate TLS certificate"
+      );
+    });
+  });
+});

@@ -8,12 +8,12 @@ services:
     environment:
       # for all environmentvariables, check out: https://dbackup.app/developer-guide/reference/environment
       - ENCRYPTION_KEY= # openssl rand -hex 32
-      - BETTER_AUTH_URL=http://localhost:3000
+      - BETTER_AUTH_URL=https://localhost:3000
       - BETTER_AUTH_SECRET= # openssl rand -base64 32
-      # - TZ=Europe/Zurich  # Optional: Server timezone
-      # - PUID=1001         # Optional: User ID for file permissions
-      # - PGID=1001         # Optional: Group ID for file permissions
+      # - DISABLE_HTTPS=true  # Optional: Set to "true" to use plain HTTP (default: HTTPS)
+      # - TZ=Europe/Zurich    # Optional: Server timezone
+      # - PUID=1001           # Optional: User ID for file permissions
+      # - PGID=1001           # Optional: Group ID for file permissions
     volumes:
-      - ./backups:/backups      # Local backup storage
-      - ./db:/app/db            # SQLite database
-      - ./storage:/app/storage  # Uploads & avatars
+      - ./data:/data              # All persistent data (db, storage, certs)
+      - ./backups:/backups        # Optional: used for local backups
