@@ -16,3 +16,4 @@ services:
     volumes:
       # All persistent data in one mount
       - ./.test/data:/data
+      - ./.test/backups:/backups

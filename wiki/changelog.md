@@ -15,7 +15,7 @@ All notable changes to DBackup are documented here.
 ### 🔄 Changed
 
 - **server**: Default protocol changed from HTTP to HTTPS - set `DISABLE_HTTPS=true` to use plain HTTP (e.g. behind a TLS-terminating reverse proxy)
-- **docker**: Consolidated volume mounts into single `/data` directory - replaces separate `/app/db`, `/app/storage`, `/backups` mounts with one `./data:/data` mount containing `db/`, `storage/`, `certs/`, and `backups/` subdirectories
+- **docker**: Consolidated volume mounts into single `/data` directory - replaces separate `/app/db`, `/app/storage` mounts with one `./data:/data` mount containing `db/`, `storage/`, and `certs/` subdirectories. `/backups` remains a separate optional mount for local backups
 
 ### 🎨 Improvements
 

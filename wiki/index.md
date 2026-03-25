@@ -77,6 +77,7 @@ docker run -d --name dbackup -p 3000:3000 \
   -e BETTER_AUTH_SECRET="$(openssl rand -base64 32)" \
   -e BETTER_AUTH_URL="https://localhost:3000" \
   -v "$(pwd)/data:/data" \
+  -v "$(pwd)/backups:/backups" \
   skyfay/dbackup:latest
 ```
 
@@ -93,7 +94,8 @@ services:
       - BETTER_AUTH_URL=https://localhost:3000
       - BETTER_AUTH_SECRET=  # openssl rand -base64 32
     volumes:
-      - ./data:/data  # All persistent data (db, storage, certs, backups)
+      - ./data:/data              # All persistent data (db, storage, certs)
+      - ./backups:/backups        # Optional: used for local backups
 ```
 
 :::

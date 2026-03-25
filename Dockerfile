@@ -103,7 +103,7 @@ COPY --from=builder --link --chown=1001:1001 /app/prisma ./prisma
 # Create runtime data directory + install Prisma CLI for migrations
 # Note: pnpm add -g runs as root, so we must chown /pnpm to the runtime user
 # to avoid "Can't write to @prisma/engines" errors at container startup
-RUN mkdir -p /data/storage/avatars /data/db /data/certs /data/backups && \
+RUN mkdir -p /data/storage/avatars /data/db /data/certs && \
     chown -R 1001:1001 /data && \
     pnpm add -g prisma@5.22.0 && \
     chown -R 1001:1001 /pnpm

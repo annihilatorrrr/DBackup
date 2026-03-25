@@ -32,7 +32,8 @@ services:
       # - DISABLE_HTTPS=true  # Optional: Use plain HTTP instead of HTTPS
       # - TZ=Europe/Zurich  # Optional: Server timezone
     volumes:
-      - ./data:/data  # All persistent data (db, storage, certs, backups)
+      - ./data:/data              # All persistent data (db, storage, certs)
+      - ./backups:/backups        # Optional: used for local backups
 ```
 
 ```bash [Docker Run]
@@ -44,6 +45,7 @@ docker run -d \
   -e BETTER_AUTH_SECRET="$(openssl rand -base64 32)" \
   -e BETTER_AUTH_URL="https://localhost:3000" \
   -v "$(pwd)/data:/data" \
+  -v "$(pwd)/backups:/backups" \
   skyfay/dbackup:latest
 ```
 
@@ -114,7 +116,8 @@ Store it securely in a password manager or secrets vault.
 
 | Mount Point | Required | Purpose |
 | :--- | :---: | :--- |
-| `/data` | ✅ | All persistent data (database, uploads, certificates, backups) |
+| `/data` | ✅ | All persistent data (database, uploads, certificates) |
+| `/backups` | ❌ | Optional: used for local backups |
 
 ## Health Check
 
