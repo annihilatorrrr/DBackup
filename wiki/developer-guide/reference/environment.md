@@ -17,11 +17,14 @@ Complete reference for all environment variables in DBackup.
 | Variable | Description | Default |
 | :--- | :--- | :--- |
 | `TRUSTED_ORIGINS` | Additional URLs for accessing DBackup (comma-separated) | - |
-| `DATABASE_URL` | SQLite database file path | `file:/app/db/dbackup.db` |
+| `DATABASE_URL` | SQLite database file path | `file:/data/db/dbackup.db` |
 | `PORT` | Internal port the server listens on | `3000` |
 | `TZ` | Server timezone (for logs and cron scheduling) | `UTC` |
 | `TMPDIR` | Temporary directory for backup processing | `/tmp` |
 | `LOG_LEVEL` | Logging verbosity level | `info` |
+| `DISABLE_HTTPS` | Set to `true` to use plain HTTP instead of HTTPS | `false` |
+| `CERTS_DIR` | Directory for TLS certificate and key files | `/data/certs` |
+| `DATA_DIR` | Base directory for all persistent data | `/data` |
 | `PUID` | User ID the container runs as (for volume permissions) | `1001` |
 | `PGID` | Group ID the container runs as (for volume permissions) | `1001` |
 

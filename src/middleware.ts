@@ -121,6 +121,12 @@ export async function middleware(request: NextRequest) {
     );
     response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), browsing-topics=()");
 
+    // HSTS: If request arrived via HTTPS (directly or via reverse proxy), enforce future HTTPS
+    const proto = request.headers.get("x-forwarded-proto") || request.nextUrl.protocol.replace(":", "");
+    if (proto === "https") {
+        response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    }
+
     // Protect dashboard routes via cookie check (middleware layer)
     // The main protection is still in the server components (layout.tsx) via safe session verification
     if (request.nextUrl.pathname.startsWith("/dashboard")) {

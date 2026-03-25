@@ -31,7 +31,8 @@ export async function GET(
         return new NextResponse("Invalid filename", { status: 400 });
     }
 
-    const filePath = path.join(process.cwd(), "storage", "avatars", safeFilename);
+    const dataDir = process.env.DATA_DIR || path.join(process.cwd(), "data");
+    const filePath = path.join(dataDir, "storage", "avatars", safeFilename);
 
     // 3. Check existence
     if (!existsSync(filePath)) {

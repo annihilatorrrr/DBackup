@@ -2,12 +2,22 @@
 
 All notable changes to DBackup are documented here.
 
-## v1.1.1
+## v1.2.0
 *Release: In Progress*
+
+> ⚠️ **Breaking:** Volume mounts have changed. Replace `./db:/app/db` and `./storage:/app/storage` with a single `./data:/data` mount. Update `BETTER_AUTH_URL` to `https://` - HTTPS is now the default protocol. Set `DISABLE_HTTPS=true` if you use a TLS-terminating reverse proxy.
 
 ### ✨ Features
 
 - **notifications**: Per-adapter health check notification opt-out - sources and destinations can individually disable offline/recovery alerts via a toggle in the Configuration tab while health checks continue running
+- **security**: Built-in HTTPS support - DBackup now defaults to HTTPS with an auto-generated self-signed certificate on first start, protecting all traffic including database passwords, encryption keys, and session cookies
+- **security**: Certificate management UI - new "Certificate" tab in System Settings to view certificate details (issuer, expiry, fingerprint), upload custom PEM certificates, or regenerate self-signed certs
+- **security**: HSTS header - when accessed via HTTPS, DBackup now sends `Strict-Transport-Security` to enforce future HTTPS connections in the browser
+
+### 🔄 Changed
+
+- **server**: Default protocol changed from HTTP to HTTPS - set `DISABLE_HTTPS=true` to use plain HTTP (e.g. behind a TLS-terminating reverse proxy)
+- **docker**: Consolidated volume mounts into single `/data` directory - replaces separate `/app/db`, `/app/storage` mounts with one `./data:/data` mount containing `db/`, `storage/`, and `certs/` subdirectories. `/backups` remains a separate optional mount for local backups
 
 ### 🎨 Improvements
 
@@ -15,7 +25,7 @@ All notable changes to DBackup are documented here.
 
 ### 🐳 Docker
 
-- **Image**: `skyfay/dbackup:v1.1.1`
+- **Image**: `skyfay/dbackup:v1.2.0`
 - **Also tagged as**: `latest`, `v1`
 - **Platforms**: linux/amd64, linux/arm64
 
