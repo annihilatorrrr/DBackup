@@ -47,6 +47,14 @@ const envSchema = z.object({
     TMPDIR: z
         .string()
         .optional(),
+
+    DISABLE_HTTPS: z
+        .enum(["true", "false"])
+        .default("false"),
+
+    CERTS_DIR: z
+        .string()
+        .default("/app/certs"),
 });
 
 export type ValidatedEnv = z.infer<typeof envSchema>;

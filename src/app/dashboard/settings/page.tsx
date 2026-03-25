@@ -9,6 +9,7 @@ import { SystemTasksSettings } from "@/components/settings/system-tasks-settings
 import { ConfigBackupSettings } from "@/components/settings/config-backup-settings";
 import { NotificationSettings } from "@/components/settings/notification-settings";
 import { RateLimitSettings } from "@/components/settings/rate-limit-settings";
+import { CertificateSettings } from "@/components/settings/certificate-settings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getRateLimitConfig } from "@/lib/rate-limit-server";
 
@@ -101,6 +102,7 @@ export default async function SettingsPage() {
                     <TabsTrigger value="tasks">System Tasks</TabsTrigger>
                     <TabsTrigger value="config">Configuration Backup</TabsTrigger>
                     <TabsTrigger value="ratelimits">Rate Limits</TabsTrigger>
+                    <TabsTrigger value="certificate">Certificate</TabsTrigger>
                 </TabsList>
                 <TabsContent value="general" className="space-y-4">
                     <SystemSettingsForm
@@ -129,6 +131,9 @@ export default async function SettingsPage() {
                 </TabsContent>
                 <TabsContent value="ratelimits" className="space-y-4">
                     <RateLimitSettings initialConfig={rateLimitConfig} />
+                </TabsContent>
+                <TabsContent value="certificate" className="space-y-4">
+                    <CertificateSettings />
                 </TabsContent>
             </Tabs>
         </div>

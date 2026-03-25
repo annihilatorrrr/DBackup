@@ -103,22 +103,27 @@ COPY --from=builder --link --chown=1001:1001 /app/prisma ./prisma
 # Create runtime dirs + install Prisma CLI for migrations
 # Note: pnpm add -g runs as root, so we must chown /pnpm to the runtime user
 # to avoid "Can't write to @prisma/engines" errors at container startup
-RUN mkdir -p /app/storage/avatars /app/db && \
-    chown -R 1001:1001 /app/storage /app/db && \
+RUN mkdir -p /app/storage/avatars /app/db /app/certs && \
+    chown -R 1001:1001 /app/storage /app/db /app/certs && \
     pnpm add -g prisma@5.22.0 && \
     chown -R 1001:1001 /pnpm
+
+# Copy custom HTTPS server (replaces default Next.js server entry point)
+COPY --chown=1001:1001 custom-server.js ./custom-server.js
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Health check: verify app + database are reachable
+# Uses --insecure for self-signed certs; falls back to http if DISABLE_HTTPS=true
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:3000/api/health || exit 1
+    CMD curl -fk https://localhost:3000/api/health 2>/dev/null || curl -f http://localhost:3000/api/health || exit 1
 
 EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV DISABLE_HTTPS="false"
 
 ENTRYPOINT ["docker-entrypoint.sh"]

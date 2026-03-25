@@ -8,6 +8,14 @@ All notable changes to DBackup are documented here.
 ### ✨ Features
 
 - **notifications**: Per-adapter health check notification opt-out - sources and destinations can individually disable offline/recovery alerts via a toggle in the Configuration tab while health checks continue running
+- **security**: Built-in HTTPS support - DBackup now defaults to HTTPS with an auto-generated self-signed certificate on first start, protecting all traffic including database passwords, encryption keys, and session cookies
+- **security**: Certificate management UI - new "Certificate" tab in System Settings to view certificate details (issuer, expiry, fingerprint), upload custom PEM certificates, or regenerate self-signed certs
+- **security**: HSTS header - when accessed via HTTPS, DBackup now sends `Strict-Transport-Security` to enforce future HTTPS connections in the browser
+
+### 🔄 Changed
+
+- **server**: Default protocol changed from HTTP to HTTPS - set `DISABLE_HTTPS=true` to use plain HTTP (e.g. behind a TLS-terminating reverse proxy)
+- **docker**: New `/app/certs` volume mount for persistent TLS certificate storage
 
 ### 🎨 Improvements
 
