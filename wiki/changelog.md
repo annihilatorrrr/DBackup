@@ -24,6 +24,10 @@ All notable changes to DBackup are documented here.
 
 - **ui**: Edit Configuration dialog now uses Shadcn ScrollArea instead of native browser overflow for consistent scrollbar styling
 
+### 🧪 Tests
+
+- **security**: Added 21 unit tests for `certificate-service` covering certificate info parsing, upload validation (PEM format, cert-key matching, temp file cleanup), self-signed regeneration, and HTTPS toggle
+
 ### 🐳 Docker
 
 - **Image**: `skyfay/dbackup:v1.2.0`
