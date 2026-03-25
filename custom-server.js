@@ -15,7 +15,6 @@
 const { createServer: createHttpsServer } = require("node:https");
 const { createServer: createHttpServer } = require("node:http");
 const { execSync } = require("node:child_process");
-const { parse: parseUrl } = require("node:url");
 const path = require("node:path");
 const fs = require("node:fs");
 
@@ -132,8 +131,7 @@ app.prepare().then(() => {
 
   const requestHandler = async (req, res) => {
     try {
-      const parsedUrl = parseUrl(req.url, true);
-      await handler(req, res, parsedUrl);
+      await handler(req, res);
     } catch (err) {
       console.error("[Server] Request error:", err);
       res.statusCode = 500;
