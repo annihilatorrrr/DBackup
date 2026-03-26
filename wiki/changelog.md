@@ -2,7 +2,7 @@
 
 All notable changes to DBackup are documented here.
 
-## v1.2.1
+## v1.2.1 - Execution Cancellation, MSSQL Progress & Dashboard Polish
 *Released: March 26, 2026*
 
 ### ✨ Features
