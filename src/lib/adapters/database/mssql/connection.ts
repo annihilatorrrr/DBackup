@@ -33,7 +33,8 @@ export async function test(config: MSSQLConfig): Promise<{ success: boolean; mes
 
     try {
         const connConfig = buildConnectionConfig(config);
-        pool = await sql.connect(connConfig);
+        pool = new sql.ConnectionPool(connConfig);
+        await pool.connect();
 
         // Get version and edition information
         const result = await pool.request().query(`
@@ -114,7 +115,8 @@ export async function getDatabases(config: MSSQLConfig): Promise<string[]> {
 
     try {
         const connConfig = buildConnectionConfig(config);
-        pool = await sql.connect(connConfig);
+        pool = new sql.ConnectionPool(connConfig);
+        await pool.connect();
 
         // Exclude system databases (database_id <= 4: master, tempdb, model, msdb)
         const result = await pool.request().query(`
@@ -146,7 +148,8 @@ export async function getDatabasesWithStats(config: MSSQLConfig): Promise<Databa
 
     try {
         const connConfig = buildConnectionConfig(config);
-        pool = await sql.connect(connConfig);
+        pool = new sql.ConnectionPool(connConfig);
+        await pool.connect();
 
         // Get database names and sizes from master catalog views
         const sizeResult = await pool.request().query(`
@@ -229,7 +232,8 @@ export async function executeQuery(config: MSSQLConfig, query: string, database?
             connConfig.database = database;
         }
 
-        pool = await sql.connect(connConfig);
+        pool = new sql.ConnectionPool(connConfig);
+        await pool.connect();
         return await pool.request().query(query);
     } finally {
         if (pool) {
@@ -257,7 +261,8 @@ export async function executeQueryWithMessages(
             connConfig.database = database;
         }
 
-        pool = await sql.connect(connConfig);
+        pool = new sql.ConnectionPool(connConfig);
+        await pool.connect();
         const request = pool.request();
 
         // Capture all SQL Server info messages (progress reports, warnings, errors)
@@ -324,7 +329,8 @@ export async function executeParameterizedQuery(
             connConfig.database = database;
         }
 
-        pool = await sql.connect(connConfig);
+        pool = new sql.ConnectionPool(connConfig);
+        await pool.connect();
         const request = pool.request();
 
         // Add parameters to the request

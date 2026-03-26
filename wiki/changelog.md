@@ -5,6 +5,11 @@ All notable changes to DBackup are documented here.
 ## v1.2.1
 *Release: In Progress*
 
+### 🐛 Bug Fixes
+
+- **mssql**: Fixed Database Explorer and Restore page showing 0 databases for MSSQL sources — replaced global singleton connection pool (`sql.connect()`) with independent per-operation pools (`new ConnectionPool()`) to prevent concurrent requests from closing each other's connections
+- **explorer**: Fixed Database Explorer not displaying server version — removed broken parallel `test-connection` call and now uses version info returned by `database-stats` endpoint
+
 ### 🐳 Docker
 
 - **Image**: `skyfay/dbackup:v1.2.1`
