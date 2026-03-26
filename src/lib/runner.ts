@@ -9,6 +9,7 @@ import { processQueue } from "@/lib/queue-manager";
 import { LogEntry, LogLevel, LogType } from "@/lib/core/logs";
 import { logger } from "@/lib/logger";
 import { wrapError } from "@/lib/errors";
+import { registerExecution, unregisterExecution } from "@/lib/execution-abort";
 
 const log = logger.child({ module: "Runner" });
 
@@ -56,6 +57,9 @@ export async function runJob(jobId: string) {
 export async function performExecution(executionId: string, jobId: string) {
     const jobLog = logger.child({ module: "Runner", jobId, executionId });
     jobLog.info("Starting execution");
+
+    // Set up cancellation
+    const abortController = registerExecution(executionId);
 
     // 1. Mark as RUNNING
     const initialExe = await prisma.execution.update({
@@ -187,7 +191,15 @@ export async function performExecution(executionId: string, jobId: string) {
         status: "Running",
         startedAt: new Date(),
         execution: initialExe as any,
-        destinations: []
+        destinations: [],
+        abortSignal: abortController.signal,
+    };
+
+    // Helper: throw if cancellation was requested
+    const checkCancelled = () => {
+        if (abortController.signal.aborted) {
+            throw new Error("Execution was cancelled by user");
+        }
     };
 
     try {
@@ -196,13 +208,16 @@ export async function performExecution(executionId: string, jobId: string) {
         // 1. Initialize (Loads Job Data, Adapters)
         // This will update ctx.job and refresh ctx.execution
         await stepInitialize(ctx);
+        checkCancelled();
 
         updateProgress(0, "Dumping Database");
         // 2. Dump
         await stepExecuteDump(ctx);
+        checkCancelled();
 
         // 3. Upload (Stage will be set inside stepUpload to correctly distinguish processing/uploading)
         await stepUpload(ctx);
+        checkCancelled();
 
         updateProgress(90, "Applying Retention Policy");
         // 4. Retention
@@ -220,11 +235,21 @@ export async function performExecution(executionId: string, jobId: string) {
 
     } catch (error) {
         const wrapped = wrapError(error);
-        ctx.status = "Failed";
-        logEntry(`ERROR: ${wrapped.message}`);
-        jobLog.error("Execution failed", {}, wrapped);
+        // Distinguish cancellation from real failures
+        if (abortController.signal.aborted) {
+            ctx.status = "Cancelled";
+            logEntry("Execution was cancelled by user", "warning");
+            jobLog.info("Execution cancelled by user");
+        } else {
+            ctx.status = "Failed";
+            logEntry(`ERROR: ${wrapped.message}`);
+            jobLog.error("Execution failed", {}, wrapped);
+        }
         await flushLogs(executionId, true);
     } finally {
+        // Remove from running executions map
+        unregisterExecution(executionId);
+
         // 4. Cleanup & Final Update (sets EndTime, Status in DB)
         await stepCleanup(ctx);
         await stepFinalize(ctx);

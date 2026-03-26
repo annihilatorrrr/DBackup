@@ -49,6 +49,9 @@ export interface RunnerContext {
     dumpSize?: number;
     metadata?: any;
 
-    status: "Success" | "Failed" | "Running" | "Partial";
+    status: "Success" | "Failed" | "Running" | "Partial" | "Cancelled";
     startedAt: Date;
+
+    // Cancellation support
+    abortSignal?: AbortSignal;
 }

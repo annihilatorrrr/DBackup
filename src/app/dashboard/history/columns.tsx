@@ -14,7 +14,7 @@ export interface Execution {
         name: string;
     };
     type?: string;
-    status: "Running" | "Success" | "Failed" | "Pending" | "Partial";
+    status: "Running" | "Success" | "Failed" | "Pending" | "Partial" | "Cancelled";
     startedAt: string;
     endedAt?: string;
     logs: string; // JSON string
@@ -76,6 +76,12 @@ export const createColumns = (onViewLogs: (execution: Execution) => void): Colum
                 return (
                     <Badge className="bg-[hsl(225,79%,54%)] text-white border-transparent hover:bg-[hsl(225,79%,48%)]">
                         Running
+                    </Badge>
+                );
+            } else if (status === "Cancelled") {
+                return (
+                    <Badge variant="outline" className="text-muted-foreground">
+                        Cancelled
                     </Badge>
                 );
             }

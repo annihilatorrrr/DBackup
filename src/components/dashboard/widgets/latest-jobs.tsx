@@ -55,6 +55,7 @@ export function LatestJobs({ data }: LatestJobsProps) {
               const isRunning = job.status === "Running";
               const isSuccess = job.status === "Success";
               const isPending = job.status === "Pending";
+              const isCancelled = job.status === "Cancelled";
 
               return (
                 <Link
@@ -65,7 +66,7 @@ export function LatestJobs({ data }: LatestJobsProps) {
                   <div className="flex items-center justify-between hover:bg-muted/50 px-2 py-2.5 -mx-2 rounded-md transition-colors">
                     <div className="flex items-center gap-3 min-w-0">
                       <TypeBadge type={job.type} />
-                      <SourceIcon sourceType={job.sourceType} isRunning={isRunning} isSuccess={isSuccess} isPending={isPending} />
+                      <SourceIcon sourceType={job.sourceType} isRunning={isRunning} isSuccess={isSuccess} isPending={isPending} isCancelled={isCancelled} />
                       <div className="min-w-0">
                         <p className="text-sm font-medium leading-none truncate">
                           {job.jobName}
@@ -120,11 +121,13 @@ function SourceIcon({
   isRunning,
   isSuccess,
   isPending,
+  isCancelled,
 }: {
   sourceType: string | null;
   isRunning: boolean;
   isSuccess: boolean;
   isPending: boolean;
+  isCancelled: boolean;
 }) {
   const className = `h-4 w-4 shrink-0 ${
     isRunning
@@ -133,7 +136,9 @@ function SourceIcon({
         ? "text-green-500"
         : isPending
           ? "text-yellow-500"
-          : "text-red-500"
+          : isCancelled
+            ? "text-muted-foreground"
+            : "text-red-500"
   }`;
 
   if (isRunning) return <Loader2 className={`${className} animate-spin`} />;
@@ -147,6 +152,7 @@ function StatusBadge({ status }: { status: string }) {
     Failed: { bg: "bg-[hsl(357,78%,54%)]", label: "Failed" },
     Running: { bg: "bg-[hsl(225,79%,54%)]", label: "Running" },
     Pending: { bg: "bg-[hsl(45,93%,58%)]", label: "Pending" },
+    Cancelled: { bg: "bg-[hsl(0,0%,55%)]", label: "Cancelled" },
   };
 
   const { bg, label } = config[status] ?? { bg: "bg-muted", label: status };
