@@ -13,13 +13,15 @@ import { createColumns, Execution } from "./columns";
 import { createNotificationLogColumns, NotificationLogRow } from "./notification-log-columns";
 import { NotificationPreview } from "./notification-preview";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, Square } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { DateDisplay } from "@/components/utils/date-display";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogViewer } from "@/components/execution/log-viewer";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export default function HistoryPage() {
     return (
@@ -35,6 +37,7 @@ function HistoryContent() {
     // Notification log state
     const [notificationLogs, setNotificationLogs] = useState<NotificationLogRow[]>([]);
     const [selectedNotification, setSelectedNotification] = useState<NotificationLogRow | null>(null);
+    const [isCancelling, setIsCancelling] = useState(false);
 
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -122,6 +125,26 @@ function HistoryContent() {
         }
     };
 
+    const handleCancelExecution = useCallback(async (executionId: string) => {
+        setIsCancelling(true);
+        try {
+            const res = await fetch(`/api/executions/${encodeURIComponent(executionId)}/cancel`, {
+                method: "POST",
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success("Cancellation signal sent");
+                fetchHistory();
+            } else {
+                toast.error(data.error || "Failed to cancel execution");
+            }
+        } catch {
+            toast.error("Failed to cancel execution");
+        } finally {
+            setIsCancelling(false);
+        }
+    }, [fetchHistory]);
+
     const columns = useMemo(() => createColumns(setSelectedLog), []);
     const notificationColumns = useMemo(
         () => createNotificationLogColumns(setSelectedNotification),
@@ -144,6 +167,7 @@ function HistoryContent() {
                 { label: "Success", value: "Success" },
                 { label: "Failed", value: "Failed" },
                 { label: "Running", value: "Running" },
+                { label: "Cancelled", value: "Cancelled" },
             ]
         },
     ], []);
@@ -253,7 +277,7 @@ function HistoryContent() {
                              {selectedLog?.status === "Running" && <Loader2 className="h-4 w-4 animate-spin text-blue-500 dark:text-blue-400" />}
                              <span className="font-mono">{selectedLog?.job?.name || selectedLog?.type || "Manual Job"}</span>
                              {selectedLog?.status && (
-                                <Badge variant={selectedLog.status === 'Success' ? 'default' : selectedLog.status === 'Failed' ? 'destructive' : 'secondary'}>
+                                <Badge variant={selectedLog.status === 'Success' ? 'default' : selectedLog.status === 'Failed' ? 'destructive' : selectedLog.status === 'Cancelled' ? 'outline' : 'secondary'}>
                                     {selectedLog.status}
                                 </Badge>
                              )}
@@ -263,18 +287,36 @@ function HistoryContent() {
                         </DialogDescription>
                     </DialogHeader>
 
-                     {selectedLog?.status === "Running" && (
+                     {(selectedLog?.status === "Running" || selectedLog?.status === "Pending") && (
                         <div className="px-6 py-3 bg-card/50 border-b border-border/50 shrink-0">
-                            <div className="flex justify-between text-xs text-muted-foreground mb-2">
-                                <span>{stage}</span>
-                                <span>{progress > 0 ? `${progress}%` : ''}</span>
-                            </div>
-                            {progress > 0 ? (
-                                <Progress value={progress} className="h-1.5 bg-muted" />
-                            ) : (
-                                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                                    <div className="h-full w-full animate-indeterminate rounded-full bg-blue-500/50 origin-left-right"></div>
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span>{selectedLog?.status === "Pending" ? "Waiting in queue..." : stage}</span>
+                                    {selectedLog?.status === "Running" && progress > 0 && <span>{progress}%</span>}
                                 </div>
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => selectedLog && handleCancelExecution(selectedLog.id)}
+                                    disabled={isCancelling}
+                                    className="h-7 text-xs"
+                                >
+                                    {isCancelling ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                                    ) : (
+                                        <Square className="h-3.5 w-3.5 mr-1.5" />
+                                    )}
+                                    Cancel
+                                </Button>
+                            </div>
+                            {selectedLog?.status === "Running" && (
+                                progress > 0 ? (
+                                    <Progress value={progress} className="h-1.5 bg-muted" />
+                                ) : (
+                                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                                        <div className="h-full w-full animate-indeterminate rounded-full bg-blue-500/50 origin-left-right"></div>
+                                    </div>
+                                )
                             )}
                         </div>
                     )}

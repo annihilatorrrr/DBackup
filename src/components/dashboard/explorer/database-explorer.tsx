@@ -60,24 +60,17 @@ export function DatabaseExplorer({ sources }: DatabaseExplorerProps) {
         setDatabases([]);
         setServerVersion(null);
 
-        // Fetch version in parallel with stats
-        const versionPromise = fetch("/api/adapters/test-connection", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ configId: sourceId }),
-        }).then((r) => r.json()).catch(() => null);
-
-        const statsPromise = fetch("/api/adapters/database-stats", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ sourceId }),
-        }).then((r) => r.json());
-
         try {
-            const [versionData, statsData] = await Promise.all([versionPromise, statsPromise]);
+            // database-stats endpoint returns both databases and server version
+            const res = await fetch("/api/adapters/database-stats", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sourceId }),
+            });
+            const statsData = await res.json();
 
-            if (versionData?.version) {
-                setServerVersion(versionData.version);
+            if (statsData.serverVersion) {
+                setServerVersion(statsData.serverVersion);
             }
 
             if (statsData.success && statsData.databases) {

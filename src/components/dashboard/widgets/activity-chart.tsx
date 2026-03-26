@@ -29,6 +29,10 @@ const chartConfig = {
     label: "Pending",
     color: "hsl(45, 93%, 58%)",
   },
+  cancelled: {
+    label: "Cancelled",
+    color: "hsl(0, 0%, 55%)",
+  },
 } satisfies ChartConfig;
 
 interface ActivityChartProps {
@@ -37,7 +41,7 @@ interface ActivityChartProps {
 
 export function ActivityChart({ data }: ActivityChartProps) {
   const hasData = data.some(
-    (d) => d.completed > 0 || d.failed > 0 || d.running > 0 || d.pending > 0
+    (d) => d.completed > 0 || d.failed > 0 || d.running > 0 || d.pending > 0 || d.cancelled > 0
   );
 
   return (
@@ -89,6 +93,12 @@ export function ActivityChart({ data }: ActivityChartProps) {
                 dataKey="pending"
                 stackId="a"
                 fill="var(--color-pending)"
+                radius={[0, 0, 0, 0]}
+              />
+              <Bar
+                dataKey="cancelled"
+                stackId="a"
+                fill="var(--color-cancelled)"
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>

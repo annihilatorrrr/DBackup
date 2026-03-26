@@ -33,6 +33,10 @@ const chartConfig = {
     label: "Pending",
     color: "hsl(45, 93%, 58%)",
   },
+  Cancelled: {
+    label: "Cancelled",
+    color: "hsl(0, 0%, 55%)",
+  },
 } satisfies ChartConfig;
 
 interface JobStatusChartProps {

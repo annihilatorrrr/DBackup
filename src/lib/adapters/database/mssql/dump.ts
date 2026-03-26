@@ -118,15 +118,14 @@ export async function dump(
 
                 log(`Executing backup`, "info", "command", backupQuery);
 
-                // Execute backup command on the server, capturing all SQL Server messages
-                const { messages } = await executeQueryWithMessages(config, backupQuery);
-
-                // Log SQL Server progress/info messages (e.g. "10 percent processed")
-                for (const msg of messages) {
+                // Execute backup command on the server, capturing all SQL Server messages.
+                // Use requestTimeout=0 (no timeout) — large DB backups can run for hours.
+                // Stream progress messages in real-time so the UI shows live updates.
+                await executeQueryWithMessages(config, backupQuery, undefined, 0, (msg) => {
                     if (msg.message) {
                         log(`SQL Server: ${msg.message}`, "info", "general");
                     }
-                }
+                });
 
                 log(`Backup completed for: ${dbName}`);
                 tempFiles.push({ server: serverBakPath, local: localBakPath });

@@ -2,6 +2,32 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.2.1 - Execution Cancellation, MSSQL Progress & Dashboard Polish
+*Released: March 26, 2026*
+
+### ✨ Features
+
+- **execution**: Cancel running or pending executions from the live log dialog - a "Cancel" button now appears in the execution header when a backup or restore is in progress
+- **execution**: New `Cancelled` status for executions - cancelled jobs are cleanly marked with proper log entries instead of showing as failed
+
+### 🐛 Bug Fixes
+
+- **mssql**: Fixed Database Explorer and Restore page showing 0 databases for MSSQL sources - replaced global singleton connection pool (`sql.connect()`) with independent per-operation pools (`new ConnectionPool()`) to prevent concurrent requests from closing each other's connections
+- **mssql**: Fixed large database backups/restores hanging and timing out - `BACKUP DATABASE` and `RESTORE DATABASE` queries now run without request timeout (previously limited to 5 minutes, causing failures on databases >5 GB)
+- **explorer**: Fixed Database Explorer not displaying server version - removed broken parallel `test-connection` call and now uses version info returned by `database-stats` endpoint
+
+### 🎨 Improvements
+
+- **mssql**: SQL Server progress messages (e.g. "10 percent processed") are now streamed to the execution log in real-time instead of only appearing after the backup/restore completes
+- **dashboard**: All dashboard widgets (activity chart, job status donut, latest jobs list) now display the `Cancelled` status with a neutral gray color
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.2.1`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v1.2.0 - HTTPS by Default, Certificate Management & Per-Adapter Health Notifications
 *Released: March 25, 2026*
 

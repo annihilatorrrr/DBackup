@@ -24,6 +24,7 @@ export interface ActivityDataPoint {
   failed: number;
   running: number;
   pending: number;
+  cancelled: number;
 }
 
 export interface JobStatusDistribution {
@@ -135,7 +136,7 @@ export async function getActivityData(days: number = 14): Promise<ActivityDataPo
   // Initialize all days with zeros
   for (let i = 0; i < days; i++) {
     const date = format(subDays(now, days - 1 - i), "MMM d");
-    dateMap.set(date, { date, completed: 0, failed: 0, running: 0, pending: 0 });
+    dateMap.set(date, { date, completed: 0, failed: 0, running: 0, pending: 0, cancelled: 0 });
   }
 
   // Count executions per day
@@ -156,6 +157,9 @@ export async function getActivityData(days: number = 14): Promise<ActivityDataPo
         break;
       case "Pending":
         entry.pending++;
+        break;
+      case "Cancelled":
+        entry.cancelled++;
         break;
     }
   }
@@ -180,6 +184,7 @@ export async function getJobStatusDistribution(): Promise<JobStatusDistribution[
     Failed: 0,
     Running: 0,
     Pending: 0,
+    Cancelled: 0,
   };
 
   for (const exec of executions) {
@@ -193,6 +198,7 @@ export async function getJobStatusDistribution(): Promise<JobStatusDistribution[
     Failed: "var(--color-failed)",
     Running: "var(--color-running)",
     Pending: "var(--color-pending)",
+    Cancelled: "var(--color-cancelled)",
   };
 
   return Object.entries(counts)

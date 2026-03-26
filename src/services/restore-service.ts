@@ -19,6 +19,7 @@ import { wrapError, getErrorMessage } from "@/lib/errors";
 import { verifyFileChecksum } from "@/lib/checksum";
 import { notify } from "@/services/system-notification-service";
 import { NOTIFICATION_EVENTS } from "@/lib/notifications";
+import { registerExecution, unregisterExecution } from "@/lib/execution-abort";
 
 const svcLog = logger.child({ service: "RestoreService" });
 
@@ -153,6 +154,8 @@ export class RestoreService {
         // Run in background (do not await)
         this.runRestoreProcess(executionId, input).catch(err => {
             svcLog.error("Background restore failed", { executionId }, wrapError(err));
+        }).finally(() => {
+            unregisterExecution(executionId);
         });
 
         return { success: true, executionId, message: "Restore started" };
@@ -162,6 +165,7 @@ export class RestoreService {
         const { storageConfigId, file, targetSourceId, targetDatabaseName, databaseMapping, privilegedAuth } = input;
         let tempFile: string | null = null;
         const restoreStartTime = Date.now();
+        const abortController = registerExecution(executionId);
 
         // Log Buffer
         const internalLogs: LogEntry[] = [{
@@ -670,30 +674,42 @@ export class RestoreService {
             }
 
         } catch (error: unknown) {
-            svcLog.error("Restore service error", {}, wrapError(error));
-            log(`Fatal Error: ${getErrorMessage(error)}`, 'error');
-            updateProgress(100, "Failed");
+            // Distinguish cancellation from real failures
+            if (abortController.signal.aborted) {
+                svcLog.info("Restore cancelled by user", { executionId });
+                log("Restore was cancelled by user", 'warning');
+                updateProgress(100, "Cancelled");
 
-            await prisma.execution.update({
-                where: { id: executionId },
-                data: { status: 'Failed', endedAt: new Date(), logs: JSON.stringify(internalLogs) }
-            });
+                await prisma.execution.update({
+                    where: { id: executionId },
+                    data: { status: 'Cancelled', endedAt: new Date(), logs: JSON.stringify(internalLogs) }
+                });
+            } else {
+                svcLog.error("Restore service error", {}, wrapError(error));
+                log(`Fatal Error: ${getErrorMessage(error)}`, 'error');
+                updateProgress(100, "Failed");
 
-            // System notification (fire-and-forget)
-            notify({
-                eventType: NOTIFICATION_EVENTS.RESTORE_FAILURE,
-                data: {
-                    sourceName: resolvedSourceName ?? targetSourceId,
-                    databaseType: resolvedSourceType,
-                    targetDatabase: targetDatabaseName,
-                    backupFile: path.basename(file),
-                    storageName: resolvedStorageName,
-                    error: getErrorMessage(error),
+                await prisma.execution.update({
+                    where: { id: executionId },
+                    data: { status: 'Failed', endedAt: new Date(), logs: JSON.stringify(internalLogs) }
+                });
+
+                // System notification (fire-and-forget)
+                notify({
+                    eventType: NOTIFICATION_EVENTS.RESTORE_FAILURE,
+                    data: {
+                        sourceName: resolvedSourceName ?? targetSourceId,
+                        databaseType: resolvedSourceType,
+                        targetDatabase: targetDatabaseName,
+                        backupFile: path.basename(file),
+                        storageName: resolvedStorageName,
+                        error: getErrorMessage(error),
                     duration: Date.now() - restoreStartTime,
                     executionId,
                     timestamp: new Date().toISOString(),
                 },
             }).catch(() => {});
+            }
         } finally {
             if (tempFile) {
                 await fs.promises.unlink(tempFile).catch(() => {});
