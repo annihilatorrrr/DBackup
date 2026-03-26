@@ -246,11 +246,16 @@ export async function executeQuery(config: MSSQLConfig, query: string, database?
  * Execute a SQL query while capturing all SQL Server info/error messages.
  * Essential for BACKUP/RESTORE operations where the actual error details
  * are sent as informational messages before the final error is thrown.
+ *
+ * @param requestTimeout Override request timeout (0 = no timeout). Defaults to config value.
+ * @param onMessage Optional callback invoked for each SQL Server info message in real-time.
  */
 export async function executeQueryWithMessages(
     config: MSSQLConfig,
     query: string,
-    database?: string
+    database?: string,
+    requestTimeout?: number,
+    onMessage?: (msg: SqlServerMessage) => void
 ): Promise<QueryResultWithMessages> {
     let pool: sql.ConnectionPool | null = null;
     const messages: SqlServerMessage[] = [];
@@ -260,6 +265,10 @@ export async function executeQueryWithMessages(
         if (database) {
             connConfig.database = database;
         }
+        // Allow callers to override requestTimeout (e.g. 0 for long-running BACKUP/RESTORE)
+        if (requestTimeout !== undefined && connConfig.options) {
+            connConfig.options.requestTimeout = requestTimeout;
+        }
 
         pool = new sql.ConnectionPool(connConfig);
         await pool.connect();
@@ -268,6 +277,7 @@ export async function executeQueryWithMessages(
         // Capture all SQL Server info messages (progress reports, warnings, errors)
         request.on("info", (info: SqlServerMessage) => {
             messages.push(info);
+            if (onMessage) onMessage(info);
         });
 
         const result = await request.query(query);

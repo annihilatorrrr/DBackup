@@ -8,7 +8,12 @@ All notable changes to DBackup are documented here.
 ### 🐛 Bug Fixes
 
 - **mssql**: Fixed Database Explorer and Restore page showing 0 databases for MSSQL sources — replaced global singleton connection pool (`sql.connect()`) with independent per-operation pools (`new ConnectionPool()`) to prevent concurrent requests from closing each other's connections
+- **mssql**: Fixed large database backups/restores hanging and timing out — `BACKUP DATABASE` and `RESTORE DATABASE` queries now run without request timeout (previously limited to 5 minutes, causing failures on databases >5 GB)
 - **explorer**: Fixed Database Explorer not displaying server version — removed broken parallel `test-connection` call and now uses version info returned by `database-stats` endpoint
+
+### 🎨 Improvements
+
+- **mssql**: SQL Server progress messages (e.g. "10 percent processed") are now streamed to the execution log in real-time instead of only appearing after the backup/restore completes
 
 ### 🐳 Docker
 

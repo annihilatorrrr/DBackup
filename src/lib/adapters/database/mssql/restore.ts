@@ -228,14 +228,13 @@ export async function restore(
                 log(`Executing restore`, "info", "command", restoreQuery);
 
                 try {
-                    const { messages } = await executeQueryWithMessages(config, restoreQuery);
-
-                    // Log SQL Server progress/info messages
-                    for (const msg of messages) {
+                    // Use requestTimeout=0 (no timeout) — large DB restores can run for hours.
+                    // Stream progress messages in real-time so the UI shows live updates.
+                    await executeQueryWithMessages(config, restoreQuery, undefined, 0, (msg) => {
                         if (msg.message) {
                             log(`SQL Server: ${msg.message}`, "info", "general");
                         }
-                    }
+                    });
 
                     log(`Restore completed for: ${targetDb.target}`);
                 } catch (error: unknown) {
