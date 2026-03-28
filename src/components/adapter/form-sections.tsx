@@ -89,7 +89,7 @@ export function DatabaseFormContent({
         return (
             <div className="space-y-4 pt-2">
                  {detectedVersion && (
-                    <div className="flex justify-end mb-4">
+                    <div className="flex justify-start mb-4">
                         <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">
                             <Check className="w-3 h-3 mr-1" />
                             Detected: {detectedVersion}
@@ -297,7 +297,7 @@ function SshAwareTabLayout({
     return (
         <div className="space-y-4 pt-2">
             {detectedVersion && (
-                <div className="flex justify-end">
+                <div className="flex justify-start">
                     <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">
                         <Check className="w-3 h-3 mr-1" />
                         Detected: {detectedVersion}
