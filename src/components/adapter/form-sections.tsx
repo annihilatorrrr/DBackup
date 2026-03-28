@@ -1,5 +1,5 @@
 import { useFormContext } from "react-hook-form";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
     Tabs,
@@ -167,20 +167,43 @@ export function DatabaseFormContent({
 
     // Adapters that support SSH connection mode (have connectionMode field in schema)
     const hasSSH = adapter.configSchema.shape && "connectionMode" in adapter.configSchema.shape && !isMSSQL;
-    const showTabs = isMSSQL || hasSSH;
-    const tabCount = 2 + (isMSSQL ? 1 : 0) + (hasSSH ? 1 : 0);
+
+    // SSH-capable adapters: show mode selector first, then contextual tabs
+    if (hasSSH) {
+        const isSSH = connectionMode === "ssh";
+        const defaultTab = isSSH ? "ssh" : "connection";
+
+        // Before mode is selected, show nothing (selector is in the parent form)
+        if (!connectionMode) {
+            return null;
+        }
+
+        return (
+            <SshAwareTabLayout
+                key={connectionMode}
+                isSSH={isSSH}
+                defaultTab={defaultTab}
+                adapter={adapter}
+                sshAuthType={sshAuthType}
+                detectedVersion={detectedVersion}
+                healthNotificationsDisabled={healthNotificationsDisabled}
+                onHealthNotificationsDisabledChange={onHealthNotificationsDisabledChange}
+            />
+        );
+    }
+
+    // MSSQL and adapters without SSH support
+    const tabCount = 2 + (isMSSQL ? 1 : 0);
 
     return (
         <Tabs defaultValue="connection" className="w-full">
             <TabsList className={cn("grid w-full",
                 tabCount === 2 && "grid-cols-2",
                 tabCount === 3 && "grid-cols-3",
-                tabCount === 4 && "grid-cols-4",
             )}>
                 <TabsTrigger value="connection">Connection</TabsTrigger>
                 <TabsTrigger value="configuration">Configuration</TabsTrigger>
                 {isMSSQL && <TabsTrigger value="filetransfer">File Transfer</TabsTrigger>}
-                {hasSSH && <TabsTrigger value="ssh">SSH</TabsTrigger>}
             </TabsList>
 
             <TabsContent value="connection" className="space-y-4 pt-4">
@@ -246,16 +269,116 @@ export function DatabaseFormContent({
                     )}
                 </TabsContent>
             )}
-
-            {hasSSH && (
-                <TabsContent value="ssh" className="space-y-4 pt-4">
-                    <FieldList keys={['connectionMode']} adapter={adapter} />
-                    {connectionMode === "ssh" && (
-                        <SshConfigSection adapter={adapter} sshAuthType={sshAuthType} description="SSH credentials to execute database commands on the remote server." />
-                    )}
-                </TabsContent>
-            )}
         </Tabs>
+    );
+}
+
+/**
+ * Tab layout for SSH-capable adapters. Uses key={connectionMode} to force remount on mode change,
+ * ensuring the active tab resets to the first tab.
+ */
+function SshAwareTabLayout({
+    isSSH,
+    defaultTab,
+    adapter,
+    sshAuthType,
+    detectedVersion,
+    healthNotificationsDisabled,
+    onHealthNotificationsDisabledChange,
+}: {
+    isSSH: boolean;
+    defaultTab: string;
+    adapter: AdapterDefinition;
+    sshAuthType: string;
+    detectedVersion?: string | null;
+    healthNotificationsDisabled?: boolean;
+    onHealthNotificationsDisabledChange?: (disabled: boolean) => void;
+}) {
+    return (
+        <div className="space-y-4 pt-2">
+            {detectedVersion && (
+                <div className="flex justify-end">
+                    <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20">
+                        <Check className="w-3 h-3 mr-1" />
+                        Detected: {detectedVersion}
+                    </Badge>
+                </div>
+            )}
+
+            {isSSH ? (
+                <Tabs defaultValue={defaultTab} className="w-full">
+                    <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="ssh">SSH Connection</TabsTrigger>
+                        <TabsTrigger value="connection">Database</TabsTrigger>
+                        <TabsTrigger value="configuration">Configuration</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="ssh" className="space-y-4 pt-4">
+                        <SshConfigSection adapter={adapter} sshAuthType={sshAuthType} description="SSH credentials to execute database commands on the remote server." />
+                    </TabsContent>
+
+                    <TabsContent value="connection" className="space-y-4 pt-4">
+                        <p className="text-sm text-muted-foreground">
+                            Database connection as seen from the SSH host (e.g. 127.0.0.1 if the database runs on the same server).
+                        </p>
+                        <FieldList
+                            keys={['uri', 'host', 'port', 'user', 'username', 'password']}
+                            adapter={adapter}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="configuration" className="space-y-4 pt-4">
+                        {adapter.id === 'redis' && <RedisDatabaseSelect />}
+                        <FieldList
+                            keys={[
+                                'authenticationDatabase', 'options', 'disableSsl',
+                                'mode', 'tls', 'sentinelMasterName', 'sentinelNodes',
+                            ]}
+                            adapter={adapter}
+                        />
+                        {onHealthNotificationsDisabledChange && (
+                            <HealthCheckNotificationSwitch
+                                type="database"
+                                disabled={healthNotificationsDisabled ?? false}
+                                onChange={onHealthNotificationsDisabledChange}
+                            />
+                        )}
+                    </TabsContent>
+                </Tabs>
+            ) : (
+                <Tabs defaultValue={defaultTab} className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="connection">Connection</TabsTrigger>
+                        <TabsTrigger value="configuration">Configuration</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="connection" className="space-y-4 pt-4">
+                        <FieldList
+                            keys={['uri', 'host', 'port', 'user', 'username', 'password']}
+                            adapter={adapter}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="configuration" className="space-y-4 pt-4">
+                        {adapter.id === 'redis' && <RedisDatabaseSelect />}
+                        <FieldList
+                            keys={[
+                                'authenticationDatabase', 'options', 'disableSsl',
+                                'mode', 'tls', 'sentinelMasterName', 'sentinelNodes',
+                            ]}
+                            adapter={adapter}
+                        />
+                        {onHealthNotificationsDisabledChange && (
+                            <HealthCheckNotificationSwitch
+                                type="database"
+                                disabled={healthNotificationsDisabled ?? false}
+                                onChange={onHealthNotificationsDisabledChange}
+                            />
+                        )}
+                    </TabsContent>
+                </Tabs>
+            )}
+        </div>
     );
 }
 

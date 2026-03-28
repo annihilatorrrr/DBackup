@@ -14,6 +14,7 @@ All notable changes to DBackup are documented here.
 
 ### 🎨 Improvements
 
+- **ui**: Redesigned source form for SSH-capable adapters — Connection Mode selector now appears first (like SQLite), SSH Connection tab is shown first in SSH mode so users configure SSH before database credentials
 - **sqlite**: Refactored SQLite SSH client into shared SSH module for code reuse across all database adapters
 
 ### 🐳 Docker
