@@ -12,10 +12,22 @@ All notable changes to DBackup are documented here.
 - **ssh**: Generic SSH connection test endpoint - "Test SSH" button now works for all SSH-capable adapters, not just MSSQL
 - **ui**: SSH configuration tab in the source editor for all SSH-capable database adapters (MySQL, MariaDB, PostgreSQL, MongoDB, Redis) with connection mode selector
 
+### 🐛 Bug Fixes
+
+- **mysql**: Backup jobs with no database selected now auto-discover all databases instead of failing with "No database specified"
+
 ### 🎨 Improvements
 
 - **ui**: Redesigned source form for SSH-capable adapters — Connection Mode selector now appears first (like SQLite), SSH Connection tab is shown first in SSH mode so users configure SSH before database credentials
+- **ui**: Sources and Destinations pages now auto-refresh every 10 seconds to keep health status up to date
 - **sqlite**: Refactored SQLite SSH client into shared SSH module for code reuse across all database adapters
+
+### 📝 Documentation
+
+- **wiki**: Updated all database source guides (MySQL, MariaDB, PostgreSQL, MongoDB, Redis) with SSH mode configuration, prerequisites, setup guides, and troubleshooting
+- **wiki**: New "Connection Modes" overview section on the Sources index page explaining Direct vs SSH mode and shared SSH config fields
+- **wiki**: Added SSH remote execution architecture section to the Developer Guide (database adapters, adapter system, architecture)
+- **wiki**: Each adapter guide now lists required CLI tools for the remote host with installation commands per OS
 
 ### 🐳 Docker
 

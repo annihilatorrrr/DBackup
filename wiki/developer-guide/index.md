@@ -90,6 +90,7 @@ pnpm test:ui
 - **Server Actions delegate to Services** - No business logic in actions
 - **Adapters are pluggable** - Follow interface contracts
 - **Streaming architecture** - Efficient memory usage
+- **SSH exec over tunneling** - Database tools run remotely via SSH, output streams back
 - **Permission checks everywhere** - RBAC enforcement
 
 ## Contributing

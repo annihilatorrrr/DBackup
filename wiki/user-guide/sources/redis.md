@@ -8,7 +8,14 @@ Redis is an in-memory data structure store used as a database, cache, message br
 | :--- |
 | 6.x, 7.x, 8.x |
 
-## Architecure
+## Connection Modes
+
+| Mode | Description |
+| :--- | :--- |
+| **Direct** | DBackup connects via TCP and runs `redis-cli` locally |
+| **SSH** | DBackup connects via SSH and runs `redis-cli` on the remote host |
+
+## Architecture
 
 DBackup uses `redis-cli --rdb` to download RDB snapshots.
 
@@ -19,25 +26,33 @@ DBackup uses `redis-cli --rdb` to download RDB snapshots.
 
 ## Configuration
 
-### Basic Settings
+| Field | Description | Default | Required |
+| :--- | :--- | :--- | :--- |
+| **Connection Mode** | Direct (TCP) or SSH | `Direct` | ✅ |
+| **Host** | Redis server hostname or IP | `localhost` | ✅ |
+| **Port** | Redis server port | `6379` | ✅ |
+| **Password** | Optional authentication password | — | ❌ |
+| **Database** | Database index (0-15) for display purposes | `0` | ❌ |
+| **Username** | Redis 6+ ACL username | — | ❌ |
+| **TLS** | Enable TLS/SSL connection | `false` | ❌ |
+| **Mode** | Connection mode: `standalone` or `sentinel` | `standalone` | ❌ |
+| **Sentinel Master Name** | Master name for Sentinel mode | — | ❌ |
+| **Sentinel Nodes** | Comma-separated Sentinel node addresses | — | ❌ |
+| **Additional Options** | Extra `redis-cli` flags | — | ❌ |
 
-| Field | Description | Default |
-| :--- | :--- | :--- |
-| **Host** | Redis server hostname or IP | `localhost` |
-| **Port** | Redis server port | `6379` |
-| **Password** | Optional authentication password | - |
-| **Database** | Database index (0-15) for display purposes | `0` |
+### SSH Mode Fields
 
-### Advanced Settings
+These fields appear when **Connection Mode** is set to **SSH**:
 
-| Field | Description | Default |
-| :--- | :--- | :--- |
-| **Username** | Redis 6+ ACL username | - |
-| **TLS** | Enable TLS/SSL connection | `false` |
-| **Mode** | Connection mode: `standalone` or `sentinel` | `standalone` |
-| **Sentinel Master Name** | Master name for Sentinel mode | - |
-| **Sentinel Nodes** | Comma-separated Sentinel node addresses | - |
-| **Additional Options** | Extra `redis-cli` flags | - |
+| Field | Description | Default | Required |
+| :--- | :--- | :--- | :--- |
+| **SSH Host** | SSH server hostname or IP | — | ✅ |
+| **SSH Port** | SSH server port | `22` | ❌ |
+| **SSH Username** | SSH login username | — | ✅ |
+| **SSH Auth Type** | Password, Private Key, or Agent | `Password` | ✅ |
+| **SSH Password** | SSH password | — | ❌ |
+| **SSH Private Key** | PEM-formatted private key | — | ❌ |
+| **SSH Passphrase** | Passphrase for encrypted key | — | ❌ |
 
 ## Example Configuration
 
@@ -121,7 +136,11 @@ Unlike relational databases, Redis uses numbered databases (0-15). When configur
 
 ## Required CLI Tools
 
-The Redis adapter requires `redis-cli` to be installed on the DBackup server:
+The Redis adapter requires `redis-cli` to be installed.
+
+### Direct Mode
+
+`redis-cli` must be available on the DBackup server.
 
 **Docker**: Already included in the DBackup image.
 
@@ -136,6 +155,32 @@ brew install redis
 # Alpine
 apk add redis
 ```
+
+### SSH Mode
+
+`redis-cli` must be installed on the **remote SSH server**:
+
+```bash
+# Ubuntu/Debian
+apt-get install redis-tools
+
+# RHEL/CentOS/Fedora
+dnf install redis
+
+# Alpine
+apk add redis
+
+# macOS
+brew install redis
+```
+
+::: danger Important
+In SSH mode, the `redis-cli` tool must be installed on the remote server. DBackup executes it remotely via SSH and streams the RDB output back.
+:::
+
+::: tip Host in SSH Mode
+The **Host** field refers to the Redis hostname **as seen from the SSH server**. If Redis runs on the same machine as the SSH server, use `127.0.0.1` or `localhost`.
+:::
 
 ## Troubleshooting
 
@@ -158,6 +203,25 @@ For Redis 6+ with ACL:
 ### TLS Certificate Errors
 
 If using self-signed certificates, you may need to add `--insecure` to the Additional Options field.
+
+### SSH: Binary Not Found
+
+```
+Required binary not found on remote server. Tried: redis-cli
+```
+
+**Solution:** Install Redis tools on the remote server:
+```bash
+# Ubuntu/Debian
+apt-get install redis-tools
+```
+
+### SSH: Connection Refused
+
+**Solution:**
+1. Verify SSH is running: `systemctl status sshd`
+2. Check SSH port and firewall rules
+3. Test manually: `ssh user@host`
 
 ## See Also
 

@@ -110,15 +110,15 @@ Then open [https://localhost:3000](https://localhost:3000) and create your first
 :::tabs
 == 🗄️ Databases
 
-| Database | Versions |
-| :--- | :--- |
-| **PostgreSQL** | 12, 13, 14, 15, 16, 17, 18 |
-| **MySQL** | 5.7, 8.x, 9.x |
-| **MariaDB** | 10.x, 11.x |
-| **MongoDB** | 4.x, 5.x, 6.x, 7.x, 8.x |
-| **Redis** | 6.x, 7.x, 8.x |
-| **SQLite** | 3.x (Local & SSH) |
-| **Microsoft SQL Server** | 2017, 2019, 2022, Azure SQL Edge |
+| Database | Versions | Modes |
+| :--- | :--- | :--- |
+| **PostgreSQL** | 12, 13, 14, 15, 16, 17, 18 | Direct, SSH |
+| **MySQL** | 5.7, 8.x, 9.x | Direct, SSH |
+| **MariaDB** | 10.x, 11.x | Direct, SSH |
+| **MongoDB** | 4.x, 5.x, 6.x, 7.x, 8.x | Direct, SSH |
+| **Redis** | 6.x, 7.x, 8.x | Direct, SSH |
+| **SQLite** | 3.x | Local, SSH |
+| **Microsoft SQL Server** | 2017, 2019, 2022, Azure SQL Edge | Direct (+ SSH file transfer) |
 
 == ☁️ Storage
 
