@@ -3,6 +3,7 @@ import { LogLevel, LogType } from "@/lib/core/logs";
 import { MySQLConfig, MariaDBConfig } from "@/lib/adapters/definitions";
 import { getDialect } from "./dialects";
 import { getMysqldumpCommand } from "./tools";
+import { getDatabases } from "./connection";
 import fs from "fs/promises";
 import path from "path";
 import { spawn } from "child_process";
@@ -163,7 +164,13 @@ export async function dump(config: MySQLDumpConfig, destinationPath: string, onL
         else if (config.database) dbs = [config.database];
 
         if (dbs.length === 0) {
-            throw new Error("No database specified for backup");
+            log("No databases selected — backing up all databases");
+            dbs = await getDatabases(config);
+            log(`Found ${dbs.length} database(s): ${dbs.join(', ')}`);
+        }
+
+        if (dbs.length === 0) {
+            throw new Error("No databases found on server");
         }
 
         // Single DB: Direct dump (no TAR needed)
