@@ -13,6 +13,7 @@ import {
 } from "../common/tar-utils";
 import { TarFileEntry, TarManifest } from "../common/types";
 import { PostgresConfig } from "@/lib/adapters/definitions";
+import { getDatabases } from "./connection";
 import {
     SshClient,
     isSSHMode,
@@ -198,6 +199,16 @@ export async function dump(
         if (dbs.length === 0 && config.database) {
             const db = Array.isArray(config.database) ? config.database[0] : config.database;
             if (db) dbs = [db];
+        }
+
+        // Auto-discover all databases if none specified
+        if (dbs.length === 0) {
+            log("No DB selected — auto-discovering all databases…", "info");
+            dbs = await getDatabases(config);
+            log(`Discovered ${dbs.length} database(s): ${dbs.join(", ")}`, "info");
+            if (dbs.length === 0) {
+                throw new Error("No databases found on the server");
+            }
         }
 
         const dialect = getDialect('postgres', config.detectedVersion);

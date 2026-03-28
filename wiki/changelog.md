@@ -15,6 +15,7 @@ All notable changes to DBackup are documented here.
 ### 🐛 Bug Fixes
 
 - **mysql**: Backup jobs with no database selected now auto-discover all databases instead of failing with "No database specified"
+- **postgres**: Backup jobs with no database selected now auto-discover all databases instead of `pg_dump` defaulting to the username as database name
 
 ### 🎨 Improvements
 
