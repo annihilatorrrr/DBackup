@@ -14,6 +14,14 @@ import {
     shouldRestoreDatabase,
     getTargetDatabaseName,
 } from "../common/tar-utils";
+import {
+    SshClient,
+    isSSHMode,
+    extractSshConfig,
+    buildMongoArgs,
+    remoteBinaryCheck,
+    shellEscape,
+} from "@/lib/ssh";
 
 /** Extended config with optional privileged auth for restore operations */
 type MongoDBRestoreConfig = MongoDBConfig & {
@@ -48,6 +56,11 @@ function buildConnectionUri(config: MongoDBConfig): string {
 }
 
 export async function prepareRestore(config: MongoDBRestoreConfig, databases: string[]): Promise<void> {
+    if (isSSHMode(config)) {
+        // In SSH mode, we trust mongorestore to create databases. Skip the permission check.
+        return;
+    }
+
     // Determine credentials (privileged or standard)
     const usageConfig: MongoDBConfig = { ...config };
     if (config.privilegedAuth) {
@@ -99,6 +112,10 @@ async function restoreSingleDatabase(
     log: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void,
     fromStdin: boolean = false
 ): Promise<void> {
+    if (isSSHMode(config)) {
+        return restoreSingleDatabaseSSH(sourcePath, targetDb, sourceDb, config, log);
+    }
+
     const args: string[] = [];
 
     if (config.uri) {
@@ -159,6 +176,66 @@ async function restoreSingleDatabase(
     });
 
     await waitForProcess(restoreProcess, 'mongorestore');
+}
+
+/**
+ * SSH variant: pipe local archive to remote mongorestore via SSH stdin.
+ */
+async function restoreSingleDatabaseSSH(
+    sourcePath: string,
+    targetDb: string | undefined,
+    sourceDb: string | undefined,
+    config: MongoDBRestoreConfig,
+    log: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void
+): Promise<void> {
+    const sshConfig = extractSshConfig(config)!;
+    const ssh = new SshClient();
+    await ssh.connect(sshConfig);
+
+    try {
+        const mongorestoreBin = await remoteBinaryCheck(ssh, "mongorestore");
+        const args = buildMongoArgs(config);
+
+        args.push("--archive"); // read from stdin
+        args.push("--gzip");
+        args.push("--drop");
+
+        if (sourceDb && targetDb && sourceDb !== targetDb) {
+            args.push("--nsFrom", shellEscape(`${sourceDb}.*`));
+            args.push("--nsTo", shellEscape(`${targetDb}.*`));
+            log(`Remapping database: ${sourceDb} -> ${targetDb}`, 'info');
+        } else if (targetDb) {
+            args.push("--nsInclude", shellEscape(`${targetDb}.*`));
+        }
+
+        const cmd = `${mongorestoreBin} ${args.join(" ")}`;
+        log(`Restoring database (SSH)`, 'info', 'command', `mongorestore ${args.join(' ').replace(config.password || '___NONE___', '******')}`);
+
+        const fileStream = createReadStream(sourcePath);
+
+        await new Promise<void>((resolve, reject) => {
+            ssh.execStream(cmd, (err, stream) => {
+                if (err) return reject(err);
+
+                stream.stderr.on('data', (data: any) => {
+                    const msg = data.toString().trim();
+                    if (msg) log(`[mongorestore] ${msg}`, 'info');
+                });
+
+                stream.on('exit', (code: number) => {
+                    if (code === 0) resolve();
+                    else reject(new Error(`Remote mongorestore exited with code ${code}`));
+                });
+
+                stream.on('error', (err: Error) => reject(err));
+                fileStream.on('error', (err: Error) => reject(err));
+
+                fileStream.pipe(stream);
+            });
+        });
+    } finally {
+        ssh.end();
+    }
 }
 
 export async function restore(

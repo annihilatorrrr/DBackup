@@ -13,6 +13,15 @@ import {
 } from "../common/tar-utils";
 import { TarFileEntry, TarManifest } from "../common/types";
 import { PostgresConfig } from "@/lib/adapters/definitions";
+import {
+    SshClient,
+    isSSHMode,
+    extractSshConfig,
+    buildPsqlArgs,
+    remoteEnv,
+    remoteBinaryCheck,
+    shellEscape,
+} from "@/lib/ssh";
 
 /**
  * Extended PostgreSQL config for dump operations with runtime fields
@@ -31,6 +40,10 @@ async function dumpSingleDatabase(
     env: NodeJS.ProcessEnv,
     log: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void
 ): Promise<void> {
+    if (isSSHMode(config)) {
+        return dumpSingleDatabaseSSH(dbName, outputPath, config, log);
+    }
+
     const pgDumpBinary = await getPostgresBinary('pg_dump', config.detectedVersion);
 
     const args = [
@@ -78,6 +91,78 @@ async function dumpSingleDatabase(
         dumpProcess.on('error', (err) => reject(err));
         writeStream.on('error', (err) => reject(err));
     });
+}
+
+/**
+ * SSH variant: run pg_dump on the remote server and stream custom-format output to a local file.
+ */
+async function dumpSingleDatabaseSSH(
+    dbName: string,
+    outputPath: string,
+    config: PostgresDumpConfig,
+    log: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void
+): Promise<void> {
+    const sshConfig = extractSshConfig(config)!;
+    const ssh = new SshClient();
+    await ssh.connect(sshConfig);
+
+    try {
+        const pgDumpBin = await remoteBinaryCheck(ssh, "pg_dump");
+        const args = buildPsqlArgs(config);
+
+        const dumpArgs = [
+            ...args,
+            "-F", "c",
+            "-Z", "6",
+            "-d", shellEscape(dbName),
+        ];
+
+        if (config.options) {
+            const parts = config.options.match(/[^\s"']+|"([^"]*)"|'([^']*)'/g) || [];
+            for (const part of parts) {
+                if (part.startsWith('"') && part.endsWith('"')) {
+                    dumpArgs.push(part.slice(1, -1));
+                } else if (part.startsWith("'") && part.endsWith("'")) {
+                    dumpArgs.push(part.slice(1, -1));
+                } else {
+                    dumpArgs.push(part);
+                }
+            }
+        }
+
+        const env: Record<string, string | undefined> = {};
+        if (config.password) env.PGPASSWORD = config.password;
+
+        const cmd = remoteEnv(env, `${pgDumpBin} ${dumpArgs.join(" ")}`);
+        log(`Dumping database (SSH): ${dbName}`, 'info', 'command', `pg_dump ${dumpArgs.join(' ')}`);
+
+        const writeStream = createWriteStream(outputPath);
+
+        await new Promise<void>((resolve, reject) => {
+            ssh.execStream(cmd, (err, stream) => {
+                if (err) return reject(err);
+
+                stream.pipe(writeStream);
+
+                stream.stderr.on('data', (data: any) => {
+                    const msg = data.toString().trim();
+                    if (msg && !msg.includes('NOTICE:')) {
+                        log(msg, 'info');
+                    }
+                });
+
+                stream.on('exit', (code: number) => {
+                    if (code === 0) resolve();
+                    else reject(new Error(`Remote pg_dump for ${dbName} exited with code ${code}`));
+                });
+
+                stream.on('error', (err: Error) => reject(err));
+                writeStream.on('error', (err: Error) => reject(err));
+            });
+        });
+    } finally {
+        ssh.end();
+    }
 }
 
 export async function dump(

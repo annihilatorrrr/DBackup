@@ -3,17 +3,9 @@ import fs from "fs/promises";
 import { constants } from "fs";
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { SshClient } from "./ssh-client";
+import { SshClient, shellEscape, extractSqliteSshConfig } from "@/lib/ssh";
 
 const execFileAsync = promisify(execFile);
-
-/**
- * Escapes a value for safe inclusion in a single-quoted shell string.
- * Handles embedded single quotes by ending the quote, adding an escaped quote, and re-opening.
- */
-function shellEscape(value: string): string {
-    return "'" + value.replace(/'/g, "'\\''") + "'";
-}
 
 export const test: DatabaseAdapter["test"] = async (config) => {
     try {
@@ -112,7 +104,9 @@ export const getDatabasesWithStats: DatabaseAdapter["getDatabasesWithStats"] = a
         } else if (mode === "ssh") {
             const client = new SshClient();
             try {
-                await client.connect(config);
+                const sshConfig2 = extractSqliteSshConfig(config);
+                if (!sshConfig2) return [{ name, sizeInBytes: undefined, tableCount: undefined }];
+                await client.connect(sshConfig2);
 
                 // Get file size via stat
                 const sizeResult = await client.exec(`stat -c %s ${shellEscape(dbPath)} 2>/dev/null || stat -f %z ${shellEscape(dbPath)} 2>/dev/null`);

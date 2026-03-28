@@ -163,13 +163,24 @@ export function DatabaseFormContent({
     const isMSSQL = adapter.id === "mssql";
     const fileTransferMode = watch("config.fileTransferMode");
     const sshAuthType = watch("config.sshAuthType");
+    const connectionMode = watch("config.connectionMode");
+
+    // Adapters that support SSH connection mode (have connectionMode field in schema)
+    const hasSSH = adapter.configSchema.shape && "connectionMode" in adapter.configSchema.shape && !isMSSQL;
+    const showTabs = isMSSQL || hasSSH;
+    const tabCount = 2 + (isMSSQL ? 1 : 0) + (hasSSH ? 1 : 0);
 
     return (
         <Tabs defaultValue="connection" className="w-full">
-            <TabsList className={cn("grid w-full", isMSSQL ? "grid-cols-3" : "grid-cols-2")}>
+            <TabsList className={cn("grid w-full",
+                tabCount === 2 && "grid-cols-2",
+                tabCount === 3 && "grid-cols-3",
+                tabCount === 4 && "grid-cols-4",
+            )}>
                 <TabsTrigger value="connection">Connection</TabsTrigger>
                 <TabsTrigger value="configuration">Configuration</TabsTrigger>
                 {isMSSQL && <TabsTrigger value="filetransfer">File Transfer</TabsTrigger>}
+                {hasSSH && <TabsTrigger value="ssh">SSH</TabsTrigger>}
             </TabsList>
 
             <TabsContent value="connection" className="space-y-4 pt-4">
@@ -235,14 +246,24 @@ export function DatabaseFormContent({
                     )}
                 </TabsContent>
             )}
+
+            {hasSSH && (
+                <TabsContent value="ssh" className="space-y-4 pt-4">
+                    <FieldList keys={['connectionMode']} adapter={adapter} />
+                    {connectionMode === "ssh" && (
+                        <SshConfigSection adapter={adapter} sshAuthType={sshAuthType} description="SSH credentials to execute database commands on the remote server." />
+                    )}
+                </TabsContent>
+            )}
         </Tabs>
     );
 }
 
 /**
- * SSH configuration section for MSSQL file transfer with integrated test button.
+ * SSH configuration section with integrated test button.
+ * Used by MSSQL (file transfer) and other database adapters (SSH exec).
  */
-function SshConfigSection({ adapter, sshAuthType }: { adapter: AdapterDefinition; sshAuthType: string }) {
+function SshConfigSection({ adapter, sshAuthType, description }: { adapter: AdapterDefinition; sshAuthType: string; description?: string }) {
     const { getValues } = useFormContext();
     const [isTestingSsh, setIsTestingSsh] = useState(false);
 
@@ -275,7 +296,7 @@ function SshConfigSection({ adapter, sshAuthType }: { adapter: AdapterDefinition
     return (
         <div className="space-y-4 border p-4 rounded-md bg-muted/10">
             <p className="text-sm text-muted-foreground">
-                SSH credentials to download/upload .bak files from the SQL Server host.
+                {description || "SSH credentials to download/upload .bak files from the SQL Server host."}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="md:col-span-3">

@@ -1,5 +1,13 @@
 import { MongoClient } from "mongodb";
 import { MongoDBConfig } from "@/lib/adapters/definitions";
+import {
+    SshClient,
+    isSSHMode,
+    extractSshConfig,
+    buildMongoArgs,
+    remoteEnv,
+    remoteBinaryCheck,
+} from "@/lib/ssh";
 
 /**
  * Build MongoDB connection URI from config
@@ -19,6 +27,30 @@ function buildConnectionUri(config: MongoDBConfig): string {
 }
 
 export async function test(config: MongoDBConfig): Promise<{ success: boolean; message: string; version?: string }> {
+    if (isSSHMode(config)) {
+        const sshConfig = extractSshConfig(config)!;
+        const ssh = new SshClient();
+        try {
+            await ssh.connect(sshConfig);
+            const mongoshBin = await remoteBinaryCheck(ssh, "mongosh", "mongo");
+            const args = buildMongoArgs(config);
+
+            const cmd = `${mongoshBin} ${args.join(" ")} --quiet --eval "db.adminCommand({buildInfo:1}).version"`;
+            const result = await ssh.exec(cmd);
+
+            if (result.code === 0) {
+                const version = result.stdout.trim();
+                return { success: true, message: "Connection successful (via SSH)", version };
+            }
+            return { success: false, message: `SSH MongoDB test failed: ${result.stderr}` };
+        } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : String(error);
+            return { success: false, message: `SSH connection failed: ${msg}` };
+        } finally {
+            ssh.end();
+        }
+    }
+
     let client: MongoClient | null = null;
 
     try {
@@ -50,6 +82,28 @@ export async function test(config: MongoDBConfig): Promise<{ success: boolean; m
 }
 
 export async function getDatabases(config: MongoDBConfig): Promise<string[]> {
+    const sysDbs = ["admin", "config", "local"];
+
+    if (isSSHMode(config)) {
+        const sshConfig = extractSshConfig(config)!;
+        const ssh = new SshClient();
+        try {
+            await ssh.connect(sshConfig);
+            const mongoshBin = await remoteBinaryCheck(ssh, "mongosh", "mongo");
+            const args = buildMongoArgs(config);
+
+            const cmd = `${mongoshBin} ${args.join(" ")} --quiet --eval "db.adminCommand({listDatabases:1}).databases.map(d=>d.name).join('\\n')"`;
+            const result = await ssh.exec(cmd);
+
+            if (result.code !== 0) {
+                throw new Error(`Failed to list databases: ${result.stderr}`);
+            }
+            return result.stdout.split('\n').map(s => s.trim()).filter(s => s && !sysDbs.includes(s));
+        } finally {
+            ssh.end();
+        }
+    }
+
     let client: MongoClient | null = null;
 
     try {
@@ -64,7 +118,6 @@ export async function getDatabases(config: MongoDBConfig): Promise<string[]> {
         const adminDb = client.db("admin");
         const result = await adminDb.command({ listDatabases: 1 });
 
-        const sysDbs = ["admin", "config", "local"];
         return result.databases
             .map((db: { name: string }) => db.name)
             .filter((name: string) => !sysDbs.includes(name));
@@ -81,6 +134,41 @@ export async function getDatabases(config: MongoDBConfig): Promise<string[]> {
 import { DatabaseInfo } from "@/lib/core/interfaces";
 
 export async function getDatabasesWithStats(config: MongoDBConfig): Promise<DatabaseInfo[]> {
+    const sysDbs = ["admin", "config", "local"];
+
+    if (isSSHMode(config)) {
+        const sshConfig = extractSshConfig(config)!;
+        const ssh = new SshClient();
+        try {
+            await ssh.connect(sshConfig);
+            const mongoshBin = await remoteBinaryCheck(ssh, "mongosh", "mongo");
+            const args = buildMongoArgs(config);
+
+            // Use a JS script to output tab-separated name\tsize\tcollectionCount
+            const script = `db.adminCommand({listDatabases:1}).databases.filter(d=>!['admin','config','local'].includes(d.name)).forEach(d=>{let c=0;try{c=db.getSiblingDB(d.name).getCollectionNames().length}catch(e){}print(d.name+'\\t'+(d.sizeOnDisk||0)+'\\t'+c)})`;
+            const cmd = `${mongoshBin} ${args.join(" ")} --quiet --eval "${script}"`;
+            const result = await ssh.exec(cmd);
+
+            if (result.code !== 0) {
+                throw new Error(`Failed to get database stats: ${result.stderr}`);
+            }
+            return result.stdout
+                .split('\n')
+                .map(line => line.trim())
+                .filter(line => line)
+                .map(line => {
+                    const [name, sizeStr, tableStr] = line.split('\t');
+                    return {
+                        name,
+                        sizeInBytes: parseInt(sizeStr, 10) || 0,
+                        tableCount: parseInt(tableStr, 10) || 0,
+                    };
+                });
+        } finally {
+            ssh.end();
+        }
+    }
+
     let client: MongoClient | null = null;
 
     try {

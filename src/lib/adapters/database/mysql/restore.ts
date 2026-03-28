@@ -17,6 +17,15 @@ import {
     shouldRestoreDatabase,
     getTargetDatabaseName,
 } from "../common/tar-utils";
+import {
+    SshClient,
+    isSSHMode,
+    extractSshConfig,
+    buildMysqlArgs,
+    remoteEnv,
+    remoteBinaryCheck,
+    shellEscape,
+} from "@/lib/ssh";
 
 /** Extended config with runtime fields for restore operations */
 type MySQLRestoreConfig = (MySQLConfig | MariaDBConfig) & {
@@ -47,6 +56,10 @@ async function restoreSingleFile(
     onLog: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void,
     onProgress?: (percentage: number) => void
 ): Promise<void> {
+    if (isSSHMode(config)) {
+        return restoreSingleFileSSH(config, sourcePath, targetDb, onLog, onProgress);
+    }
+
     const stats = await fs.stat(sourcePath);
     const totalSize = stats.size;
     let processedSize = 0;
@@ -84,6 +97,75 @@ async function restoreSingleFile(
         if (msg.includes("Using a password") || msg.includes("Deprecated program name")) return;
         onLog(`MySQL: ${msg}`);
     });
+}
+
+/**
+ * SSH variant: pipe local SQL file to remote mysql client via SSH.
+ */
+async function restoreSingleFileSSH(
+    config: MySQLRestoreConfig,
+    sourcePath: string,
+    targetDb: string,
+    onLog: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void,
+    onProgress?: (percentage: number) => void
+): Promise<void> {
+    const stats = await fs.stat(sourcePath);
+    const totalSize = stats.size;
+    let processedSize = 0;
+    let lastProgress = 0;
+
+    const sshConfig = extractSshConfig(config)!;
+    const ssh = new SshClient();
+    await ssh.connect(sshConfig);
+
+    try {
+        const mysqlBin = await remoteBinaryCheck(ssh, "mariadb", "mysql");
+        const args = buildMysqlArgs(config);
+        args.push(shellEscape(targetDb));
+
+        const env: Record<string, string | undefined> = {};
+        if (config.password) env.MYSQL_PWD = config.password;
+
+        const cmd = remoteEnv(env, `${mysqlBin} ${args.join(" ")}`);
+        onLog(`Restoring to database (SSH): ${targetDb}`, 'info', 'command', `${mysqlBin} ${args.join(" ")}`);
+
+        const fileStream = createReadStream(sourcePath, { highWaterMark: 64 * 1024 });
+
+        fileStream.on('data', (chunk) => {
+            if (onProgress && totalSize > 0) {
+                processedSize += chunk.length;
+                const p = Math.round((processedSize / totalSize) * 100);
+                if (p > lastProgress) {
+                    lastProgress = p;
+                    onProgress(p);
+                }
+            }
+        });
+
+        await new Promise<void>((resolve, reject) => {
+            ssh.execStream(cmd, (err, stream) => {
+                if (err) return reject(err);
+
+                stream.stderr.on('data', (data: any) => {
+                    const msg = data.toString().trim();
+                    if (msg.includes("Using a password") || msg.includes("Deprecated program name")) return;
+                    onLog(`MySQL: ${msg}`);
+                });
+
+                stream.on('exit', (code: number) => {
+                    if (code === 0) resolve();
+                    else reject(new Error(`Remote mysql exited with code ${code}`));
+                });
+
+                stream.on('error', (err: Error) => reject(err));
+                fileStream.on('error', (err: Error) => reject(err));
+
+                fileStream.pipe(stream);
+            });
+        });
+    } finally {
+        ssh.end();
+    }
 }
 
 export async function restore(config: MySQLRestoreConfig, sourcePath: string, onLog?: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void, onProgress?: (percentage: number) => void): Promise<BackupResult> {

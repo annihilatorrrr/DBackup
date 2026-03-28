@@ -5,6 +5,17 @@ All notable changes to DBackup are documented here.
 ## v1.3.0
 *Release: In Progress*
 
+### ✨ Features
+
+- **ssh**: SSH remote execution mode for MySQL, MariaDB, PostgreSQL, MongoDB and Redis - database tools (mysqldump, pg_dump, mongodump, redis-cli) run directly on the remote host via SSH instead of requiring a local client or SSH tunnel
+- **ssh**: New shared SSH infrastructure (`src/lib/ssh/`) with reusable client, shell escaping, remote binary detection, and per-adapter argument builders
+- **ssh**: Generic SSH connection test endpoint - "Test SSH" button now works for all SSH-capable adapters, not just MSSQL
+- **ui**: SSH configuration tab in the source editor for all SSH-capable database adapters (MySQL, MariaDB, PostgreSQL, MongoDB, Redis) with connection mode selector
+
+### 🎨 Improvements
+
+- **sqlite**: Refactored SQLite SSH client into shared SSH module for code reuse across all database adapters
+
 ### 🐳 Docker
 
 - **Image**: `skyfay/dbackup:v1.3.0`

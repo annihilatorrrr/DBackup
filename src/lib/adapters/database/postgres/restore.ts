@@ -15,6 +15,17 @@ import {
     getTargetDatabaseName,
 } from "../common/tar-utils";
 import { PostgresConfig } from "@/lib/adapters/definitions";
+import {
+    SshClient,
+    isSSHMode,
+    extractSshConfig,
+    buildPsqlArgs,
+    remoteEnv,
+    remoteBinaryCheck,
+    shellEscape,
+} from "@/lib/ssh";
+import { randomUUID } from "crypto";
+import { createReadStream } from "fs";
 
 /**
  * Extended PostgreSQL config for restore operations with runtime fields
@@ -33,6 +44,10 @@ type PostgresRestoreConfig = PostgresConfig & {
 };
 
 export async function prepareRestore(config: PostgresRestoreConfig, databases: string[]): Promise<void> {
+    if (isSSHMode(config)) {
+        return prepareRestoreSSH(config, databases);
+    }
+
     const usePrivileged = !!config.privilegedAuth;
     const user = usePrivileged ? config.privilegedAuth!.user : config.user;
     const pass = usePrivileged ? config.privilegedAuth!.password : config.password;
@@ -72,6 +87,47 @@ export async function prepareRestore(config: PostgresRestoreConfig, databases: s
 }
 
 /**
+ * SSH variant: create databases on the remote server via psql.
+ */
+async function prepareRestoreSSH(config: PostgresRestoreConfig, databases: string[]): Promise<void> {
+    const sshConfig = extractSshConfig(config)!;
+    const ssh = new SshClient();
+    await ssh.connect(sshConfig);
+
+    try {
+        const usePrivileged = !!config.privilegedAuth;
+        const user = usePrivileged ? config.privilegedAuth!.user : config.user;
+        const pass = usePrivileged ? config.privilegedAuth!.password : config.password;
+
+        const args = buildPsqlArgs(config, user);
+        const env: Record<string, string | undefined> = {};
+        if (pass) env.PGPASSWORD = pass;
+
+        for (const dbName of databases) {
+            const safeLiteral = dbName.replace(/'/g, "''");
+            const checkCmd = remoteEnv(env, `psql ${args.join(" ")} -d postgres -t -A -c ${shellEscape(`SELECT 1 FROM pg_database WHERE datname = '${safeLiteral}'`)}`);
+            const checkResult = await ssh.exec(checkCmd);
+            if (checkResult.stdout.trim() === '1') continue;
+
+            const safeDbName = `"${dbName.replace(/"/g, '""')}"`;
+            const createCmd = remoteEnv(env, `psql ${args.join(" ")} -d postgres -c ${shellEscape(`CREATE DATABASE ${safeDbName}`)}`);
+            const createResult = await ssh.exec(createCmd);
+
+            if (createResult.code !== 0) {
+                const msg = createResult.stderr;
+                if (msg.includes("permission denied")) {
+                    throw new Error(`Access denied for user '${user}' to create database '${dbName}'. User permissions?`);
+                }
+                if (msg.includes("already exists")) continue;
+                throw new Error(`Failed to create database '${dbName}': ${msg}`);
+            }
+        }
+    } finally {
+        ssh.end();
+    }
+}
+
+/**
  * Detect if a backup file is in PostgreSQL custom format
  */
 async function isCustomFormat(filePath: string): Promise<boolean> {
@@ -96,6 +152,10 @@ async function restoreSingleDatabase(
     env: NodeJS.ProcessEnv,
     log: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void
 ): Promise<void> {
+    if (isSSHMode(config)) {
+        return restoreSingleDatabaseSSH(sourcePath, targetDb, config, log);
+    }
+
     const pgRestoreBinary = await getPostgresBinary('pg_restore', config.detectedVersion);
 
     const args = [
@@ -163,6 +223,95 @@ async function restoreSingleDatabase(
             reject(new Error(`Failed to start pg_restore: ${err.message}`));
         });
     });
+}
+
+/**
+ * SSH variant: upload dump to remote temp file, run pg_restore there, then cleanup.
+ * pg_restore with custom format needs seekable input, so we can't just pipe stdin.
+ */
+async function restoreSingleDatabaseSSH(
+    sourcePath: string,
+    targetDb: string,
+    config: PostgresRestoreConfig,
+    log: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void
+): Promise<void> {
+    const sshConfig = extractSshConfig(config)!;
+    const ssh = new SshClient();
+    await ssh.connect(sshConfig);
+
+    const remoteTempFile = `/tmp/dbackup_restore_${randomUUID()}.dump`;
+
+    try {
+        const pgRestoreBin = await remoteBinaryCheck(ssh, "pg_restore");
+        const args = buildPsqlArgs(config);
+
+        const env: Record<string, string | undefined> = {};
+        const priv = config.privilegedAuth;
+        const pass = (priv && priv.password) ? priv.password : config.password;
+        if (pass) env.PGPASSWORD = pass;
+
+        // 1. Upload dump file to remote temp location
+        log(`Uploading dump to remote: ${remoteTempFile}`, 'info');
+        const fileStream = createReadStream(sourcePath);
+
+        await new Promise<void>((resolve, reject) => {
+            ssh.execStream(`cat > ${shellEscape(remoteTempFile)}`, (err, stream) => {
+                if (err) return reject(err);
+
+                stream.on('exit', (code: number) => {
+                    if (code === 0) resolve();
+                    else reject(new Error(`Failed to upload dump file (code ${code})`));
+                });
+
+                stream.on('error', (err: Error) => reject(err));
+                fileStream.on('error', (err: Error) => reject(err));
+
+                fileStream.pipe(stream);
+            });
+        });
+
+        // 2. Run pg_restore on the remote
+        const restoreArgs = [
+            ...args,
+            "-d", shellEscape(targetDb),
+            "-w",
+            "--clean",
+            "--if-exists",
+            "--no-owner",
+            "--no-acl",
+            "--no-comments",
+            "--no-tablespaces",
+            "--no-security-labels",
+            "-v",
+            shellEscape(remoteTempFile),
+        ];
+
+        const cmd = remoteEnv(env, `${pgRestoreBin} ${restoreArgs.join(" ")}`);
+        log(`Restoring database (SSH): ${targetDb}`, 'info', 'command', `pg_restore ${restoreArgs.join(' ')}`);
+
+        const result = await ssh.exec(cmd);
+
+        if (result.code !== 0 && result.code !== 1) {
+            throw new Error(`Remote pg_restore exited with code ${result.code}. Error: ${result.stderr}`);
+        }
+
+        if (result.code === 1 && result.stderr.includes('warning')) {
+            log('Restore completed with warnings (non-fatal)', 'warning');
+        }
+
+        if (result.stderr) {
+            const lines = result.stderr.trim().split('\n');
+            for (const line of lines) {
+                if (line && !line.includes('NOTICE:')) {
+                    log(line, 'info');
+                }
+            }
+        }
+    } finally {
+        // 3. Cleanup remote temp file
+        await ssh.exec(`rm -f ${shellEscape(remoteTempFile)}`).catch(() => {});
+        ssh.end();
+    }
 }
 
 export async function restore(

@@ -1,15 +1,8 @@
 import { DatabaseAdapter } from "@/lib/core/interfaces";
 import { spawn } from "child_process";
 import fs from "fs";
-import { SshClient } from "./ssh-client";
+import { SshClient, shellEscape, extractSqliteSshConfig } from "@/lib/ssh";
 import { SQLiteConfig } from "@/lib/adapters/definitions";
-
-/**
- * Escapes a value for safe inclusion in a single-quoted shell string.
- */
-function shellEscape(value: string): string {
-    return "'" + value.replace(/'/g, "'\\''") + "'";
-}
 
 export const prepareRestore: DatabaseAdapter["prepareRestore"] = async (_config, _databases) => {
      // No major prep needed for SQLite mostly, but could check write permissions here
@@ -118,7 +111,9 @@ async function restoreSsh(config: SQLiteConfig, sourcePath: string, log: (msg: s
     const binaryPath = config.sqliteBinaryPath || "sqlite3";
     const dbPath = config.path;
 
-    await client.connect(config);
+    const sshConfig = extractSqliteSshConfig(config);
+    if (!sshConfig) throw new Error("SSH host and username are required");
+    await client.connect(sshConfig);
     log("SSH connection established.");
 
     // Create remote backup and delete original
@@ -156,7 +151,7 @@ async function restoreSsh(config: SQLiteConfig, sourcePath: string, log: (msg: s
                 log(`[Remote Stderr]: ${data.toString()}`);
             });
 
-            stream.on("close", (code: number, _signal: any) => {
+            stream.on("exit", (code: number, _signal: any) => {
                 client.end();
                 if (code === 0) {
                      log("Remote restore completed successfully.");
