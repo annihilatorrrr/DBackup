@@ -55,11 +55,30 @@ export function AdapterManager({ type, title, description, canManage = true, per
         }
     }, [type]);
 
+    // Silent polling refresh (no loading spinner, no error toasts)
+    const silentRefresh = useCallback(async () => {
+        try {
+            const res = await fetch(`/api/adapters?type=${type}`);
+            if (res.ok) {
+                const data = await res.json();
+                setConfigs(data);
+            }
+        } catch {
+            // Silent — don't disturb the user on background poll failures
+        }
+    }, [type]);
+
     useEffect(() => {
         // Filter definitions by type
         setAvailableAdapters(ADAPTER_DEFINITIONS.filter(d => d.type === type));
         fetchConfigs();
     }, [type, fetchConfigs]);
+
+    // Poll every 10 seconds to keep health status up to date
+    useEffect(() => {
+        const interval = setInterval(silentRefresh, 10000);
+        return () => clearInterval(interval);
+    }, [silentRefresh]);
 
     const handleDelete = (id: string) => {
         setDeletingId(id);

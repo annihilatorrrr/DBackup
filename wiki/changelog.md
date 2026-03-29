@@ -2,6 +2,58 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.3.0 - SSH Remote Execution
+*Released: March 29, 2026*
+
+### ✨ Features
+
+- **ssh**: SSH remote execution mode for MySQL, MariaDB, PostgreSQL, MongoDB and Redis - database tools (mysqldump, pg_dump, mongodump, redis-cli) run directly on the remote host via SSH instead of requiring a local client or SSH tunnel
+- **ssh**: New shared SSH infrastructure (`src/lib/ssh/`) with reusable client, shell escaping, remote binary detection, and per-adapter argument builders
+- **ssh**: Generic SSH connection test endpoint - "Test SSH" button now works for all SSH-capable adapters, not just MSSQL
+- **ui**: SSH configuration tab in the source editor for all SSH-capable database adapters (MySQL, MariaDB, PostgreSQL, MongoDB, Redis) with connection mode selector
+- **sqlite**: Added "Test SSH Connection" button to the SQLite SSH configuration tab, matching all other SSH-capable adapters
+
+### 🐛 Bug Fixes
+
+- **backup**: MySQL, PostgreSQL, and MongoDB backup jobs with no database selected now auto-discover all databases at runtime - MySQL no longer fails with "No database specified", PostgreSQL no longer defaults to the username as database name, and MongoDB SSH listing was fixed by switching `mongosh --eval` to single quotes to prevent bash `!` history expansion from silently corrupting the command; backup metadata is now correctly populated for restore mapping.
+- **restore**: Restore page no longer shows SQLite-style "Overwrite / Restore as New" UI for server-based adapters - now shows a target database name input when database names are unknown, and auto-discovers database names in backup metadata for future backups
+- **ssh**: Fixed MySQL/MongoDB SSH restore not consuming stdout, which could cause backpressure and hang/crash the remote process
+- **restore**: Fixed MySQL SSH restore crashing the Node.js process with OOM (16 GB heap) when restoring large databases - stderr log output is now rate-limited (max 50 messages, 500 chars each) to prevent unbounded memory growth
+- **restore**: Fixed MySQL restore via SSH failing with "Server has gone away" on large dumps - `mysql` client now uses `--max-allowed-packet=64M` to handle large legacy INSERT statements
+- **backup**: Fixed MySQL dump producing huge INSERT statements that cause OOM kills on remote servers during restore - `mysqldump` now uses `--net-buffer-length=16384` to limit each INSERT to ~16 KB, and `mysql` client `--max-allowed-packet` reduced from 512M to 64M to minimize client memory allocatione
+- **ui**: Fixed Download Link modal overflowing the viewport when a link is generated - dialog now has a max height and scrollable body
+- **ui**: Fixed Job Status donut chart legend breaking to multiple lines with uneven layout when 3+ statuses (e.g. Completed, Failed, Cancelled) are shown - legend items now flow naturally and stay centered
+
+### 🔒 Security
+
+- **ssh**: Fixed database passwords (MYSQL_PWD, PGPASSWORD) being exposed in execution logs when a remote process is killed by OOM or signal - `remoteEnv()` now uses `export` statements instead of inline env var prefix, and the MySQL stderr handler redacts known secrets from all output
+
+### 🎨 Improvements
+
+- **ui**: Redesigned source form for SSH-capable adapters - Connection Mode selector now appears first (like SQLite), SSH Connection tab is shown first in SSH mode so users configure SSH before database credentials
+- **ui**: Restore page now shows skeleton loading while target databases are fetched via SSH - version compatibility, database mapping, and action buttons are blocked until loading completes
+- **ui**: Sources and Destinations pages now auto-refresh every 10 seconds to keep health status up to date
+- **sqlite**: Refactored SQLite SSH client into shared SSH module for code reuse across all database adapters
+- **sqlite**: SQLite SSH connection test now uses `remoteBinaryCheck()` from the shared SSH library instead of manual binary checks; `try/finally` pattern ensures SSH connections are always closed; exit code null handling fixed in dump
+
+### 📝 Documentation
+
+- **wiki**: Updated all database source guides (MySQL, MariaDB, PostgreSQL, MongoDB, Redis) with SSH mode configuration, prerequisites, setup guides, and troubleshooting
+- **wiki**: New "Connection Modes" overview section on the Sources index page explaining Direct vs SSH mode and shared SSH config fields
+- **wiki**: Added SSH remote execution architecture section to the Developer Guide (database adapters, adapter system, architecture)
+- **wiki**: Each adapter guide now lists required CLI tools for the remote host with installation commands per OS
+
+### 🧪 Tests
+
+- **ssh**: Added 60 unit tests for shared SSH utilities covering shell escaping, environment variable export, SSH mode detection, config extraction, and argument builders for MySQL, PostgreSQL, MongoDB, and Redis
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.3.0`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v1.2.1 - Execution Cancellation, MSSQL Progress & Dashboard Polish
 *Released: March 26, 2026*
 

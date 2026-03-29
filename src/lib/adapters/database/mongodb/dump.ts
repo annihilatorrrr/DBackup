@@ -13,6 +13,15 @@ import {
 } from "../common/tar-utils";
 import { TarFileEntry, TarManifest } from "../common/types";
 import { MongoDBConfig } from "@/lib/adapters/definitions";
+import { getDatabases } from "./connection";
+import {
+    SshClient,
+    isSSHMode,
+    extractSshConfig,
+    buildMongoArgs,
+    remoteBinaryCheck,
+    shellEscape,
+} from "@/lib/ssh";
 
 /**
  * Extended MongoDB config for dump operations with runtime fields
@@ -30,6 +39,10 @@ async function dumpSingleDatabase(
     config: MongoDBDumpConfig,
     log: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void
 ): Promise<void> {
+    if (isSSHMode(config)) {
+        return dumpSingleDatabaseSSH(dbName, outputPath, config, log);
+    }
+
     const args: string[] = [];
 
     if (config.uri) {
@@ -78,6 +91,66 @@ async function dumpSingleDatabase(
     await waitForProcess(dumpProcess, 'mongodump');
 }
 
+/**
+ * SSH variant: run mongodump on the remote server with --archive to stdout, stream back.
+ */
+async function dumpSingleDatabaseSSH(
+    dbName: string,
+    outputPath: string,
+    config: MongoDBDumpConfig,
+    log: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void
+): Promise<void> {
+    const sshConfig = extractSshConfig(config)!;
+    const ssh = new SshClient();
+    await ssh.connect(sshConfig);
+
+    try {
+        const mongodumpBin = await remoteBinaryCheck(ssh, "mongodump");
+        const args = buildMongoArgs(config);
+
+        args.push("--db", shellEscape(dbName));
+        args.push("--archive"); // stdout mode
+        args.push("--gzip");
+
+        if (config.options) {
+            const parts = config.options.match(/[^\s"']+|"([^"]*)"|'([^']*)'/g) || [];
+            for (const part of parts) {
+                if (part.startsWith('"') && part.endsWith('"')) args.push(part.slice(1, -1));
+                else if (part.startsWith("'") && part.endsWith("'")) args.push(part.slice(1, -1));
+                else args.push(part);
+            }
+        }
+
+        const cmd = `${mongodumpBin} ${args.join(" ")}`;
+        log(`Dumping database (SSH): ${dbName}`, 'info', 'command', `mongodump ${args.join(' ').replace(config.password || '___NONE___', '******')}`);
+
+        const writeStream = createWriteStream(outputPath);
+
+        await new Promise<void>((resolve, reject) => {
+            ssh.execStream(cmd, (err, stream) => {
+                if (err) return reject(err);
+
+                stream.pipe(writeStream);
+
+                stream.stderr.on('data', (data: any) => {
+                    const msg = data.toString().trim();
+                    if (msg) log(msg, 'info');
+                });
+
+                stream.on('exit', (code: number | null, signal?: string) => {
+                    if (code === 0) resolve();
+                    else reject(new Error(`Remote mongodump exited with code ${code ?? 'null'}${signal ? ` (signal: ${signal})` : ''}`));
+                });
+
+                stream.on('error', (err: Error) => reject(err));
+                writeStream.on('error', (err: Error) => reject(err));
+            });
+        });
+    } finally {
+        ssh.end();
+    }
+}
+
 export async function dump(
     config: MongoDBDumpConfig,
     destinationPath: string,
@@ -106,6 +179,19 @@ export async function dump(
         if (dbs.length === 0 && config.database) {
             const db = Array.isArray(config.database) ? config.database[0] : config.database;
             if (db) dbs = [db];
+        }
+
+        // Discover all databases if none selected (same pattern as MySQL adapter)
+        if (dbs.length === 0) {
+            log("No databases selected — backing up all databases");
+            try {
+                dbs = await getDatabases(config);
+                log(`Found ${dbs.length} database(s): ${dbs.join(', ')}`);
+            } catch (e: unknown) {
+                const message = e instanceof Error ? e.message : String(e);
+                log(`Warning: Could not fetch database list: ${message}`, 'warning');
+                // Continue anyway — mongodump without --db dumps all databases
+            }
         }
 
         const dialect = getDialect('mongodb', config.detectedVersion);

@@ -9,10 +9,18 @@ Configure MySQL or MariaDB databases for backup using `mysqldump` / `mariadb-dum
 | **MySQL** | 5.7, 8.0, 8.4, 9.0 |
 | **MariaDB** | 10.x, 11.x |
 
+## Connection Modes
+
+| Mode | Description |
+| :--- | :--- |
+| **Direct** | DBackup connects via TCP and runs `mysqldump` locally |
+| **SSH** | DBackup connects via SSH and runs `mysqldump` on the remote host |
+
 ## Configuration
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
+| **Connection Mode** | Direct (TCP) or SSH | `Direct` | ✅ |
 | **Host** | Database server hostname | `localhost` | ✅ |
 | **Port** | MySQL port | `3306` | ✅ |
 | **User** | Database username | — | ✅ |
@@ -20,6 +28,68 @@ Configure MySQL or MariaDB databases for backup using `mysqldump` / `mariadb-dum
 | **Database** | Database name(s) to backup | All databases | ❌ |
 | **Additional Options** | Extra `mysqldump` flags | — | ❌ |
 | **Disable SSL** | Disable SSL for self-signed certificates | `false` | ❌ |
+
+### SSH Mode Fields
+
+These fields appear when **Connection Mode** is set to **SSH**:
+
+| Field | Description | Default | Required |
+| :--- | :--- | :--- | :--- |
+| **SSH Host** | SSH server hostname or IP | — | ✅ |
+| **SSH Port** | SSH server port | `22` | ❌ |
+| **SSH Username** | SSH login username | — | ✅ |
+| **SSH Auth Type** | Password, Private Key, or Agent | `Password` | ✅ |
+| **SSH Password** | SSH password | — | ❌ |
+| **SSH Private Key** | PEM-formatted private key | — | ❌ |
+| **SSH Passphrase** | Passphrase for encrypted key | — | ❌ |
+
+## Prerequisites
+
+### Direct Mode
+
+The DBackup server (or Docker container) needs `mysql` and `mysqldump` CLI tools installed.
+
+**Docker**: Already included in the DBackup image.
+
+### SSH Mode
+
+The **remote SSH server** must have the following tools installed:
+
+```bash
+# Required for backup
+mysqldump    # or mariadb-dump (MariaDB)
+
+# Required for restore
+mysql        # or mariadb (MariaDB)
+```
+
+DBackup auto-detects which binary is available (`mysqldump` vs `mariadb-dump`, `mysql` vs `mariadb`).
+
+**Install on the remote host:**
+```bash
+# Debian/Ubuntu (MySQL client)
+apt-get install default-mysql-client
+
+# Debian/Ubuntu (MariaDB client — also provides mysqldump)
+apt-get install mariadb-client
+
+# RHEL/CentOS/Fedora
+dnf install mysql
+
+# Alpine
+apk add mysql-client
+
+# macOS
+brew install mysql-client
+```
+
+::: tip Debian ships MariaDB by default
+On Debian, the `mysql-client` package no longer exists. Use `default-mysql-client` (which installs `mariadb-client-compat`) or install `mariadb-client` directly. Both provide `mysqldump` and `mysql` commands that work with MySQL and MariaDB servers.
+:::
+
+::: danger Important
+In SSH mode, DBackup does **not** use local CLI tools. The database tools must be installed on the remote server where SSH connects to. DBackup executes them remotely and streams the output back.
+:::
 
 ## Setup Guide
 
@@ -40,12 +110,31 @@ For backup-only operations, `SELECT`, `SHOW VIEW`, `TRIGGER`, and `LOCK TABLES` 
 
 ### 2. Configure in DBackup
 
+#### Direct Mode
+
 1. Go to **Sources** → **Add Source**
 2. Select **MySQL** or **MariaDB**
-3. Enter connection details
-4. Click **Test Connection**
-5. Click **Fetch Databases** and select databases
-6. Save
+3. Keep Connection Mode as **Direct**
+4. Enter connection details
+5. Click **Test Connection**
+6. Click **Fetch Databases** and select databases
+7. Save
+
+#### SSH Mode
+
+1. Go to **Sources** → **Add Source**
+2. Select **MySQL** or **MariaDB**
+3. Set Connection Mode to **SSH**
+4. In the **SSH Connection** tab: enter SSH host, username, and authentication details
+5. Click **Test SSH** to verify SSH connectivity
+6. In the **Database** tab: enter MySQL host (usually `127.0.0.1` or `localhost` — relative to the SSH server), port, user, and password
+7. Click **Test Connection** to verify database connectivity via SSH
+8. Click **Fetch Databases** and select databases
+9. Save
+
+::: tip Host in SSH Mode
+The **Host** field in SSH mode refers to the database hostname **as seen from the SSH server**, not from DBackup. If MySQL runs on the same machine as the SSH server, use `127.0.0.1` or `localhost`.
+:::
 
 ### 3. Docker Network
 
@@ -79,6 +168,8 @@ Use `mysql` as the hostname in DBackup.
 
 ## How It Works
 
+### Direct Mode
+
 DBackup uses `mysqldump` (or `mariadb-dump` for MariaDB) with these default flags:
 
 - `--single-transaction` — Consistent backup without locking (InnoDB)
@@ -87,6 +178,19 @@ DBackup uses `mysqldump` (or `mariadb-dump` for MariaDB) with these default flag
 - `--events` — Includes scheduled events
 
 Output: `.sql` file with `CREATE` and `INSERT` statements.
+
+### SSH Mode
+
+In SSH mode, DBackup:
+
+1. Connects to the remote server via SSH
+2. Checks that `mysqldump` (or `mariadb-dump`) is available on the remote host
+3. Executes the dump command remotely with the same flags as direct mode
+4. Streams the SQL output back over the SSH connection
+5. Applies compression and encryption locally on the DBackup server
+6. Uploads the processed backup to the configured storage destination
+
+The database password is passed securely via the `MYSQL_PWD` environment variable in the remote session — it does not appear in the process arguments or shell history.
 
 ### Multi-Database Backups
 
@@ -153,6 +257,43 @@ bind-address = 0.0.0.0
 ```bash
 --ssl-mode=REQUIRED --ssl-ca=/path/to/ca.pem
 ```
+
+### SSH: Binary Not Found
+
+```
+Required binary not found on remote server. Tried: mysqldump, mariadb-dump
+```
+
+**Solution:** Install the MySQL/MariaDB client package on the remote server:
+```bash
+# Ubuntu/Debian
+apt-get install mysql-client
+# or
+apt-get install mariadb-client
+```
+
+### SSH: Connection Refused
+
+```
+SSH connection failed: connect ECONNREFUSED
+```
+
+**Solution:**
+1. Verify SSH is running on the remote server: `systemctl status sshd`
+2. Check the SSH port (default: 22)
+3. Check firewall rules allow SSH from the DBackup server
+4. Test manually: `ssh user@host`
+
+### SSH: Permission Denied
+
+```
+SSH connection failed: All configured authentication methods failed
+```
+
+**Solution:**
+1. Verify SSH credentials (username, password, or key)
+2. For private key auth, ensure the key is in PEM or OpenSSH format
+3. Check the remote server allows the chosen auth method in `sshd_config`
 
 ## Next Steps
 

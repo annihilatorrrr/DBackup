@@ -9,6 +9,7 @@ describe('MySQL Dialects', () => {
 
     // Base config with required fields for testing
     const baseConfig: MySQLConfig = {
+        connectionMode: 'direct',
         host: 'localhost',
         port: 3306,
         user: 'root',

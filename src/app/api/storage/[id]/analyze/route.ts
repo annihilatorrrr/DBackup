@@ -73,9 +73,19 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
                          if (Array.isArray(meta.databases.names) && meta.databases.names.length > 0) {
                               return NextResponse.json({ databases: meta.databases.names });
                          }
-                         if (Array.isArray(meta.databases)) {
+                         if (Array.isArray(meta.databases) && meta.databases.length > 0) {
                               return NextResponse.json({ databases: meta.databases });
                          }
+                    }
+                    // For multi-DB TAR archives, return the embedded database list
+                    if (meta.multiDb?.databases?.length > 0) {
+                        return NextResponse.json({ databases: meta.multiDb.databases });
+                    }
+                    // For server-based adapters (not sqlite) with empty names,
+                    // use the source type to signal the frontend that this is a DB restore
+                    const serverAdapters = ['mysql', 'mariadb', 'postgres', 'mongodb', 'mssql', 'redis'];
+                    if (meta.sourceType && serverAdapters.includes(meta.sourceType.toLowerCase())) {
+                        return NextResponse.json({ databases: [], sourceType: meta.sourceType });
                     }
                 }
             } catch (_e) {

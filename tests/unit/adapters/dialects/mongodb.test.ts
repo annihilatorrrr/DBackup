@@ -8,6 +8,7 @@ describe('MongoDB Dialect', () => {
 
     // Base config with required fields for testing
     const baseConfig: MongoDBConfig = {
+        connectionMode: 'direct',
         host: 'localhost',
         port: 27017,
         database: 'testdb',

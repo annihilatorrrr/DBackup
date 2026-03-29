@@ -273,6 +273,16 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
                                 />
                             </div>
                         )}
+                        {selectedAdapterId !== 'sqlite' && selectedAdapter && (selectedAdapter.configSchema as any).shape?.connectionMode && (
+                            <div className="w-1/2">
+                                <SchemaField
+                                    name="config.connectionMode"
+                                    fieldKey="connectionMode"
+                                    schemaShape={(selectedAdapter.configSchema as any).shape.connectionMode}
+                                    adapterId={selectedAdapterId}
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
 

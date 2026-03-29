@@ -3,17 +3,9 @@ import fs from "fs/promises";
 import { constants } from "fs";
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { SshClient } from "./ssh-client";
+import { SshClient, shellEscape, extractSqliteSshConfig, remoteBinaryCheck } from "@/lib/ssh";
 
 const execFileAsync = promisify(execFile);
-
-/**
- * Escapes a value for safe inclusion in a single-quoted shell string.
- * Handles embedded single quotes by ending the quote, adding an escaped quote, and re-opening.
- */
-function shellEscape(value: string): string {
-    return "'" + value.replace(/'/g, "'\\''") + "'";
-}
 
 export const test: DatabaseAdapter["test"] = async (config) => {
     try {
@@ -38,35 +30,30 @@ export const test: DatabaseAdapter["test"] = async (config) => {
             }
 
         } else if (mode === "ssh") {
+            const sshConfig = extractSqliteSshConfig(config);
+            if (!sshConfig) return { success: false, message: "SSH host and username are required" };
+
             const client = new SshClient();
             try {
-                await client.connect(config);
+                await client.connect(sshConfig);
 
-                 // 1. Check if sqlite3 binary exists on remote
-                 const binaryResult = await client.exec(`${shellEscape(binaryPath)} --version`);
-                 if (binaryResult.code !== 0) {
-                     client.end();
-                     return { success: false, message: `Remote SQLite3 binary check failed: ${binaryResult.stderr || "Command failed"}` };
-                 }
-                 const version = binaryResult.stdout.split(' ')[0].trim();
+                // 1. Check if sqlite3 binary exists on remote
+                const resolvedBinary = await remoteBinaryCheck(client, binaryPath);
+                const versionResult = await client.exec(`${shellEscape(resolvedBinary)} --version`);
+                const version = versionResult.stdout.split(' ')[0].trim();
 
-                 // 2. Check if database file exists on remote (using stat)
-                 // We use a simple test: sqlite3 [path] "SELECT 1;"
-                 // Or just `test -f [path]`
-
-                 const fileCheck = await client.exec(`test -f ${shellEscape(dbPath)} && echo "exists"`);
-                 if (!fileCheck.stdout.includes("exists")) {
-                    client.end();
+                // 2. Check if database file exists on remote
+                const fileCheck = await client.exec(`test -f ${shellEscape(dbPath)} && echo "exists"`);
+                if (!fileCheck.stdout.includes("exists")) {
                     return { success: false, message: `Remote database file at '${dbPath}' not found.` };
-                 }
+                }
 
-                 client.end();
-                 return { success: true, message: "Remote SSH SQLite connection successful.", version };
-
+                return { success: true, message: "Remote SSH SQLite connection successful.", version };
             } catch (err: unknown) {
-                client.end();
                 const message = err instanceof Error ? err.message : String(err);
                 return { success: false, message: `SSH Connection failed: ${message}` };
+            } finally {
+                client.end();
             }
         }
 
@@ -110,9 +97,12 @@ export const getDatabasesWithStats: DatabaseAdapter["getDatabasesWithStats"] = a
                 // Table count is optional, ignore errors
             }
         } else if (mode === "ssh") {
+            const sshConfig = extractSqliteSshConfig(config);
+            if (!sshConfig) return [{ name, sizeInBytes: undefined, tableCount: undefined }];
+
             const client = new SshClient();
             try {
-                await client.connect(config);
+                await client.connect(sshConfig);
 
                 // Get file size via stat
                 const sizeResult = await client.exec(`stat -c %s ${shellEscape(dbPath)} 2>/dev/null || stat -f %z ${shellEscape(dbPath)} 2>/dev/null`);
@@ -133,9 +123,9 @@ export const getDatabasesWithStats: DatabaseAdapter["getDatabasesWithStats"] = a
                 } catch {
                     // Table count is optional
                 }
-
-                client.end();
             } catch {
+                // If stats fail, return name only
+            } finally {
                 client.end();
             }
         }

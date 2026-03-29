@@ -19,6 +19,18 @@ const safeBinaryPath = z.string().regex(
     "Binary path may only contain letters, digits, slashes, underscores, hyphens, and dots"
 );
 
+// Shared SSH fields for adapters that support SSH remote execution mode
+const sshFields = {
+    connectionMode: z.enum(["direct", "ssh"]).default("direct").describe("Connection mode (direct TCP or via SSH)"),
+    sshHost: z.string().optional().describe("SSH host"),
+    sshPort: z.coerce.number().default(22).optional().describe("SSH port"),
+    sshUsername: z.string().optional().describe("SSH username"),
+    sshAuthType: z.enum(["password", "privateKey", "agent"]).default("password").optional().describe("SSH authentication method"),
+    sshPassword: z.string().optional().describe("SSH password"),
+    sshPrivateKey: z.string().optional().describe("SSH private key (PEM format)"),
+    sshPassphrase: z.string().optional().describe("Passphrase for SSH private key"),
+};
+
 export const MySQLSchema = z.object({
     host: z.string().default("localhost"),
     port: z.coerce.number().default(3306),
@@ -27,6 +39,7 @@ export const MySQLSchema = z.object({
     database: z.union([z.string(), z.array(z.string())]).default(""),
     options: z.string().optional().describe("Additional mysqldump options"),
     disableSsl: z.boolean().default(false).describe("Disable SSL (Use for self-signed development DBs)"),
+    ...sshFields,
 });
 
 export const MariaDBSchema = z.object({
@@ -37,6 +50,7 @@ export const MariaDBSchema = z.object({
     database: z.union([z.string(), z.array(z.string())]).default(""),
     options: z.string().optional().describe("Additional mariadb-dump options"),
     disableSsl: z.boolean().default(false).describe("Disable SSL (Use for self-signed development DBs)"),
+    ...sshFields,
 });
 
 export const PostgresSchema = z.object({
@@ -46,6 +60,7 @@ export const PostgresSchema = z.object({
     password: z.string().optional(),
     database: z.union([z.string(), z.array(z.string())]).default(""),
     options: z.string().optional().describe("Additional pg_dump options"),
+    ...sshFields,
 });
 
 export const MongoDBSchema = z.object({
@@ -57,6 +72,7 @@ export const MongoDBSchema = z.object({
     authenticationDatabase: z.string().default("admin").optional(),
     database: z.union([z.string(), z.array(z.string())]).default(""),
     options: z.string().optional().describe("Additional mongodump options"),
+    ...sshFields,
 });
 
 export const SQLiteSchema = z.object({
@@ -109,6 +125,7 @@ export const RedisSchema = z.object({
     sentinelMasterName: z.string().optional().describe("Master name for Sentinel mode"),
     sentinelNodes: z.string().optional().describe("Comma-separated sentinel nodes (host:port,host:port)"),
     options: z.string().optional().describe("Additional redis-cli options"),
+    ...sshFields,
 });
 
 export const LocalStorageSchema = z.object({

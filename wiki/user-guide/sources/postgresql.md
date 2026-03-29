@@ -10,23 +10,81 @@ Configure PostgreSQL databases for backup.
 
 DBackup uses `pg_dump` from PostgreSQL 18 client, which is backward compatible with older server versions.
 
+## Connection Modes
+
+| Mode | Description |
+| :--- | :--- |
+| **Direct** | DBackup connects via TCP and runs `pg_dump` locally |
+| **SSH** | DBackup connects via SSH and runs `pg_dump` on the remote host |
+
 ## Configuration
 
-### Basic Settings
+| Field | Description | Default | Required |
+| :--- | :--- | :--- | :--- |
+| **Connection Mode** | Direct (TCP) or SSH | `Direct` | ✅ |
+| **Host** | Database server hostname | `localhost` | ✅ |
+| **Port** | PostgreSQL port | `5432` | ✅ |
+| **User** | Database username | — | ✅ |
+| **Password** | Database password | — | ❌ |
+| **Database** | Database name(s) to backup | All databases | ❌ |
+| **Additional Options** | Extra `pg_dump` flags | — | ❌ |
 
-| Field | Description | Default |
-| :--- | :--- | :--- |
-| **Host** | Database server hostname | `localhost` |
-| **Port** | PostgreSQL port | `5432` |
-| **User** | Database username | Required |
-| **Password** | Database password | Optional |
-| **Database** | Database name(s) to backup | All databases |
+### SSH Mode Fields
 
-### Advanced Options
+These fields appear when **Connection Mode** is set to **SSH**:
 
-| Field | Description |
-| :--- | :--- |
-| **Additional Options** | Extra `pg_dump` flags |
+| Field | Description | Default | Required |
+| :--- | :--- | :--- | :--- |
+| **SSH Host** | SSH server hostname or IP | — | ✅ |
+| **SSH Port** | SSH server port | `22` | ❌ |
+| **SSH Username** | SSH login username | — | ✅ |
+| **SSH Auth Type** | Password, Private Key, or Agent | `Password` | ✅ |
+| **SSH Password** | SSH password | — | ❌ |
+| **SSH Private Key** | PEM-formatted private key | — | ❌ |
+| **SSH Passphrase** | Passphrase for encrypted key | — | ❌ |
+
+## Prerequisites
+
+### Direct Mode
+
+The DBackup server needs `psql`, `pg_dump`, and `pg_restore` CLI tools installed.
+
+**Docker**: Already included in the DBackup image.
+
+### SSH Mode
+
+The **remote SSH server** must have the following tools installed:
+
+```bash
+# Required for backup
+pg_dump
+
+# Required for restore
+pg_restore
+psql          # Used for connection testing and database listing
+
+# Required for database listing
+psql
+```
+
+**Install on the remote host:**
+```bash
+# Ubuntu/Debian
+apt-get install postgresql-client
+
+# RHEL/CentOS/Fedora
+dnf install postgresql
+
+# Alpine
+apk add postgresql-client
+
+# macOS
+brew install libpq
+```
+
+::: danger Important
+In SSH mode, the database tools must be installed on the remote server. DBackup executes them remotely via SSH and streams the output back. The version on the remote server determines compatibility.
+:::
 
 ## Setting Up a Backup User
 
@@ -59,11 +117,30 @@ GRANT pg_read_all_data TO dbackup;
 
 ## Backup Process
 
+### Direct Mode
+
 DBackup uses `pg_dump` with these default options:
 
 - `--format=plain`: SQL text format
 - `--no-owner`: Don't output ownership commands
 - `--no-acl`: Don't output access privilege commands
+
+### SSH Mode
+
+In SSH mode, DBackup:
+
+1. Connects to the remote server via SSH
+2. Checks that `pg_dump` and `psql` are available on the remote host
+3. Executes `pg_dump` remotely (custom format with compression: `-F c -Z 6`)
+4. Streams the dump output back over the SSH connection
+5. Applies additional compression/encryption locally
+6. Uploads to the configured storage destination
+
+The password is passed securely via the `PGPASSWORD` environment variable in the remote session.
+
+::: tip Host in SSH Mode
+The **Host** field refers to the database hostname **as seen from the SSH server**. If PostgreSQL runs on the same machine as the SSH server, use `127.0.0.1` or `localhost`.
+:::
 
 ### Output Format
 
@@ -218,6 +295,28 @@ GRANT SELECT ON LARGE OBJECTS TO dbackup;
 -- Or use superuser for backup
 ```
 
+### SSH: Binary Not Found
+
+```
+Required binary not found on remote server. Tried: pg_dump
+```
+
+**Solution:** Install the PostgreSQL client package on the remote server:
+```bash
+# Ubuntu/Debian
+apt-get install postgresql-client
+
+# RHEL/CentOS
+dnf install postgresql
+```
+
+### SSH: Connection Refused
+
+**Solution:**
+1. Verify SSH is running: `systemctl status sshd`
+2. Check SSH port and firewall rules
+3. Test manually: `ssh user@host`
+
 ## Restore
 
 To restore a PostgreSQL backup:
@@ -236,11 +335,8 @@ The restore process can:
 - Restore to an existing database
 - Map database names (restore `prod` to `staging`)
 
-## Best Practices
+## Next Steps
 
-1. **Use `pg_read_all_data` role** (PostgreSQL 14+) for backup user
-2. **Test restores regularly** to verify backup integrity
-3. **Enable compression** for large databases
-4. **Schedule during maintenance windows** for minimal impact
-5. **Consider custom format** (`--format=custom`) for selective restore
-6. **Monitor pg_stat_activity** during backup for performance impact
+- [Create a Backup Job](/user-guide/jobs/)
+- [Enable Encryption](/user-guide/security/encryption)
+- [Configure Retention](/user-guide/jobs/retention)

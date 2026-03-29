@@ -7,6 +7,7 @@ import { getMysqlCommand } from "./tools";
 import { spawn } from "child_process";
 import { createReadStream } from "fs";
 import fs from "fs/promises";
+import { randomUUID } from "crypto";
 import path from "path";
 import { waitForProcess } from "@/lib/adapters/process";
 import {
@@ -17,6 +18,15 @@ import {
     shouldRestoreDatabase,
     getTargetDatabaseName,
 } from "../common/tar-utils";
+import {
+    SshClient,
+    isSSHMode,
+    extractSshConfig,
+    buildMysqlArgs,
+    remoteEnv,
+    remoteBinaryCheck,
+    shellEscape,
+} from "@/lib/ssh";
 
 /** Extended config with runtime fields for restore operations */
 type MySQLRestoreConfig = (MySQLConfig | MariaDBConfig) & {
@@ -26,6 +36,85 @@ type MySQLRestoreConfig = (MySQLConfig | MariaDBConfig) & {
     databaseMapping?: { originalName: string; targetName: string; selected: boolean }[];
     selectedDatabases?: string[];
 };
+
+const MAX_STDERR_LOG_LINES = 50;
+const MAX_STDERR_LINE_LENGTH = 500;
+
+function createStderrHandler(
+    onLog: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void,
+    secrets?: string[]
+) {
+    let stderrCount = 0;
+    let suppressed = 0;
+    let buffer = '';
+
+    // Build redaction list from provided secrets (filter empty/undefined)
+    const redactList = (secrets || []).filter(s => s && s.length > 0);
+
+    function redact(text: string): string {
+        let result = text;
+        for (const secret of redactList) {
+            // Replace all occurrences of the secret with ******
+            while (result.includes(secret)) {
+                result = result.replace(secret, '******');
+            }
+        }
+        return result;
+    }
+
+    return {
+        handle(data: string) {
+            // Buffer incoming chunks and split by newlines to get complete lines
+            buffer += data;
+            const lines = buffer.split('\n');
+            // Keep last incomplete line in buffer
+            buffer = lines.pop() || '';
+
+            for (const raw of lines) {
+                const msg = redact(raw.trim());
+                if (!msg || msg.includes("Using a password") || msg.includes("Deprecated program name")) continue;
+
+                // Always log actual MySQL error lines (ERROR xxxx) and separator lines
+                const isError = /^ERROR\s+\d+/.test(msg);
+
+                if (isError) {
+                    onLog(`MySQL: ${msg}`, 'error');
+                    continue;
+                }
+
+                stderrCount++;
+                if (stderrCount <= MAX_STDERR_LOG_LINES) {
+                    const truncated = msg.length > MAX_STDERR_LINE_LENGTH
+                        ? msg.slice(0, MAX_STDERR_LINE_LENGTH) + '... (truncated)'
+                        : msg;
+                    onLog(`MySQL: ${truncated}`);
+                } else {
+                    suppressed++;
+                }
+            }
+        },
+        flush() {
+            // Flush remaining buffer
+            if (buffer.trim()) {
+                const msg = redact(buffer.trim());
+                const isError = /^ERROR\s+\d+/.test(msg);
+                if (isError) {
+                    onLog(`MySQL: ${msg}`, 'error');
+                } else if (stderrCount <= MAX_STDERR_LOG_LINES) {
+                    const truncated = msg.length > MAX_STDERR_LINE_LENGTH
+                        ? msg.slice(0, MAX_STDERR_LINE_LENGTH) + '... (truncated)'
+                        : msg;
+                    onLog(`MySQL: ${truncated}`);
+                } else {
+                    suppressed++;
+                }
+            }
+            if (suppressed > 0) {
+                onLog(`MySQL: ... ${suppressed} additional stderr line(s) suppressed`, 'warning');
+            }
+        }
+    };
+}
 
 export async function prepareRestore(config: MySQLRestoreConfig, databases: string[]): Promise<void> {
     const usePrivileged = !!config.privilegedAuth;
@@ -47,6 +136,10 @@ async function restoreSingleFile(
     onLog: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void,
     onProgress?: (percentage: number) => void
 ): Promise<void> {
+    if (isSSHMode(config)) {
+        return restoreSingleFileSSH(config, sourcePath, targetDb, onLog, onProgress);
+    }
+
     const stats = await fs.stat(sourcePath);
     const totalSize = stats.size;
     let processedSize = 0;
@@ -79,11 +172,138 @@ async function restoreSingleFile(
 
     fileStream.pipe(mysqlProc.stdin);
 
+    const stderr = createStderrHandler(onLog);
     await waitForProcess(mysqlProc, 'mysql', (d) => {
-        const msg = d.toString().trim();
-        if (msg.includes("Using a password") || msg.includes("Deprecated program name")) return;
-        onLog(`MySQL: ${msg}`);
+        stderr.handle(d.toString());
     });
+    stderr.flush();
+}
+
+/**
+ * SSH variant: upload SQL file to remote temp location, then run mysql restore locally.
+ * Uses upload-then-restore pattern (like PostgreSQL) to avoid SSH channel streaming issues.
+ */
+async function restoreSingleFileSSH(
+    config: MySQLRestoreConfig,
+    sourcePath: string,
+    targetDb: string,
+    onLog: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void,
+    onProgress?: (percentage: number) => void
+): Promise<void> {
+    const stats = await fs.stat(sourcePath);
+    const totalSize = stats.size;
+
+    const sshConfig = extractSshConfig(config)!;
+    const ssh = new SshClient();
+    await ssh.connect(sshConfig);
+
+    const remoteTempFile = `/tmp/dbackup_restore_${randomUUID()}.sql`;
+
+    try {
+        const mysqlBin = await remoteBinaryCheck(ssh, "mariadb", "mysql");
+        const args = buildMysqlArgs(config);
+        args.push("--max-allowed-packet=64M");
+        args.push(shellEscape(targetDb));
+
+        const env: Record<string, string | undefined> = {};
+        if (config.password) env.MYSQL_PWD = config.password;
+
+        // Pre-restore diagnostics: query server settings
+        try {
+            const diagCmd = remoteEnv(env, `${mysqlBin} ${buildMysqlArgs(config).join(" ")} -N -e "SELECT CONCAT('max_allowed_packet=', @@global.max_allowed_packet, ' innodb_buffer_pool_size=', @@global.innodb_buffer_pool_size, ' log_bin=', @@global.log_bin, ' innodb_flush_log_at_trx_commit=', @@global.innodb_flush_log_at_trx_commit)"`);
+            const diagResult = await ssh.exec(diagCmd);
+            if (diagResult.code === 0 && diagResult.stdout.trim()) {
+                onLog(`Server settings: ${diagResult.stdout.trim()}`);
+            }
+        } catch {
+            // Diagnostics are non-critical
+        }
+
+        // 1. Upload SQL file to remote temp location via SFTP (guarantees data integrity)
+        onLog(`Uploading dump to remote server via SFTP (${(totalSize / 1024 / 1024).toFixed(1)} MB)...`, 'info');
+        await ssh.uploadFile(sourcePath, remoteTempFile);
+
+        // Verify upload integrity
+        try {
+            const sizeCheck = await ssh.exec(`stat -c '%s' ${shellEscape(remoteTempFile)} 2>/dev/null || stat -f '%z' ${shellEscape(remoteTempFile)}`);
+            const remoteSize = parseInt(sizeCheck.stdout.trim(), 10);
+            if (remoteSize !== totalSize) {
+                throw new Error(`Upload size mismatch! Local: ${totalSize}, Remote: ${remoteSize}`);
+            }
+            onLog(`Upload verified: ${(remoteSize / 1024 / 1024).toFixed(1)} MB`);
+        } catch (e) {
+            if (e instanceof Error && e.message.includes('mismatch')) throw e;
+            // stat command failed — non-critical
+        }
+
+        if (onProgress) onProgress(90);
+
+        // 2. Run mysql restore on the remote server from the uploaded file
+        const restoreCmd = remoteEnv(env,
+            `cat ${shellEscape(remoteTempFile)} | ${mysqlBin} ${args.join(" ")}`
+        );
+        onLog(`Restoring to database (SSH): ${targetDb}`, 'info', 'command', `${mysqlBin} ${args.join(" ")}`);
+
+        await new Promise<void>((resolve, reject) => {
+            const secrets = [config.password, config.privilegedAuth?.password].filter(Boolean) as string[];
+            const stderr = createStderrHandler(onLog, secrets);
+
+            ssh.execStream(restoreCmd, (err, stream) => {
+                if (err) return reject(err);
+
+                stream.on('data', () => {});
+
+                stream.stderr.on('data', (data: any) => {
+                    stderr.handle(data.toString());
+                });
+
+                stream.on('exit', (code: number | null, signal?: string) => {
+                    stderr.flush();
+                    if (code === 0) {
+                        onProgress?.(100);
+                        resolve();
+                    } else {
+                        reject(new Error(`Remote mysql exited with code ${code ?? 'null'}${signal ? ` (signal: ${signal})` : ''}`));
+                    }
+                });
+
+                stream.on('error', (err: Error) => reject(err));
+            });
+        });
+    } catch (error) {
+        // Post-failure diagnostics: check if MySQL server is still alive
+        try {
+            const aliveCheck = await ssh.exec(
+                remoteEnv(
+                    { MYSQL_PWD: config.password },
+                    `${(await remoteBinaryCheck(ssh, "mariadb", "mysql").catch(() => "mysql"))} ${buildMysqlArgs(config).join(" ")} -N -e "SELECT 'alive'" 2>&1`
+                )
+            );
+            if (aliveCheck.stdout.includes('alive')) {
+                onLog(`Post-failure check: MySQL server is still running`, 'warning');
+            } else {
+                onLog(`Post-failure check: MySQL server NOT responding — ${aliveCheck.stderr.trim() || aliveCheck.stdout.trim()}`, 'error');
+            }
+        } catch {
+            onLog(`Post-failure check: Could not reach MySQL server (likely crashed/OOM-killed)`, 'error');
+        }
+
+        // Check for OOM kills on the host
+        try {
+            const oomCheck = await ssh.exec(`dmesg 2>/dev/null | grep -i 'oom\\|killed process' | tail -3`);
+            if (oomCheck.stdout.trim()) {
+                onLog(`OOM killer detected: ${oomCheck.stdout.trim()}`, 'error');
+            }
+        } catch {
+            // dmesg might require root
+        }
+
+        throw error;
+    } finally {
+        // Cleanup remote temp file
+        await ssh.exec(`rm -f ${shellEscape(remoteTempFile)}`).catch(() => {});
+        ssh.end();
+    }
 }
 
 export async function restore(config: MySQLRestoreConfig, sourcePath: string, onLog?: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void, onProgress?: (percentage: number) => void): Promise<BackupResult> {

@@ -10,25 +10,99 @@ Configure MongoDB databases for backup.
 
 DBackup uses `mongodump` from MongoDB Database Tools.
 
+## Connection Modes
+
+| Mode | Description |
+| :--- | :--- |
+| **Direct** | DBackup connects via TCP and runs `mongodump` locally |
+| **SSH** | DBackup connects via SSH and runs `mongodump` on the remote host |
+
 ## Configuration
 
-### Basic Settings
+| Field | Description | Default | Required |
+| :--- | :--- | :--- | :--- |
+| **Connection Mode** | Direct (TCP) or SSH | `Direct` | ✅ |
+| **Connection URI** | Full MongoDB URI (overrides other settings) | — | ❌ |
+| **Host** | Database server hostname | `localhost` | ✅ |
+| **Port** | MongoDB port | `27017` | ✅ |
+| **User** | Database username | — | ❌ |
+| **Password** | Database password | — | ❌ |
+| **Auth Database** | Authentication database | `admin` | ❌ |
+| **Database** | Database name(s) to backup | All databases | ❌ |
+| **Additional Options** | Extra `mongodump` flags | — | ❌ |
 
-| Field | Description | Default |
-| :--- | :--- | :--- |
-| **Connection URI** | Full MongoDB URI (overrides other settings) | Optional |
-| **Host** | Database server hostname | `localhost` |
-| **Port** | MongoDB port | `27017` |
-| **User** | Database username | Optional |
-| **Password** | Database password | Optional |
-| **Auth Database** | Authentication database | `admin` |
-| **Database** | Database name(s) to backup | All databases |
+### SSH Mode Fields
 
-### Advanced Options
+These fields appear when **Connection Mode** is set to **SSH**:
 
-| Field | Description |
-| :--- | :--- |
-| **Additional Options** | Extra `mongodump` flags |
+| Field | Description | Default | Required |
+| :--- | :--- | :--- | :--- |
+| **SSH Host** | SSH server hostname or IP | — | ✅ |
+| **SSH Port** | SSH server port | `22` | ❌ |
+| **SSH Username** | SSH login username | — | ✅ |
+| **SSH Auth Type** | Password, Private Key, or Agent | `Password` | ✅ |
+| **SSH Password** | SSH password | — | ❌ |
+| **SSH Private Key** | PEM-formatted private key | — | ❌ |
+| **SSH Passphrase** | Passphrase for encrypted key | — | ❌ |
+
+## Prerequisites
+
+### Direct Mode
+
+The DBackup server needs `mongodump`, `mongorestore`, and `mongosh` CLI tools installed.
+
+**Docker**: Already included in the DBackup image.
+
+### SSH Mode
+
+The **remote SSH server** must have the following tools installed:
+
+```bash
+# Required for backup
+mongodump
+
+# Required for restore
+mongorestore
+
+# Required for connection testing and database listing
+mongosh
+```
+
+**Install on the remote host:**
+
+<details>
+<summary>Debian/Ubuntu — MongoDB Database Tools + mongosh</summary>
+
+Add the official MongoDB repository first:
+```bash
+# Import MongoDB GPG key
+curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | \
+  gpg --dearmor -o /usr/share/keyrings/mongodb-server-8.0.gpg
+
+# Add repository (Debian 12 / Ubuntu 24.04 example)
+echo "deb [signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg] https://repo.mongodb.org/apt/debian bookworm/mongodb-org/8.0 main" | \
+  tee /etc/apt/sources.list.d/mongodb-org-8.0.list
+
+# Install tools
+apt-get update
+apt-get install mongodb-database-tools mongodb-mongosh
+```
+
+See the official docs for other distro versions:
+- [MongoDB Database Tools](https://www.mongodb.com/docs/database-tools/installation/installation-linux/)
+- [mongosh](https://www.mongodb.com/docs/mongodb-shell/install/)
+
+</details>
+
+```bash
+# macOS
+brew install mongodb-database-tools
+brew install mongosh
+```
+
+::: danger Important
+In SSH mode, the MongoDB tools must be installed on the remote server. DBackup executes them remotely via SSH and streams the output back.
+:::
 
 ## Connection Methods
 
@@ -78,11 +152,28 @@ For Atlas clusters, create a user with "Backup Admin" role in the Atlas UI.
 
 ## Backup Process
 
+### Direct Mode
+
 DBackup uses `mongodump` which creates a binary BSON dump:
 
 - Consistent point-in-time backup
 - Includes indexes and collection options
 - Supports oplog for replica set backups
+
+### SSH Mode
+
+In SSH mode, DBackup:
+
+1. Connects to the remote server via SSH
+2. Checks that `mongodump` is available on the remote host
+3. Executes `mongodump --archive --gzip` remotely
+4. Streams the archive output back over the SSH connection
+5. Applies additional encryption locally
+6. Uploads to the configured storage destination
+
+::: tip Host in SSH Mode
+The **Host** field refers to the MongoDB hostname **as seen from the SSH server**. If MongoDB runs on the same machine as the SSH server, use `127.0.0.1` or `localhost`. Connection URIs also work in SSH mode.
+:::
 
 ### Output Format
 
@@ -224,6 +315,21 @@ not authorized on admin to execute command
 db.grantRolesToUser("dbackup", [{ role: "backup", db: "admin" }])
 ```
 
+### SSH: Binary Not Found
+
+```
+Required binary not found on remote server. Tried: mongodump
+```
+
+**Solution:** Install MongoDB Database Tools on the remote server. See [MongoDB Database Tools Installation](https://www.mongodb.com/docs/database-tools/installation/).
+
+### SSH: Connection Refused
+
+**Solution:**
+1. Verify SSH is running: `systemctl status sshd`
+2. Check SSH port and firewall rules
+3. Test manually: `ssh user@host`
+
 ## Restore
 
 To restore a MongoDB backup:
@@ -241,12 +347,8 @@ To restore a MongoDB backup:
 - **Preserve existing data**: Merge/upsert mode
 - **Specific collections**: Restore selected collections only
 
-## Best Practices
+## Next Steps
 
-1. **Use `backup` role** instead of `root` for backup user
-2. **Enable oplog** for point-in-time recovery with replica sets
-3. **Schedule during low-traffic periods**
-4. **Use secondary read preference** for replica sets
-5. **Test restores regularly** to verify backup integrity
-6. **Monitor backup duration** for performance tuning
-7. **Consider compression** (enabled by default in mongodump 100.x)
+- [Create a Backup Job](/user-guide/jobs/)
+- [Enable Encryption](/user-guide/security/encryption)
+- [Configure Retention](/user-guide/jobs/retention)
