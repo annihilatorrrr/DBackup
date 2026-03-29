@@ -25,7 +25,7 @@ All notable changes to DBackup are documented here.
 - **restore**: Fixed MySQL SSH restore producing SQL syntax errors when piping large dumps directly through the SSH channel — switched to upload-then-restore pattern (like PostgreSQL): dump file is uploaded to remote temp location first, then `mysql` reads from the local file on the remote server
 - **backup**: Fixed MySQL dump producing huge INSERT statements that cause OOM kills on remote servers during restore — `mysqldump` now uses `--net-buffer-length=16384` to limit each INSERT to ~16 KB, and `mysql` client `--max-allowed-packet` reduced from 512M to 64M to minimize client memory allocation
 - **restore**: Fixed MySQL SSH restore failing with "Server has gone away" on servers with limited RAM — `mysql` client now uses `--init-command` to disable binary logging (`sql_log_bin=0`) and reduce flush I/O (`innodb_flush_log_at_trx_commit=2`) for the restore session, significantly reducing server memory and disk pressure
-- **restore**: Fixed SSH restore file upload losing ~8.7% of data on large files (1.3 GB+) when piping through SSH2's `execStream` via `cat >` — switched to SFTP protocol (`sftp.fastPut()`) for all SSH restore uploads (MySQL, PostgreSQL), which guarantees data integrity
+- **restore**: Fixed SSH restore file upload losing ~8.7% of data on large files (1.3 GB+) when piping through SSH2's `execStream` via `cat >` — switched to SFTP protocol (`sftp.fastPut()`) for all SSH restore uploads (MySQL, PostgreSQL, MongoDB, SQLite), which guarantees data integrity with upload size verification
 
 ### 🗑️ Removed
 

@@ -4,8 +4,10 @@ import { MongoClient } from "mongodb";
 import { MongoDBConfig } from "@/lib/adapters/definitions";
 import { spawn } from "child_process";
 import { createReadStream } from "fs";
+import fs from "fs/promises";
 import { waitForProcess } from "@/lib/adapters/process";
 import path from "path";
+import { randomUUID } from "crypto";
 import {
     isMultiDbTar,
     extractSelectedDatabases,
@@ -179,7 +181,8 @@ async function restoreSingleDatabase(
 }
 
 /**
- * SSH variant: pipe local archive to remote mongorestore via SSH stdin.
+ * SSH variant: upload archive via SFTP, then run mongorestore on the remote server.
+ * Uses SFTP protocol which guarantees data integrity (unlike piping through exec stdin).
  */
 async function restoreSingleDatabaseSSH(
     sourcePath: string,
@@ -192,11 +195,13 @@ async function restoreSingleDatabaseSSH(
     const ssh = new SshClient();
     await ssh.connect(sshConfig);
 
+    const remoteTempFile = `/tmp/dbackup_mongorestore_${randomUUID()}.archive`;
+
     try {
         const mongorestoreBin = await remoteBinaryCheck(ssh, "mongorestore");
         const args = buildMongoArgs(config);
 
-        args.push("--archive"); // read from stdin
+        args.push(`--archive=${shellEscape(remoteTempFile)}`);
         args.push("--gzip");
         args.push("--drop");
 
@@ -208,10 +213,26 @@ async function restoreSingleDatabaseSSH(
             args.push("--nsInclude", shellEscape(`${targetDb}.*`));
         }
 
+        // 1. Upload archive to remote via SFTP
+        const totalSize = (await fs.stat(sourcePath)).size;
+        log(`Uploading archive to remote server via SFTP (${(totalSize / 1024 / 1024).toFixed(1)} MB)...`, 'info');
+        await ssh.uploadFile(sourcePath, remoteTempFile);
+
+        // Verify upload integrity
+        try {
+            const sizeCheck = await ssh.exec(`stat -c '%s' ${shellEscape(remoteTempFile)} 2>/dev/null || stat -f '%z' ${shellEscape(remoteTempFile)}`);
+            const remoteSize = parseInt(sizeCheck.stdout.trim(), 10);
+            if (remoteSize !== totalSize) {
+                throw new Error(`Upload size mismatch! Local: ${totalSize}, Remote: ${remoteSize}`);
+            }
+            log(`Upload verified: ${(remoteSize / 1024 / 1024).toFixed(1)} MB`);
+        } catch (e) {
+            if (e instanceof Error && e.message.includes('mismatch')) throw e;
+        }
+
+        // 2. Run mongorestore on the remote server
         const cmd = `${mongorestoreBin} ${args.join(" ")}`;
         log(`Restoring database (SSH)`, 'info', 'command', `mongorestore ${args.join(' ').replace(config.password || '___NONE___', '******')}`);
-
-        const fileStream = createReadStream(sourcePath);
 
         await new Promise<void>((resolve, reject) => {
             ssh.execStream(cmd, (err, stream) => {
@@ -230,12 +251,11 @@ async function restoreSingleDatabaseSSH(
                 });
 
                 stream.on('error', (err: Error) => reject(err));
-                fileStream.on('error', (err: Error) => reject(err));
-
-                fileStream.pipe(stream);
             });
         });
     } finally {
+        // Cleanup remote temp file
+        await ssh.exec(`rm -f ${shellEscape(remoteTempFile)}`).catch(() => {});
         ssh.end();
     }
 }
