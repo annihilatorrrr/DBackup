@@ -22,6 +22,7 @@ All notable changes to DBackup are documented here.
 - **restore**: Fixed MySQL restore via SSH failing with "Server has gone away" on large dumps - `mysql` client now uses `--max-allowed-packet=64M` to handle large legacy INSERT statements
 - **backup**: Fixed MySQL dump producing huge INSERT statements that cause OOM kills on remote servers during restore - `mysqldump` now uses `--net-buffer-length=16384` to limit each INSERT to ~16 KB, and `mysql` client `--max-allowed-packet` reduced from 512M to 64M to minimize client memory allocatione
 - **ui**: Fixed Download Link modal overflowing the viewport when a link is generated - dialog now has a max height and scrollable body
+- **ui**: Fixed Job Status donut chart legend breaking to multiple lines with uneven layout when 3+ statuses (e.g. Completed, Failed, Cancelled) are shown - legend items now flow naturally and stay centered
 
 ### 🔒 Security
 

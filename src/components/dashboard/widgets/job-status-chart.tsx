@@ -84,7 +84,7 @@ export function JobStatusChart({ data }: JobStatusChartProps) {
         <CardDescription>Last 30 days</CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-48">
+        <ChartContainer config={chartConfig} className="mx-auto aspect-auto h-56">
           <PieChart accessibilityLayer>
             <ChartTooltip
               cursor={false}
@@ -130,7 +130,7 @@ export function JobStatusChart({ data }: JobStatusChartProps) {
             </Pie>
             <ChartLegend
               content={<ChartLegendContent nameKey="status" />}
-              className="-translate-y-2 flex-wrap gap-2 *:basis-1/4 *:justify-center"
+              className="-translate-y-2 flex-wrap gap-x-4 gap-y-1 justify-center"
             />
           </PieChart>
         </ChartContainer>
