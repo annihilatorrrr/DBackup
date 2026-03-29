@@ -2,8 +2,8 @@
 
 All notable changes to DBackup are documented here.
 
-## v1.3.0
-*Release: In Progress*
+## v1.3.0 - SSH Remote Execution
+*Released: March 29, 2026*
 
 ### ✨ Features
 
