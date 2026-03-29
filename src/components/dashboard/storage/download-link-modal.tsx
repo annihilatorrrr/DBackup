@@ -137,7 +137,7 @@ export function DownloadLinkModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col gap-0 overflow-hidden">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Terminal className="h-5 w-5" />
@@ -148,69 +148,70 @@ export function DownloadLinkModal({
                     </DialogDescription>
                 </DialogHeader>
 
-                {/* File Info */}
-                <div className="flex items-start gap-4 p-4 border rounded-lg bg-secondary/20">
-                    <div className="p-2 rounded bg-background border shadow-sm">
-                        <FileIcon className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 space-y-1">
-                        <p className="font-medium leading-none text-sm truncate" title={file.name}>
-                            {file.name}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                                <HardDrive className="h-3 w-3" /> {formatBytes(file.size)}
-                            </span>
-                            {file.isEncrypted && (
-                                <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
-                                    <FileLock2 className="h-3 w-3 mr-1" />
-                                    Encrypted
-                                </Badge>
-                            )}
+                <div className="overflow-y-auto space-y-4 pt-4">
+                    {/* File Info */}
+                    <div className="flex items-start gap-4 p-4 border rounded-lg bg-secondary/20">
+                        <div className="p-2 rounded bg-background border shadow-sm">
+                            <FileIcon className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1 space-y-1">
+                            <p className="font-medium leading-none text-sm truncate" title={file.name}>
+                                {file.name}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                    <HardDrive className="h-3 w-3" /> {formatBytes(file.size)}
+                                </span>
+                                {file.isEncrypted && (
+                                    <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
+                                        <FileLock2 className="h-3 w-3 mr-1" />
+                                        Encrypted
+                                    </Badge>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Mode Selection (only for encrypted files) */}
-                {file.isEncrypted && (
-                    <div className="space-y-3">
-                        <Label className="text-sm font-medium">Download Format</Label>
-                        <RadioGroup
-                            value={mode}
-                            onValueChange={(v) => {
-                                setMode(v as DownloadMode);
-                                setDownloadUrl(null); // Reset URL when mode changes
-                            }}
-                            className="grid grid-cols-2 gap-3"
-                        >
-                            <Label
-                                htmlFor="decrypted"
-                                className={cn(
-                                    "flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition-colors",
-                                    mode === "decrypted" && "border-primary bg-primary/5"
-                                )}
+                    {/* Mode Selection (only for encrypted files) */}
+                    {file.isEncrypted && (
+                        <div className="space-y-3">
+                            <Label className="text-sm font-medium">Download Format</Label>
+                            <RadioGroup
+                                value={mode}
+                                onValueChange={(v) => {
+                                    setMode(v as DownloadMode);
+                                    setDownloadUrl(null); // Reset URL when mode changes
+                                }}
+                                className="grid grid-cols-2 gap-3"
                             >
-                                <RadioGroupItem value="decrypted" id="decrypted" />
-                                <FileCheck className="h-4 w-4 text-green-500" />
-                                <span className="text-sm">Decrypted</span>
-                            </Label>
-                            <Label
-                                htmlFor="encrypted"
-                                className={cn(
-                                    "flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition-colors",
-                                    mode === "encrypted" && "border-primary bg-primary/5"
-                                )}
-                            >
-                                <RadioGroupItem value="encrypted" id="encrypted" />
-                                <FileLock2 className="h-4 w-4 text-amber-500" />
-                                <span className="text-sm">Encrypted (.enc)</span>
-                            </Label>
-                        </RadioGroup>
-                    </div>
-                )}
+                                <Label
+                                    htmlFor="decrypted"
+                                    className={cn(
+                                        "flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition-colors",
+                                        mode === "decrypted" && "border-primary bg-primary/5"
+                                    )}
+                                >
+                                    <RadioGroupItem value="decrypted" id="decrypted" />
+                                    <FileCheck className="h-4 w-4 text-green-500" />
+                                    <span className="text-sm">Decrypted</span>
+                                </Label>
+                                <Label
+                                    htmlFor="encrypted"
+                                    className={cn(
+                                        "flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition-colors",
+                                        mode === "encrypted" && "border-primary bg-primary/5"
+                                    )}
+                                >
+                                    <RadioGroupItem value="encrypted" id="encrypted" />
+                                    <FileLock2 className="h-4 w-4 text-amber-500" />
+                                    <span className="text-sm">Encrypted (.enc)</span>
+                                </Label>
+                            </RadioGroup>
+                        </div>
+                    )}
 
-                {/* Generate / URL Display */}
-                {!downloadUrl ? (
+                    {/* Generate / URL Display */}
+                    {!downloadUrl ? (
                     <Button
                         onClick={generateDownloadUrl}
                         disabled={isGenerating}
@@ -332,6 +333,7 @@ export function DownloadLinkModal({
                         </p>
                     </div>
                 )}
+                </div>
             </DialogContent>
         </Dialog>
     );
