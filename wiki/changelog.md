@@ -30,6 +30,7 @@ All notable changes to DBackup are documented here.
 ### 🎨 Improvements
 
 - **ui**: Redesigned source form for SSH-capable adapters - Connection Mode selector now appears first (like SQLite), SSH Connection tab is shown first in SSH mode so users configure SSH before database credentials
+- **ui**: Restore page now shows skeleton loading while target databases are fetched via SSH - version compatibility, database mapping, and action buttons are blocked until loading completes
 - **ui**: Sources and Destinations pages now auto-refresh every 10 seconds to keep health status up to date
 - **sqlite**: Refactored SQLite SSH client into shared SSH module for code reuse across all database adapters
 - **sqlite**: SQLite SSH connection test now uses `remoteBinaryCheck()` from the shared SSH library instead of manual binary checks; `try/finally` pattern ensures SSH connections are always closed; exit code null handling fixed in dump

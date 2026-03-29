@@ -539,6 +539,10 @@ export function RestoreClient() {
                                     </Select>
 
                                     {/* Version Compatibility Check */}
+                                    {targetSource && isLoadingTargetDbs && (
+                                        <Skeleton className="h-9 w-full rounded-md" />
+                                    )}
+
                                     {targetSource && !isLoadingTargetDbs && targetServerVersion && compatibilityIssues.length === 0 && file?.engineVersion && (
                                         <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-green-500/30 bg-green-500/5 text-sm text-green-700 dark:text-green-400">
                                             <ShieldCheck className="h-4 w-4 shrink-0" />
@@ -590,12 +594,15 @@ export function RestoreClient() {
                                         </div>
                                     </CardHeader>
                                     <CardContent>
-                                        {isAnalyzing ? (
+                                        {(isAnalyzing || isLoadingTargetDbs) ? (
                                             <div className="space-y-3">
-                                                <Label className="text-sm font-medium">Analyzing Backup Content...</Label>
+                                                <Label className="text-sm font-medium text-muted-foreground">
+                                                    {isLoadingTargetDbs ? 'Loading target databases...' : 'Analyzing Backup Content...'}
+                                                </Label>
                                                 <div className="space-y-2">
                                                     <Skeleton className="h-10 w-full" />
                                                     <Skeleton className="h-10 w-full" />
+                                                    <Skeleton className="h-10 w-3/4" />
                                                 </div>
                                             </div>
                                         ) : analyzedDbs.length > 0 ? (
@@ -886,7 +893,7 @@ export function RestoreClient() {
                                     ) : (
                                         <Button
                                             onClick={() => handleRestore(false)}
-                                            disabled={restoring || !targetSource || (analyzedDbs.length > 0 && !dbConfig.some(d => d.selected)) || compatibilityIssues.length > 0}
+                                            disabled={restoring || !targetSource || isLoadingTargetDbs || isAnalyzing || (analyzedDbs.length > 0 && !dbConfig.some(d => d.selected)) || compatibilityIssues.length > 0}
                                             className="w-full"
                                         >
                                             {restoring && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
