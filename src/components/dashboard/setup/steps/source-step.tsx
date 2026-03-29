@@ -220,37 +220,51 @@ export function SourceStep({ adapters, wizardData, onUpdate, onNext, onPrev }: S
                                 )}
                             />
 
-                            {/* Type badge */}
-                            <div className="space-y-1">
-                                <span className="text-sm font-medium">Type</span>
-                                <div>
-                                    <Badge variant="secondary" className="text-sm py-1.5 px-3">
-                                        {selectedAdapter.name}
-                                    </Badge>
-                                    <Button
-                                        type="button"
-                                        variant="link"
-                                        size="sm"
-                                        className="ml-2 text-xs"
-                                        onClick={() => {
-                                            setSelectedAdapter(null);
-                                            form.reset({ name: "", config: {} });
-                                        }}
-                                    >
-                                        Change
-                                    </Button>
+                            {/* Type badge + connection mode selector */}
+                            <div className="flex w-full gap-4 items-start">
+                                <div className="space-y-1 flex-1">
+                                    <span className="text-sm font-medium">Type</span>
+                                    <div>
+                                        <Badge variant="secondary" className="text-sm py-1.5 px-3">
+                                            {selectedAdapter.name}
+                                        </Badge>
+                                        <Button
+                                            type="button"
+                                            variant="link"
+                                            size="sm"
+                                            className="ml-2 text-xs"
+                                            onClick={() => {
+                                                setSelectedAdapter(null);
+                                                form.reset({ name: "", config: {} });
+                                            }}
+                                        >
+                                            Change
+                                        </Button>
+                                    </div>
                                 </div>
+                                {/* Mode selector for SQLite */}
+                                {selectedAdapter.id === "sqlite" && (
+                                    <div className="w-1/2">
+                                        <SchemaField
+                                            name="config.mode"
+                                            fieldKey="mode"
+                                            schemaShape={(selectedAdapter.configSchema as z.ZodObject<Record<string, z.ZodTypeAny>>).shape.mode}
+                                            adapterId="sqlite"
+                                        />
+                                    </div>
+                                )}
+                                {/* Connection mode selector for SSH-capable adapters */}
+                                {selectedAdapter.id !== "sqlite" && (selectedAdapter.configSchema as z.ZodObject<Record<string, z.ZodTypeAny>>).shape?.connectionMode && (
+                                    <div className="w-1/2">
+                                        <SchemaField
+                                            name="config.connectionMode"
+                                            fieldKey="connectionMode"
+                                            schemaShape={(selectedAdapter.configSchema as z.ZodObject<Record<string, z.ZodTypeAny>>).shape.connectionMode}
+                                            adapterId={selectedAdapter.id}
+                                        />
+                                    </div>
+                                )}
                             </div>
-
-                            {/* Mode selector for SQLite */}
-                            {selectedAdapter.id === "sqlite" && (
-                                <SchemaField
-                                    name="config.mode"
-                                    fieldKey="mode"
-                                    schemaShape={(selectedAdapter.configSchema as z.ZodObject<Record<string, z.ZodTypeAny>>).shape.mode}
-                                    adapterId="sqlite"
-                                />
-                            )}
 
                             {/* Dynamic form content */}
                             <DatabaseFormContent
