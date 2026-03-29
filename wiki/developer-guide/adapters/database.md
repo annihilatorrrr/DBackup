@@ -178,7 +178,7 @@ Configuration: `readyTimeout: 20000ms`, `keepaliveInterval: 10000ms`, `keepalive
 | Function | Purpose |
 | :--- | :--- |
 | `shellEscape(value)` | Wraps value in single quotes, escapes embedded quotes |
-| `remoteEnv(vars, cmd)` | Prepends env vars to a command (e.g., `MYSQL_PWD='...' mysqldump`) |
+| `remoteEnv(vars, cmd)` | Exports env vars before a command (e.g., `export MYSQL_PWD='...'; mysqldump`) — uses `export` to prevent password leaking in OOM kill reports |
 | `remoteBinaryCheck(client, ...candidates)` | Checks if binary exists on remote host, returns resolved path |
 | `isSSHMode(config)` | Returns `true` if `config.connectionMode === "ssh"` |
 | `extractSshConfig(config)` | Extracts `SshConnectionConfig` from adapter config with `sshHost` prefix |

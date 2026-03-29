@@ -1,4 +1,4 @@
-import { Client, ConnectConfig } from "ssh2";
+import { Client, ConnectConfig, SFTPWrapper } from "ssh2";
 
 /**
  * Generic SSH connection configuration used across all adapters.
@@ -67,8 +67,8 @@ export class SshClient {
                 let stderr = "";
 
                 stream
-                    .on("close", (code: number, _signal: any) => {
-                        resolve({ stdout, stderr, code });
+                    .on("close", (code: number | null, signal?: string) => {
+                        resolve({ stdout, stderr, code: code ?? (signal ? 128 : 1) });
                     })
                     .on("data", (data: any) => {
                         stdout += data.toString();
@@ -86,6 +86,24 @@ export class SshClient {
      */
     public execStream(command: string, callback: (err: Error | undefined, stream: any) => void): void {
         this.client.exec(command, callback);
+    }
+
+    /**
+     * Upload a local file to the remote server via SFTP.
+     * Uses SFTP protocol which guarantees data integrity (unlike piping through exec).
+     */
+    public uploadFile(localPath: string, remotePath: string): Promise<void> {
+        return new Promise((resolve, reject) => {
+            this.client.sftp((err, sftp) => {
+                if (err) return reject(new Error(`SFTP session failed: ${err.message}`));
+
+                sftp.fastPut(localPath, remotePath, (err) => {
+                    sftp.end();
+                    if (err) return reject(new Error(`SFTP upload failed: ${err.message}`));
+                    resolve();
+                });
+            });
+        });
     }
 
     public end(): void {

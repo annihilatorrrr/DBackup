@@ -73,6 +73,7 @@ export function RestoreClient() {
     // Advanced Restore State
     const [analyzedDbs, setAnalyzedDbs] = useState<string[]>([]);
     const [dbConfig, setDbConfig] = useState<DbConfig[]>([]);
+    const [backupSourceType, setBackupSourceType] = useState<string>("");
 
     // Execution State
     const [restoring, setRestoring] = useState(false);
@@ -96,6 +97,10 @@ export function RestoreClient() {
     const [compatibilityIssues, setCompatibilityIssues] = useState<{ type: 'error' | 'warning'; message: string }[]>([]);
 
     const isSystemConfig = file?.sourceType === 'SYSTEM';
+
+    const SERVER_ADAPTERS = ['mysql', 'mariadb', 'postgres', 'mongodb', 'mssql', 'redis'];
+    const resolvedSourceType = backupSourceType || file?.sourceType || '';
+    const isServerAdapter = SERVER_ADAPTERS.includes(resolvedSourceType.toLowerCase());
 
     const [restoreOptions, setRestoreOptions] = useState<RestoreOptions>({
         settings: true,
@@ -221,6 +226,9 @@ export function RestoreClient() {
 
             if (res.ok) {
                 const data = await res.json();
+                if (data.sourceType) {
+                    setBackupSourceType(data.sourceType);
+                }
                 if (data.databases && data.databases.length > 0) {
                     setAnalyzedDbs(data.databases);
                     setDbConfig(data.databases.map((db: string) => ({
@@ -569,7 +577,9 @@ export function RestoreClient() {
                                                 <CardDescription>
                                                     {analyzedDbs.length > 0
                                                         ? 'Select which databases to restore and configure target names.'
-                                                        : 'Choose how to restore this backup.'}
+                                                        : isServerAdapter
+                                                            ? 'Specify the target database name for the restore.'
+                                                            : 'Choose how to restore this backup.'}
                                                 </CardDescription>
                                             </div>
                                             {analyzedDbs.length > 0 && (
@@ -653,6 +663,25 @@ export function RestoreClient() {
                                                         })}
                                                     </TableBody>
                                                 </Table>
+                                            </div>
+                                        ) : isServerAdapter ? (
+                                            <div className="space-y-3">
+                                                <p className="text-sm text-muted-foreground">
+                                                    The database names in this backup could not be determined automatically.
+                                                    Leave empty to restore into the original database, or specify a target name.
+                                                </p>
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-sm">Target Database Name</Label>
+                                                    <Input
+                                                        placeholder="Leave empty for original database..."
+                                                        value={targetDbName}
+                                                        onChange={(e) => setTargetDbName(e.target.value)}
+                                                        className="h-8"
+                                                    />
+                                                    <p className="text-xs text-muted-foreground">
+                                                        If empty, the backup will be restored into its original database. Existing data will be overwritten.
+                                                    </p>
+                                                </div>
                                             </div>
                                         ) : (
                                             <RadioGroup defaultValue="overwrite" className="grid grid-cols-1 gap-4">

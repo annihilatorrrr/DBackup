@@ -7,7 +7,8 @@ export class MySQLBaseDialect extends BaseDialect {
             '-h', config.host,
             '-P', String(config.port),
             '-u', config.user,
-            '--protocol=tcp' // Always use TCP to avoid socket issues in containers
+            '--protocol=tcp', // Always use TCP to avoid socket issues in containers
+            '--net-buffer-length=16384' // Limit INSERT size to ~16KB to prevent OOM during restore
         ];
 
         this.appendAuthArgs(args, config);
@@ -29,7 +30,8 @@ export class MySQLBaseDialect extends BaseDialect {
             '-h', config.host,
             '-P', String(config.port),
             '-u', config.user,
-            '--protocol=tcp'
+            '--protocol=tcp',
+            '--max-allowed-packet=64M',
         ];
 
         this.appendAuthArgs(args, config);

@@ -217,14 +217,16 @@ async function restoreSingleDatabaseSSH(
             ssh.execStream(cmd, (err, stream) => {
                 if (err) return reject(err);
 
+                stream.on('data', () => {});
+
                 stream.stderr.on('data', (data: any) => {
                     const msg = data.toString().trim();
                     if (msg) log(`[mongorestore] ${msg}`, 'info');
                 });
 
-                stream.on('exit', (code: number) => {
+                stream.on('exit', (code: number | null, signal?: string) => {
                     if (code === 0) resolve();
-                    else reject(new Error(`Remote mongorestore exited with code ${code}`));
+                    else reject(new Error(`Remote mongorestore exited with code ${code ?? 'null'}${signal ? ` (signal: ${signal})` : ''}`));
                 });
 
                 stream.on('error', (err: Error) => reject(err));

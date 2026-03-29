@@ -16,6 +16,24 @@ All notable changes to DBackup are documented here.
 
 - **mysql**: Backup jobs with no database selected now auto-discover all databases instead of failing with "No database specified"
 - **postgres**: Backup jobs with no database selected now auto-discover all databases instead of `pg_dump` defaulting to the username as database name
+- **restore**: Restore page no longer shows SQLite-style "Overwrite / Restore as New" UI for server-based adapters — now shows a target database name input when database names are unknown, and auto-discovers database names in backup metadata for future backups
+- **ui**: Fixed adapter icon being pushed out of select buttons when source or destination name is too long — names now truncate properly
+- **ssh**: Fixed SSH exit code handling across all adapters — `code` can be `null` when process is killed by signal (e.g. SIGPIPE, OOM), now properly handled with signal info in error messages
+- **ssh**: Fixed MySQL/MongoDB SSH restore not consuming stdout, which could cause backpressure and hang/crash the remote process
+- **restore**: Fixed MySQL SSH restore crashing the Node.js process with OOM (16 GB heap) when restoring large databases — stderr log output is now rate-limited (max 50 messages, 500 chars each) to prevent unbounded memory growth
+- **restore**: Fixed MySQL restore via SSH failing with "Server has gone away" on large dumps — `mysql` client now uses `--max-allowed-packet=64M` to handle large legacy INSERT statements
+- **restore**: Fixed MySQL SSH restore producing SQL syntax errors when piping large dumps directly through the SSH channel — switched to upload-then-restore pattern (like PostgreSQL): dump file is uploaded to remote temp location first, then `mysql` reads from the local file on the remote server
+- **backup**: Fixed MySQL dump producing huge INSERT statements that cause OOM kills on remote servers during restore — `mysqldump` now uses `--net-buffer-length=16384` to limit each INSERT to ~16 KB, and `mysql` client `--max-allowed-packet` reduced from 512M to 64M to minimize client memory allocation
+- **restore**: Fixed MySQL SSH restore failing with "Server has gone away" on servers with limited RAM — `mysql` client now uses `--init-command` to disable binary logging (`sql_log_bin=0`) and reduce flush I/O (`innodb_flush_log_at_trx_commit=2`) for the restore session, significantly reducing server memory and disk pressure
+- **restore**: Fixed SSH restore file upload losing ~8.7% of data on large files (1.3 GB+) when piping through SSH2's `execStream` via `cat >` — switched to SFTP protocol (`sftp.fastPut()`) for all SSH restore uploads (MySQL, PostgreSQL), which guarantees data integrity
+
+### 🗑️ Removed
+
+- **restore**: Removed session-level SET optimizations (`sql_log_bin=0`, `innodb_flush_log_at_trx_commit=2`) from MySQL restore — the root cause of restore failures was data loss during SSH upload (now fixed by SFTP), not server resource pressure. `innodb_flush_log_at_trx_commit` also caused ERROR 1229 on MariaDB (GLOBAL-only variable). Users can still pass custom options via the source configuration if needed
+
+### 🔒 Security
+
+- **ssh**: Fixed database passwords (MYSQL_PWD, PGPASSWORD) being exposed in execution logs when a remote process is killed by OOM or signal — `remoteEnv()` now uses `export` statements instead of inline env var prefix, and the MySQL stderr handler redacts known secrets from all output
 
 ### 🎨 Improvements
 

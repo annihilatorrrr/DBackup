@@ -152,9 +152,9 @@ async function dumpSingleDatabaseSSH(
                     }
                 });
 
-                stream.on('exit', (code: number) => {
+                stream.on('exit', (code: number | null, signal?: string) => {
                     if (code === 0) resolve();
-                    else reject(new Error(`Remote pg_dump for ${dbName} exited with code ${code}`));
+                    else reject(new Error(`Remote pg_dump for ${dbName} exited with code ${code ?? 'null'}${signal ? ` (signal: ${signal})` : ''}`));
                 });
 
                 stream.on('error', (err: Error) => reject(err));

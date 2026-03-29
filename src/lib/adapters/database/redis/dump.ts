@@ -166,9 +166,9 @@ async function dumpSSH(
 
                 stream.pipe(writeStream);
 
-                stream.on('exit', (code: number) => {
+                stream.on('exit', (code: number | null, signal?: string) => {
                     if (code === 0) resolve();
-                    else reject(new Error(`Failed to stream RDB from remote (code ${code})`));
+                    else reject(new Error(`Failed to stream RDB from remote (code ${code ?? 'null'}${signal ? `, signal: ${signal}` : ''})`));
                 });
 
                 stream.on('error', (err: Error) => reject(err));

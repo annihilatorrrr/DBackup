@@ -25,7 +25,6 @@ import {
     shellEscape,
 } from "@/lib/ssh";
 import { randomUUID } from "crypto";
-import { createReadStream } from "fs";
 
 /**
  * Extended PostgreSQL config for restore operations with runtime fields
@@ -250,25 +249,9 @@ async function restoreSingleDatabaseSSH(
         const pass = (priv && priv.password) ? priv.password : config.password;
         if (pass) env.PGPASSWORD = pass;
 
-        // 1. Upload dump file to remote temp location
-        log(`Uploading dump to remote: ${remoteTempFile}`, 'info');
-        const fileStream = createReadStream(sourcePath);
-
-        await new Promise<void>((resolve, reject) => {
-            ssh.execStream(`cat > ${shellEscape(remoteTempFile)}`, (err, stream) => {
-                if (err) return reject(err);
-
-                stream.on('exit', (code: number) => {
-                    if (code === 0) resolve();
-                    else reject(new Error(`Failed to upload dump file (code ${code})`));
-                });
-
-                stream.on('error', (err: Error) => reject(err));
-                fileStream.on('error', (err: Error) => reject(err));
-
-                fileStream.pipe(stream);
-            });
-        });
+        // 1. Upload dump file to remote temp location via SFTP (guarantees data integrity)
+        log(`Uploading dump to remote via SFTP: ${remoteTempFile}`, 'info');
+        await ssh.uploadFile(sourcePath, remoteTempFile);
 
         // 2. Run pg_restore on the remote
         const restoreArgs = [

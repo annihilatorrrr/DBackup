@@ -100,6 +100,9 @@ async function dumpSingleDatabaseSSH(
         const dumpBin = await remoteBinaryCheck(ssh, "mariadb-dump", "mysqldump");
         const args = buildMysqlArgs(config);
 
+        // Limit INSERT size to ~16KB to prevent OOM during restore on low-memory servers
+        args.push("--net-buffer-length=16384");
+
         // Add dump-specific options
         if ((config as any).options) {
             args.push(...(config as any).options.split(' ').filter((s: string) => s.trim().length > 0));
@@ -127,9 +130,9 @@ async function dumpSingleDatabaseSSH(
                     onLog(msg);
                 });
 
-                stream.on('exit', (code: number) => {
+                stream.on('exit', (code: number | null, signal?: string) => {
                     if (code === 0) resolve();
-                    else reject(new Error(`Remote mysqldump exited with code ${code}`));
+                    else reject(new Error(`Remote mysqldump exited with code ${code ?? 'null'}${signal ? ` (signal: ${signal})` : ''}`));
                 });
 
                 stream.on('error', (err: Error) => reject(err));

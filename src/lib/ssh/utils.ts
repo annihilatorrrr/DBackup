@@ -9,21 +9,22 @@ export function shellEscape(value: string): string {
 }
 
 /**
- * Build a remote command string with environment variables prepended.
- * Variables are set inline so they don't leak into the shell history.
+ * Build a remote command string with environment variables exported before execution.
+ * Uses `export` statements separated by `;` so that if the main process is killed,
+ * bash's kill report only shows the command — not the secrets.
  *
  * Example: remoteEnv({ MYSQL_PWD: "secret" }, "mysqldump -h 127.0.0.1 mydb")
- *   → "MYSQL_PWD='secret' mysqldump -h 127.0.0.1 mydb"
+ *   → "export MYSQL_PWD='secret'; mysqldump -h 127.0.0.1 mydb"
  */
 export function remoteEnv(vars: Record<string, string | undefined>, command: string): string {
     const parts: string[] = [];
     for (const [key, value] of Object.entries(vars)) {
         if (value !== undefined && value !== "") {
-            parts.push(`${key}=${shellEscape(value)}`);
+            parts.push(`export ${key}=${shellEscape(value)}`);
         }
     }
     if (parts.length === 0) return command;
-    return `${parts.join(" ")} ${command}`;
+    return `${parts.join("; ")}; ${command}`;
 }
 
 /**
