@@ -42,6 +42,10 @@ All notable changes to DBackup are documented here.
 - **wiki**: Added SSH remote execution architecture section to the Developer Guide (database adapters, adapter system, architecture)
 - **wiki**: Each adapter guide now lists required CLI tools for the remote host with installation commands per OS
 
+### 🧪 Tests
+
+- **ssh**: Added 60 unit tests for shared SSH utilities covering shell escaping, environment variable export, SSH mode detection, config extraction, and argument builders for MySQL, PostgreSQL, MongoDB, and Redis
+
 ### 🐳 Docker
 
 - **Image**: `skyfay/dbackup:v1.3.0`
