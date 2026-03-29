@@ -71,9 +71,27 @@ export async function stepExecuteDump(ctx: RunnerContext) {
                 }
             }
         } else if (Array.isArray(dbVal)) {
-            names = dbVal;
-            label = `${dbVal.length} DBs`;
-            count = dbVal.length;
+            names = dbVal.filter((s: string) => s && s.trim().length > 0);
+            if (names.length > 0) {
+                label = `${names.length} DBs`;
+                count = names.length;
+            } else {
+                // Empty array = no DB selected, try to discover all databases
+                label = 'All DBs';
+                if (sourceAdapter.getDatabases) {
+                    try {
+                        const fetched = await sourceAdapter.getDatabases(sourceConfig);
+                        if (fetched && fetched.length > 0) {
+                            names = fetched;
+                            count = names.length;
+                            label = `${names.length} DBs (fetched)`;
+                        }
+                    } catch (e: unknown) {
+                        const message = e instanceof Error ? e.message : String(e);
+                        ctx.log(`Warning: Could not fetch DB list for metadata: ${message}`);
+                    }
+                }
+            }
         } else if (typeof dbVal === 'string') {
             if (dbVal.includes(',')) {
                 names = dbVal.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
@@ -84,13 +102,39 @@ export async function stepExecuteDump(ctx: RunnerContext) {
                 label = 'Single DB';
                 count = 1;
             } else {
-                label = 'No DB selected';
-                count = 0;
+                // Empty string = no DB selected, try to discover all databases
+                label = 'All DBs';
+                if (sourceAdapter.getDatabases) {
+                    try {
+                        const fetched = await sourceAdapter.getDatabases(sourceConfig);
+                        if (fetched && fetched.length > 0) {
+                            names = fetched;
+                            count = names.length;
+                            label = `${names.length} DBs (fetched)`;
+                        }
+                    } catch (e: unknown) {
+                        const message = e instanceof Error ? e.message : String(e);
+                        ctx.log(`Warning: Could not fetch DB list for metadata: ${message}`);
+                    }
+                }
             }
         } else {
             // dbVal is undefined/null (e.g. MongoDB with no specific DB selected)
-            label = 'No DB selected';
-            count = 0;
+            // Try to fetch DB names for accurate metadata (adapter dumps all DBs by default)
+            label = 'All DBs';
+            if (sourceAdapter.getDatabases) {
+                try {
+                    const fetched = await sourceAdapter.getDatabases(sourceConfig);
+                    if (fetched && fetched.length > 0) {
+                        names = fetched;
+                        count = names.length;
+                        label = `${names.length} DBs (fetched)`;
+                    }
+                } catch (e: unknown) {
+                    const message = e instanceof Error ? e.message : String(e);
+                    ctx.log(`Warning: Could not fetch DB list for metadata: ${message}`);
+                }
+            }
         }
 
         // Fetch engine version and edition

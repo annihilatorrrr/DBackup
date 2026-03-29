@@ -13,6 +13,7 @@ import {
 } from "../common/tar-utils";
 import { TarFileEntry, TarManifest } from "../common/types";
 import { MongoDBConfig } from "@/lib/adapters/definitions";
+import { getDatabases } from "./connection";
 import {
     SshClient,
     isSSHMode,
@@ -178,6 +179,19 @@ export async function dump(
         if (dbs.length === 0 && config.database) {
             const db = Array.isArray(config.database) ? config.database[0] : config.database;
             if (db) dbs = [db];
+        }
+
+        // Discover all databases if none selected (same pattern as MySQL adapter)
+        if (dbs.length === 0) {
+            log("No databases selected — backing up all databases");
+            try {
+                dbs = await getDatabases(config);
+                log(`Found ${dbs.length} database(s): ${dbs.join(', ')}`);
+            } catch (e: unknown) {
+                const message = e instanceof Error ? e.message : String(e);
+                log(`Warning: Could not fetch database list: ${message}`, 'warning');
+                // Continue anyway — mongodump without --db dumps all databases
+            }
         }
 
         const dialect = getDialect('mongodb', config.detectedVersion);

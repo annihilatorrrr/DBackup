@@ -15,21 +15,20 @@ All notable changes to DBackup are documented here.
 
 ### 🐛 Bug Fixes
 
-- **mysql**: Backup jobs with no database selected now auto-discover all databases instead of failing with "No database specified"
-- **postgres**: Backup jobs with no database selected now auto-discover all databases instead of `pg_dump` defaulting to the username as database name
-- **restore**: Restore page no longer shows SQLite-style "Overwrite / Restore as New" UI for server-based adapters — now shows a target database name input when database names are unknown, and auto-discovers database names in backup metadata for future backups
+- **backup**: MySQL, PostgreSQL, and MongoDB backup jobs with no database selected now auto-discover all databases at runtime - MySQL no longer fails with "No database specified", PostgreSQL no longer defaults to the username as database name, and MongoDB SSH listing was fixed by switching `mongosh --eval` to single quotes to prevent bash `!` history expansion from silently corrupting the command; backup metadata is now correctly populated for restore mapping.
+- **restore**: Restore page no longer shows SQLite-style "Overwrite / Restore as New" UI for server-based adapters - now shows a target database name input when database names are unknown, and auto-discovers database names in backup metadata for future backups
 - **ssh**: Fixed MySQL/MongoDB SSH restore not consuming stdout, which could cause backpressure and hang/crash the remote process
-- **restore**: Fixed MySQL SSH restore crashing the Node.js process with OOM (16 GB heap) when restoring large databases — stderr log output is now rate-limited (max 50 messages, 500 chars each) to prevent unbounded memory growth
-- **restore**: Fixed MySQL restore via SSH failing with "Server has gone away" on large dumps — `mysql` client now uses `--max-allowed-packet=64M` to handle large legacy INSERT statements
-- **backup**: Fixed MySQL dump producing huge INSERT statements that cause OOM kills on remote servers during restore — `mysqldump` now uses `--net-buffer-length=16384` to limit each INSERT to ~16 KB, and `mysql` client `--max-allowed-packet` reduced from 512M to 64M to minimize client memory allocatione
+- **restore**: Fixed MySQL SSH restore crashing the Node.js process with OOM (16 GB heap) when restoring large databases - stderr log output is now rate-limited (max 50 messages, 500 chars each) to prevent unbounded memory growth
+- **restore**: Fixed MySQL restore via SSH failing with "Server has gone away" on large dumps - `mysql` client now uses `--max-allowed-packet=64M` to handle large legacy INSERT statements
+- **backup**: Fixed MySQL dump producing huge INSERT statements that cause OOM kills on remote servers during restore - `mysqldump` now uses `--net-buffer-length=16384` to limit each INSERT to ~16 KB, and `mysql` client `--max-allowed-packet` reduced from 512M to 64M to minimize client memory allocatione
 
 ### 🔒 Security
 
-- **ssh**: Fixed database passwords (MYSQL_PWD, PGPASSWORD) being exposed in execution logs when a remote process is killed by OOM or signal — `remoteEnv()` now uses `export` statements instead of inline env var prefix, and the MySQL stderr handler redacts known secrets from all output
+- **ssh**: Fixed database passwords (MYSQL_PWD, PGPASSWORD) being exposed in execution logs when a remote process is killed by OOM or signal - `remoteEnv()` now uses `export` statements instead of inline env var prefix, and the MySQL stderr handler redacts known secrets from all output
 
 ### 🎨 Improvements
 
-- **ui**: Redesigned source form for SSH-capable adapters — Connection Mode selector now appears first (like SQLite), SSH Connection tab is shown first in SSH mode so users configure SSH before database credentials
+- **ui**: Redesigned source form for SSH-capable adapters - Connection Mode selector now appears first (like SQLite), SSH Connection tab is shown first in SSH mode so users configure SSH before database credentials
 - **ui**: Sources and Destinations pages now auto-refresh every 10 seconds to keep health status up to date
 - **sqlite**: Refactored SQLite SSH client into shared SSH module for code reuse across all database adapters
 - **sqlite**: SQLite SSH connection test now uses `remoteBinaryCheck()` from the shared SSH library instead of manual binary checks; `try/finally` pattern ensures SSH connections are always closed; exit code null handling fixed in dump

@@ -8,6 +8,9 @@ import {
     remoteEnv,
     remoteBinaryCheck,
 } from "@/lib/ssh";
+import { logger } from "@/lib/logger";
+
+const log = logger.child({ service: "mongodb-connection" });
 
 /**
  * Build MongoDB connection URI from config
@@ -35,7 +38,7 @@ export async function test(config: MongoDBConfig): Promise<{ success: boolean; m
             const mongoshBin = await remoteBinaryCheck(ssh, "mongosh", "mongo");
             const args = buildMongoArgs(config);
 
-            const cmd = `${mongoshBin} ${args.join(" ")} --quiet --eval "db.adminCommand({buildInfo:1}).version"`;
+            const cmd = `${mongoshBin} ${args.join(" ")} --quiet --eval 'print(db.adminCommand({buildInfo:1}).version)'`;
             const result = await ssh.exec(cmd);
 
             if (result.code === 0) {
@@ -92,13 +95,32 @@ export async function getDatabases(config: MongoDBConfig): Promise<string[]> {
             const mongoshBin = await remoteBinaryCheck(ssh, "mongosh", "mongo");
             const args = buildMongoArgs(config);
 
-            const cmd = `${mongoshBin} ${args.join(" ")} --quiet --eval "db.adminCommand({listDatabases:1}).databases.map(d=>d.name).join('\\n')"`;
+            // Output JSON array of DB names — single print(), parsed in Node
+            const cmd = `${mongoshBin} ${args.join(" ")} --quiet --eval 'print(JSON.stringify(db.adminCommand({listDatabases:1}).databases.map(function(d){return d.name})))'`;
+            log.debug("getDatabases SSH command", { cmd: cmd.replace(/--password\s+'[^']*'/, "--password '***'") });
             const result = await ssh.exec(cmd);
 
+            log.debug("getDatabases SSH result", {
+                code: result.code,
+                stdout: result.stdout.substring(0, 500),
+                stderr: result.stderr.substring(0, 500),
+            });
+
             if (result.code !== 0) {
-                throw new Error(`Failed to list databases: ${result.stderr}`);
+                throw new Error(`Failed to list databases (code ${result.code}): ${result.stderr || result.stdout}`);
             }
-            return result.stdout.split('\n').map(s => s.trim()).filter(s => s && !sysDbs.includes(s));
+
+            // Parse JSON array from stdout — find the line that looks like a JSON array
+            const lines = result.stdout.split('\n').map(s => s.trim()).filter(Boolean);
+            const jsonLine = lines.find(l => l.startsWith('['));
+
+            if (jsonLine) {
+                const allNames: string[] = JSON.parse(jsonLine);
+                return allNames.filter(n => !sysDbs.includes(n));
+            }
+
+            // Fallback: treat each non-empty line as a DB name
+            return lines.filter(s => s && !sysDbs.includes(s));
         } finally {
             ssh.end();
         }
@@ -144,18 +166,40 @@ export async function getDatabasesWithStats(config: MongoDBConfig): Promise<Data
             const mongoshBin = await remoteBinaryCheck(ssh, "mongosh", "mongo");
             const args = buildMongoArgs(config);
 
-            // Use a JS script to output tab-separated name\tsize\tcollectionCount
-            const script = `db.adminCommand({listDatabases:1}).databases.filter(d=>!['admin','config','local'].includes(d.name)).forEach(d=>{let c=0;try{c=db.getSiblingDB(d.name).getCollectionNames().length}catch(e){}print(d.name+'\\t'+(d.sizeOnDisk||0)+'\\t'+c)})`;
-            const cmd = `${mongoshBin} ${args.join(" ")} --quiet --eval "${script}"`;
+            // Output JSON array with stats — single print(), parsed in Node
+            // All filtering done in Node to avoid quoting issues in shell
+            const script = `var r=db.adminCommand({listDatabases:1});var out=[];r.databases.forEach(function(d){var c=0;try{c=db.getSiblingDB(d.name).getCollectionNames().length}catch(e){}out.push({name:d.name,size:Number(d.sizeOnDisk)||0,tables:c})});print(JSON.stringify(out))`;
+            const cmd = `${mongoshBin} ${args.join(" ")} --quiet --eval '${script}'`;
+            log.debug("getDatabasesWithStats SSH command", { cmd: cmd.replace(/--password\s+'[^']*'/, "--password '***'") });
             const result = await ssh.exec(cmd);
 
+            log.debug("getDatabasesWithStats SSH result", {
+                code: result.code,
+                stdout: result.stdout.substring(0, 500),
+                stderr: result.stderr.substring(0, 500),
+            });
+
             if (result.code !== 0) {
-                throw new Error(`Failed to get database stats: ${result.stderr}`);
+                throw new Error(`Failed to get database stats (code ${result.code}): ${result.stderr || result.stdout}`);
             }
-            return result.stdout
-                .split('\n')
-                .map(line => line.trim())
-                .filter(line => line)
+
+            // Parse JSON array from stdout
+            const lines = result.stdout.split('\n').map(s => s.trim()).filter(Boolean);
+            const jsonLine = lines.find(l => l.startsWith('['));
+
+            if (jsonLine) {
+                const parsed: Array<{ name: string; size: number; tables: number }> = JSON.parse(jsonLine);
+                return parsed
+                    .filter(d => !sysDbs.includes(d.name))
+                    .map(d => ({
+                        name: d.name,
+                        sizeInBytes: d.size,
+                        tableCount: d.tables,
+                    }));
+            }
+
+            // Fallback: tab-separated parsing
+            return lines
                 .map(line => {
                     const [name, sizeStr, tableStr] = line.split('\t');
                     return {
@@ -163,7 +207,8 @@ export async function getDatabasesWithStats(config: MongoDBConfig): Promise<Data
                         sizeInBytes: parseInt(sizeStr, 10) || 0,
                         tableCount: parseInt(tableStr, 10) || 0,
                     };
-                });
+                })
+                .filter(d => d.name && !["admin", "config", "local"].includes(d.name));
         } finally {
             ssh.end();
         }
