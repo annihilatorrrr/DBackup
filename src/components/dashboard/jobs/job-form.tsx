@@ -294,9 +294,9 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                                                     className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
                                                 >
                                                     {field.value ? (
-                                                        <span className="flex items-center gap-2">
-                                                            <AdapterIcon adapterId={sources.find((s) => s.id === field.value)?.adapterId ?? ""} className="h-4 w-4" />
-                                                            {sources.find((s) => s.id === field.value)?.name}
+                                                        <span className="flex items-center gap-2 min-w-0">
+                                                            <AdapterIcon adapterId={sources.find((s) => s.id === field.value)?.adapterId ?? ""} className="h-4 w-4 shrink-0" />
+                                                            <span className="truncate">{sources.find((s) => s.id === field.value)?.name}</span>
                                                         </span>
                                                     ) : "Select Source"}
                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -645,9 +645,9 @@ function DestinationRow({ index, form, destinations, usedDestIds, isExpanded, on
                                         className={cn("w-full justify-between h-9", !field.value && "text-muted-foreground")}
                                     >
                                         {currentDest ? (
-                                            <span className="flex items-center gap-2">
-                                                <AdapterIcon adapterId={currentDest.adapterId} className="h-4 w-4" />
-                                                {currentDest.name}
+                                            <span className="flex items-center gap-2 min-w-0">
+                                                <AdapterIcon adapterId={currentDest.adapterId} className="h-4 w-4 shrink-0" />
+                                                <span className="truncate">{currentDest.name}</span>
                                             </span>
                                         ) : "Select Destination"}
                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />

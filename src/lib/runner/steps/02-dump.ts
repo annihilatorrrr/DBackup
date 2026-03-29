@@ -51,12 +51,11 @@ export async function stepExecuteDump(ctx: RunnerContext) {
         const isAll = options.includes("--all-databases");
 
         let label = 'Unknown';
-        let count: number | string = 'Unknown';
+        let count: number = 0;
         let names: string[] = [];
 
         if (isAll) {
             label = 'All DBs';
-            count = 'All';
             // Try to fetch DB names for accurate metadata
             if (sourceAdapter.getDatabases) {
                 try {
@@ -72,9 +71,27 @@ export async function stepExecuteDump(ctx: RunnerContext) {
                 }
             }
         } else if (Array.isArray(dbVal)) {
-            names = dbVal;
-            label = `${dbVal.length} DBs`;
-            count = dbVal.length;
+            names = dbVal.filter((s: string) => s && s.trim().length > 0);
+            if (names.length > 0) {
+                label = `${names.length} DBs`;
+                count = names.length;
+            } else {
+                // Empty array = no DB selected, try to discover all databases
+                label = 'All DBs';
+                if (sourceAdapter.getDatabases) {
+                    try {
+                        const fetched = await sourceAdapter.getDatabases(sourceConfig);
+                        if (fetched && fetched.length > 0) {
+                            names = fetched;
+                            count = names.length;
+                            label = `${names.length} DBs (fetched)`;
+                        }
+                    } catch (e: unknown) {
+                        const message = e instanceof Error ? e.message : String(e);
+                        ctx.log(`Warning: Could not fetch DB list for metadata: ${message}`);
+                    }
+                }
+            }
         } else if (typeof dbVal === 'string') {
             if (dbVal.includes(',')) {
                 names = dbVal.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
@@ -85,8 +102,38 @@ export async function stepExecuteDump(ctx: RunnerContext) {
                 label = 'Single DB';
                 count = 1;
             } else {
-                label = 'No DB selected';
-                count = 0;
+                // Empty string = no DB selected, try to discover all databases
+                label = 'All DBs';
+                if (sourceAdapter.getDatabases) {
+                    try {
+                        const fetched = await sourceAdapter.getDatabases(sourceConfig);
+                        if (fetched && fetched.length > 0) {
+                            names = fetched;
+                            count = names.length;
+                            label = `${names.length} DBs (fetched)`;
+                        }
+                    } catch (e: unknown) {
+                        const message = e instanceof Error ? e.message : String(e);
+                        ctx.log(`Warning: Could not fetch DB list for metadata: ${message}`);
+                    }
+                }
+            }
+        } else {
+            // dbVal is undefined/null (e.g. MongoDB with no specific DB selected)
+            // Try to fetch DB names for accurate metadata (adapter dumps all DBs by default)
+            label = 'All DBs';
+            if (sourceAdapter.getDatabases) {
+                try {
+                    const fetched = await sourceAdapter.getDatabases(sourceConfig);
+                    if (fetched && fetched.length > 0) {
+                        names = fetched;
+                        count = names.length;
+                        label = `${names.length} DBs (fetched)`;
+                    }
+                } catch (e: unknown) {
+                    const message = e instanceof Error ? e.message : String(e);
+                    ctx.log(`Warning: Could not fetch DB list for metadata: ${message}`);
+                }
             }
         }
 
@@ -164,6 +211,29 @@ export async function stepExecuteDump(ctx: RunnerContext) {
 
     ctx.dumpSize = dumpResult.size || 0;
     ctx.log(`Dump successful. Size: ${dumpResult.size} bytes`);
+
+    // If metadata has no DB names yet (auto-discovered during dump), fetch them now
+    if (ctx.metadata && (!ctx.metadata.names || ctx.metadata.names.length === 0)) {
+        try {
+            if (sourceAdapter.getDatabases) {
+                ctx.log(`Attempting post-dump DB discovery...`);
+                const discovered = await sourceAdapter.getDatabases(sourceConfig);
+                if (discovered && discovered.length > 0) {
+                    ctx.metadata.names = discovered;
+                    ctx.metadata.count = discovered.length;
+                    ctx.metadata.label = `${discovered.length} DBs (auto-discovered)`;
+                    ctx.log(`Updated metadata with ${discovered.length} auto-discovered database(s): ${discovered.join(', ')}`);
+                } else {
+                    ctx.log(`Post-dump DB discovery returned no databases`);
+                }
+            } else {
+                ctx.log(`Adapter does not support getDatabases`);
+            }
+        } catch (e: unknown) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            ctx.log(`Post-dump DB discovery failed: ${errMsg}`, 'warning');
+        }
+    }
 
     // Check if the dump is a Multi-DB TAR archive and update metadata
     try {

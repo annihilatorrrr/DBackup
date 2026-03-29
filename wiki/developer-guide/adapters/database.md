@@ -4,15 +4,15 @@ Database adapters handle the dump and restore operations for different database 
 
 ## Available Adapters
 
-| Adapter | ID | CLI Tools Required | File Extension |
-| :--- | :--- | :--- | :--- |
-| MySQL | `mysql` | `mysql`, `mysqldump` | `.sql` |
-| MariaDB | `mariadb` | `mysql`, `mysqldump` | `.sql` |
-| PostgreSQL | `postgres` | `psql`, `pg_dump`, `pg_restore` | `.sql` |
-| MongoDB | `mongodb` | `mongodump`, `mongorestore` | `.archive` |
-| SQLite | `sqlite` | None (file copy) | `.db` |
-| MSSQL | `mssql` | None (TDS protocol) | `.bak` |
-| Redis | `redis` | `redis-cli` | `.rdb` |
+| Adapter | ID | CLI Tools Required | SSH Mode | File Extension |
+| :--- | :--- | :--- | :--- | :--- |
+| MySQL | `mysql` | `mysql`, `mysqldump` | ✅ | `.sql` |
+| MariaDB | `mariadb` | `mysql`, `mysqldump` | ✅ | `.sql` |
+| PostgreSQL | `postgres` | `psql`, `pg_dump`, `pg_restore` | ✅ | `.sql` |
+| MongoDB | `mongodb` | `mongodump`, `mongorestore` | ✅ | `.archive` |
+| SQLite | `sqlite` | None (file copy) | ✅ | `.db` |
+| MSSQL | `mssql` | None (TDS protocol) | ❌ (uses SFTP) | `.bak` |
+| Redis | `redis` | `redis-cli` | ✅ | `.rdb` |
 
 ## Backup File Extensions
 
@@ -137,6 +137,154 @@ Returns:
 
 If `getDatabasesWithStats()` is not implemented, falls back to `getDatabases()` and returns names only (without size/table count).
 
+## SSH Mode Architecture
+
+Most database adapters support an SSH remote execution mode. Instead of running CLI tools locally and connecting to the database over TCP, DBackup connects via SSH to the target server and runs database tools **remotely**. This is **not** an SSH tunnel — the dump/restore commands execute on the remote host.
+
+### Shared SSH Infrastructure (`src/lib/ssh/`)
+
+```
+src/lib/ssh/
+├── index.ts           # Re-exports
+├── ssh-client.ts      # SshClient class (connect, exec, execStream, end)
+└── utils.ts           # shellEscape, remoteEnv, remoteBinaryCheck, extractSshConfig, arg builders
+```
+
+#### `SshClient`
+
+Generic SSH2 client used by all adapters:
+
+```typescript
+import { SshClient, SshConnectionConfig } from "@/lib/ssh";
+
+const client = new SshClient();
+await client.connect(sshConfig);
+
+// Simple command execution (buffered)
+const result = await client.exec("mysqldump --version");
+// { stdout: "...", stderr: "...", code: 0 }
+
+// Streaming execution (for dumps — pipes stdout to a writable stream)
+const stream = await client.execStream("pg_dump -F c mydb");
+stream.pipe(outputFile);
+
+client.end();
+```
+
+Configuration: `readyTimeout: 20000ms`, `keepaliveInterval: 10000ms`, `keepaliveCountMax: 3`.
+
+#### Shared Utilities
+
+| Function | Purpose |
+| :--- | :--- |
+| `shellEscape(value)` | Wraps value in single quotes, escapes embedded quotes |
+| `remoteEnv(vars, cmd)` | Exports env vars before a command (e.g., `export MYSQL_PWD='...'; mysqldump`) — uses `export` to prevent password leaking in OOM kill reports |
+| `remoteBinaryCheck(client, ...candidates)` | Checks if binary exists on remote host, returns resolved path |
+| `isSSHMode(config)` | Returns `true` if `config.connectionMode === "ssh"` |
+| `extractSshConfig(config)` | Extracts `SshConnectionConfig` from adapter config with `sshHost` prefix |
+| `extractSqliteSshConfig(config)` | Same for SQLite (uses `host` instead of `sshHost`) |
+| `buildMysqlArgs(config)` | Builds MySQL CLI args from adapter config |
+| `buildPsqlArgs(config)` | Builds PostgreSQL CLI args |
+| `buildMongoArgs(config)` | Builds MongoDB CLI args |
+| `buildRedisArgs(config)` | Builds Redis CLI args |
+
+#### Shared SSH Config Fields (`sshFields`)
+
+All SSH-capable schemas spread the shared `sshFields` object from `definitions.ts`:
+
+```typescript
+const sshFields = {
+  connectionMode: z.enum(["direct", "ssh"]).default("direct"),
+  sshHost: z.string().optional(),
+  sshPort: z.coerce.number().default(22).optional(),
+  sshUsername: z.string().optional(),
+  sshAuthType: z.enum(["password", "privateKey", "agent"]).default("password").optional(),
+  sshPassword: z.string().optional(),
+  sshPrivateKey: z.string().optional(),
+  sshPassphrase: z.string().optional(),
+};
+
+// Usage in schema:
+export const MySQLSchema = z.object({
+  host: z.string().default("localhost"),
+  // ... database fields ...
+  ...sshFields,
+});
+```
+
+### Adding SSH Mode to an Adapter
+
+Each adapter operation (`dump`, `restore`, `test`, `getDatabases`) checks for SSH mode and branches:
+
+```typescript
+import { isSSHMode, extractSshConfig } from "@/lib/ssh";
+
+async dump(config, destinationPath, onLog) {
+  const sshConfig = extractSshConfig(config);
+
+  if (sshConfig) {
+    return dumpViaSSH(config, sshConfig, destinationPath, onLog);
+  }
+  return dumpDirect(config, destinationPath, onLog);
+}
+```
+
+#### SSH Dump Pattern
+
+```typescript
+async function dumpViaSSH(config, sshConfig, destPath, onLog) {
+  const client = new SshClient();
+  try {
+    await client.connect(sshConfig);
+
+    // 1. Check binary availability
+    const binary = await remoteBinaryCheck(client, "mysqldump", "mariadb-dump");
+
+    // 2. Build command with argument builder
+    const args = buildMysqlArgs(config);
+    const cmd = remoteEnv(
+      { MYSQL_PWD: config.password },
+      `${binary} ${args.join(" ")} --single-transaction ${shellEscape(config.database)}`
+    );
+
+    // 3. Stream output to local file
+    const stream = await client.execStream(cmd);
+    const output = createWriteStream(destPath);
+    stream.pipe(output);
+
+    await new Promise((resolve, reject) => {
+      stream.on("exit", (code) => code === 0 ? resolve() : reject());
+      stream.on("error", reject);
+    });
+  } finally {
+    client.end();
+  }
+}
+```
+
+::: warning Event Handler
+Always use `stream.on("exit", ...)` instead of `stream.on("close", ...)` for SSH2 exec streams. The `close` event does not fire reliably when piping stdin/stdout through SSH channels.
+:::
+
+### Test SSH Endpoint
+
+`POST /api/adapters/test-ssh` provides a generic SSH connectivity test:
+
+```json
+{
+  "adapterId": "mysql",
+  "config": {
+    "sshHost": "192.168.1.10",
+    "sshPort": 22,
+    "sshUsername": "deploy",
+    "sshAuthType": "password",
+    "sshPassword": "..."
+  }
+}
+```
+
+For non-MSSQL adapters, runs `echo "SSH connection test"`. For MSSQL, tests SFTP access to the backup path.
+
 ## MySQL Adapter
 
 ### Configuration Schema
@@ -150,6 +298,7 @@ const MySQLSchema = z.object({
   database: z.union([z.string(), z.array(z.string())]).default(""),
   options: z.string().optional().describe("Additional mysqldump options"),
   disableSsl: z.boolean().default(false).describe("Disable SSL"),
+  ...sshFields,
 });
 ```
 

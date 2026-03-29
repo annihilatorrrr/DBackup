@@ -41,13 +41,25 @@ DBackup follows a strictly layered architecture to decouple the UI from business
         │ Adapters │   │ Adapters │   │ Adapters │
         └──────────┘   └──────────┘   └──────────┘
               │               │               │
-              ▼               ▼               ▼
-        ┌──────────┐   ┌──────────┐   ┌──────────┐
-        │  MySQL   │   │    S3    │   │ Discord  │
-        │PostgreSQL│   │   SFTP   │   │  Email   │
-        │ MongoDB  │   │  Local   │   │          │
-        └──────────┘   └──────────┘   └──────────┘
+         ┌────┴────┐         │               │
+         ▼         ▼         ▼               ▼
+   ┌──────────┐ ┌──────┐ ┌──────────┐ ┌──────────┐
+   │  Direct  │ │ SSH  │ │    S3    │ │ Discord  │
+   │  (TCP)   │ │(Exec)│ │   SFTP   │ │  Email   │
+   │          │ │      │ │  Local   │ │          │
+   │  MySQL   │ │MySQL │ └──────────┘ └──────────┘
+   │PostgreSQL│ │PG    │
+   │ MongoDB  │ │Mongo │
+   └──────────┘ └──────┘
 ```
+
+### SSH Remote Execution
+
+Database adapters support two connection modes:
+- **Direct**: CLI tools run locally on the DBackup server, connecting to the database via TCP
+- **SSH**: CLI tools run remotely on the target server via SSH exec (not tunneling)
+
+SSH mode uses a shared infrastructure (`src/lib/ssh/`) with `SshClient`, `shellEscape`, `remoteBinaryCheck`, and per-adapter argument builders. See [Database Adapters](/developer-guide/adapters/database#ssh-mode-architecture) for implementation details.
 
 ## Four-Layer Architecture
 

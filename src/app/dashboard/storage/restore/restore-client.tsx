@@ -73,6 +73,7 @@ export function RestoreClient() {
     // Advanced Restore State
     const [analyzedDbs, setAnalyzedDbs] = useState<string[]>([]);
     const [dbConfig, setDbConfig] = useState<DbConfig[]>([]);
+    const [backupSourceType, setBackupSourceType] = useState<string>("");
 
     // Execution State
     const [restoring, setRestoring] = useState(false);
@@ -96,6 +97,10 @@ export function RestoreClient() {
     const [compatibilityIssues, setCompatibilityIssues] = useState<{ type: 'error' | 'warning'; message: string }[]>([]);
 
     const isSystemConfig = file?.sourceType === 'SYSTEM';
+
+    const SERVER_ADAPTERS = ['mysql', 'mariadb', 'postgres', 'mongodb', 'mssql', 'redis'];
+    const resolvedSourceType = backupSourceType || file?.sourceType || '';
+    const isServerAdapter = SERVER_ADAPTERS.includes(resolvedSourceType.toLowerCase());
 
     const [restoreOptions, setRestoreOptions] = useState<RestoreOptions>({
         settings: true,
@@ -221,6 +226,9 @@ export function RestoreClient() {
 
             if (res.ok) {
                 const data = await res.json();
+                if (data.sourceType) {
+                    setBackupSourceType(data.sourceType);
+                }
                 if (data.databases && data.databases.length > 0) {
                     setAnalyzedDbs(data.databases);
                     setDbConfig(data.databases.map((db: string) => ({
@@ -531,6 +539,10 @@ export function RestoreClient() {
                                     </Select>
 
                                     {/* Version Compatibility Check */}
+                                    {targetSource && isLoadingTargetDbs && (
+                                        <Skeleton className="h-9 w-full rounded-md" />
+                                    )}
+
                                     {targetSource && !isLoadingTargetDbs && targetServerVersion && compatibilityIssues.length === 0 && file?.engineVersion && (
                                         <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-green-500/30 bg-green-500/5 text-sm text-green-700 dark:text-green-400">
                                             <ShieldCheck className="h-4 w-4 shrink-0" />
@@ -569,7 +581,9 @@ export function RestoreClient() {
                                                 <CardDescription>
                                                     {analyzedDbs.length > 0
                                                         ? 'Select which databases to restore and configure target names.'
-                                                        : 'Choose how to restore this backup.'}
+                                                        : isServerAdapter
+                                                            ? 'Specify the target database name for the restore.'
+                                                            : 'Choose how to restore this backup.'}
                                                 </CardDescription>
                                             </div>
                                             {analyzedDbs.length > 0 && (
@@ -580,12 +594,15 @@ export function RestoreClient() {
                                         </div>
                                     </CardHeader>
                                     <CardContent>
-                                        {isAnalyzing ? (
+                                        {(isAnalyzing || isLoadingTargetDbs) ? (
                                             <div className="space-y-3">
-                                                <Label className="text-sm font-medium">Analyzing Backup Content...</Label>
+                                                <Label className="text-sm font-medium text-muted-foreground">
+                                                    {isLoadingTargetDbs ? 'Loading target databases...' : 'Analyzing Backup Content...'}
+                                                </Label>
                                                 <div className="space-y-2">
                                                     <Skeleton className="h-10 w-full" />
                                                     <Skeleton className="h-10 w-full" />
+                                                    <Skeleton className="h-10 w-3/4" />
                                                 </div>
                                             </div>
                                         ) : analyzedDbs.length > 0 ? (
@@ -653,6 +670,25 @@ export function RestoreClient() {
                                                         })}
                                                     </TableBody>
                                                 </Table>
+                                            </div>
+                                        ) : isServerAdapter ? (
+                                            <div className="space-y-3">
+                                                <p className="text-sm text-muted-foreground">
+                                                    The database names in this backup could not be determined automatically.
+                                                    Leave empty to restore into the original database, or specify a target name.
+                                                </p>
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-sm">Target Database Name</Label>
+                                                    <Input
+                                                        placeholder="Leave empty for original database..."
+                                                        value={targetDbName}
+                                                        onChange={(e) => setTargetDbName(e.target.value)}
+                                                        className="h-8"
+                                                    />
+                                                    <p className="text-xs text-muted-foreground">
+                                                        If empty, the backup will be restored into its original database. Existing data will be overwritten.
+                                                    </p>
+                                                </div>
                                             </div>
                                         ) : (
                                             <RadioGroup defaultValue="overwrite" className="grid grid-cols-1 gap-4">
@@ -857,7 +893,7 @@ export function RestoreClient() {
                                     ) : (
                                         <Button
                                             onClick={() => handleRestore(false)}
-                                            disabled={restoring || !targetSource || (analyzedDbs.length > 0 && !dbConfig.some(d => d.selected)) || compatibilityIssues.length > 0}
+                                            disabled={restoring || !targetSource || isLoadingTargetDbs || isAnalyzing || (analyzedDbs.length > 0 && !dbConfig.some(d => d.selected)) || compatibilityIssues.length > 0}
                                             className="w-full"
                                         >
                                             {restoring && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

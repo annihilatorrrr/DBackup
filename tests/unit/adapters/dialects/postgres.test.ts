@@ -8,6 +8,7 @@ describe('PostgreSQL Dialect (Base)', () => {
 
     // Base config with required fields for testing
     const baseConfig: PostgresConfig = {
+        connectionMode: 'direct',
         host: 'localhost',
         port: 5432,
         user: 'test_user',

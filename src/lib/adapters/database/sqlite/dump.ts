@@ -1,15 +1,8 @@
 import { DatabaseAdapter } from "@/lib/core/interfaces";
 import { spawn } from "child_process";
 import fs from "fs";
-import { SshClient } from "./ssh-client";
+import { SshClient, shellEscape, extractSqliteSshConfig } from "@/lib/ssh";
 import { SQLiteConfig } from "@/lib/adapters/definitions";
-
-/**
- * Escapes a value for safe inclusion in a single-quoted shell string.
- */
-function shellEscape(value: string): string {
-    return "'" + value.replace(/'/g, "'\\''") + "'";
-}
 
 export const dump: DatabaseAdapter["dump"] = async (config, destinationPath, onLog, onProgress) => {
     const startedAt = new Date();
@@ -95,7 +88,9 @@ async function dumpSsh(config: SQLiteConfig, destinationPath: string, log: (msg:
     const binaryPath = config.sqliteBinaryPath || "sqlite3";
     const dbPath = config.path;
 
-    await client.connect(config);
+    const sshConfig = extractSqliteSshConfig(config);
+    if (!sshConfig) throw new Error("SSH host and username are required");
+    await client.connect(sshConfig);
     log("SSH connection established.");
 
     return new Promise((resolve, reject) => {
@@ -114,7 +109,7 @@ async function dumpSsh(config: SQLiteConfig, destinationPath: string, log: (msg:
                 log(`[Remote Stderr]: ${data.toString()}`);
             });
 
-            stream.on("close", (code: number, _signal: any) => {
+            stream.on("exit", (code: number | null, signal?: string) => {
                 client.end();
                 if (code === 0) {
                      log("Remote dump completed successfully.");
@@ -123,7 +118,7 @@ async function dumpSsh(config: SQLiteConfig, destinationPath: string, log: (msg:
                          else resolve({ success: true, size: stats.size, path: destinationPath });
                      });
                 } else {
-                    reject(new Error(`Remote process exited with code ${code}`));
+                    reject(new Error(`Remote process exited with code ${code ?? 'null'}${signal ? ` (signal: ${signal})` : ''}`));
                 }
             });
         });

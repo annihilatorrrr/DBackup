@@ -13,6 +13,11 @@ src/lib/adapters/
 ├── storage/           # Local, S3, SFTP, etc.
 ├── notification/      # Discord, Email, etc.
 └── oidc/              # SSO providers (Authentik, PocketID, Generic)
+
+src/lib/ssh/            # Shared SSH infrastructure
+├── ssh-client.ts      # Generic SSH2 client
+├── utils.ts           # Shell escaping, binary checks, arg builders
+└── index.ts           # Re-exports
 ```
 
 ## Adapter Types

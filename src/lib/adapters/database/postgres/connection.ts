@@ -1,10 +1,51 @@
 import { execFile } from "child_process";
 import util from "util";
 import { PostgresConfig } from "@/lib/adapters/definitions";
+import {
+    SshClient,
+    isSSHMode,
+    extractSshConfig,
+    buildPsqlArgs,
+    remoteEnv,
+    remoteBinaryCheck,
+    shellEscape,
+} from "@/lib/ssh";
 
 export const execFileAsync = util.promisify(execFile);
 
 export async function test(config: PostgresConfig): Promise<{ success: boolean; message: string; version?: string }> {
+    if (isSSHMode(config)) {
+        const sshConfig = extractSshConfig(config)!;
+        const ssh = new SshClient();
+        try {
+            await ssh.connect(sshConfig);
+            await remoteBinaryCheck(ssh, "psql");
+            const args = buildPsqlArgs(config);
+            const env: Record<string, string | undefined> = {};
+            if (config.password) env.PGPASSWORD = config.password;
+
+            const dbsToTry = ['postgres', 'template1'];
+            if (typeof config.database === 'string' && config.database) dbsToTry.push(config.database);
+
+            for (const db of dbsToTry) {
+                const cmd = remoteEnv(env, `psql ${args.join(" ")} -d ${shellEscape(db)} -t -c 'SELECT version()'`);
+                const result = await ssh.exec(cmd);
+                if (result.code === 0) {
+                    const rawVersion = result.stdout.trim();
+                    const versionMatch = rawVersion.match(/PostgreSQL\s+([\d.]+)/);
+                    const version = versionMatch ? versionMatch[1] : rawVersion;
+                    return { success: true, message: "Connection successful (via SSH)", version };
+                }
+            }
+            return { success: false, message: "SSH connection to PostgreSQL failed" };
+        } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : String(error);
+            return { success: false, message: `SSH connection failed: ${msg}` };
+        } finally {
+            ssh.end();
+        }
+    }
+
     const dbsToTry = ['postgres', 'template1'];
     if (typeof config.database === 'string' && config.database) dbsToTry.push(config.database);
 
@@ -33,6 +74,31 @@ export async function test(config: PostgresConfig): Promise<{ success: boolean; 
 }
 
 export async function getDatabases(config: PostgresConfig): Promise<string[]> {
+    if (isSSHMode(config)) {
+        const sshConfig = extractSshConfig(config)!;
+        const ssh = new SshClient();
+        try {
+            await ssh.connect(sshConfig);
+            const args = buildPsqlArgs(config);
+            const env: Record<string, string | undefined> = {};
+            if (config.password) env.PGPASSWORD = config.password;
+
+            const dbsToTry = ['postgres', 'template1'];
+            if (typeof config.database === 'string' && config.database) dbsToTry.push(config.database);
+
+            for (const db of dbsToTry) {
+                const cmd = remoteEnv(env, `psql ${args.join(" ")} -d ${shellEscape(db)} -t -A -c 'SELECT datname FROM pg_database WHERE datistemplate = false;'`);
+                const result = await ssh.exec(cmd);
+                if (result.code === 0) {
+                    return result.stdout.split('\n').map(s => s.trim()).filter(s => s);
+                }
+            }
+            throw new Error("Failed to list databases via SSH");
+        } finally {
+            ssh.end();
+        }
+    }
+
     const dbsToTry = ['postgres', 'template1'];
     if (typeof config.database === 'string' && config.database) dbsToTry.push(config.database);
 
@@ -54,41 +120,62 @@ export async function getDatabases(config: PostgresConfig): Promise<string[]> {
 
 import { DatabaseInfo } from "@/lib/core/interfaces";
 
+const pgStatsQuery = `
+    SELECT d.datname, pg_database_size(d.datname) AS size_bytes, (SELECT count(*) FROM information_schema.tables WHERE table_catalog = d.datname AND table_schema NOT IN ('pg_catalog', 'information_schema')) AS table_count FROM pg_database d WHERE d.datistemplate = false ORDER BY d.datname;
+`.trim();
+
+function parseStatsOutput(stdout: string): DatabaseInfo[] {
+    return stdout
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line)
+        .map(line => {
+            const parts = line.split('\t');
+            return {
+                name: parts[0],
+                sizeInBytes: parseInt(parts[1], 10) || 0,
+                tableCount: parseInt(parts[2], 10) || 0,
+            };
+        });
+}
+
 export async function getDatabasesWithStats(config: PostgresConfig): Promise<DatabaseInfo[]> {
+    if (isSSHMode(config)) {
+        const sshConfig = extractSshConfig(config)!;
+        const ssh = new SshClient();
+        try {
+            await ssh.connect(sshConfig);
+            const args = buildPsqlArgs(config);
+            const env: Record<string, string | undefined> = {};
+            if (config.password) env.PGPASSWORD = config.password;
+
+            const dbsToTry = ['postgres', 'template1'];
+            if (typeof config.database === 'string' && config.database) dbsToTry.push(config.database);
+
+            for (const db of dbsToTry) {
+                const cmd = remoteEnv(env, `psql ${args.join(" ")} -d ${shellEscape(db)} -t -A -F '\t' -c ${shellEscape(pgStatsQuery)}`);
+                const result = await ssh.exec(cmd);
+                if (result.code === 0) {
+                    return parseStatsOutput(result.stdout);
+                }
+            }
+            throw new Error("Failed to get database stats via SSH");
+        } finally {
+            ssh.end();
+        }
+    }
+
     const dbsToTry = ['postgres', 'template1'];
     if (typeof config.database === 'string' && config.database) dbsToTry.push(config.database);
 
     const env = { ...process.env, PGPASSWORD: config.password };
     let lastError: unknown;
 
-    // Query database sizes and approximate table counts
-    const query = `
-        SELECT
-            d.datname,
-            pg_database_size(d.datname) AS size_bytes,
-            (SELECT count(*) FROM information_schema.tables WHERE table_catalog = d.datname AND table_schema NOT IN ('pg_catalog', 'information_schema')) AS table_count
-        FROM pg_database d
-        WHERE d.datistemplate = false
-        ORDER BY d.datname;
-    `.trim().replace(/\n/g, ' ');
-
     for (const db of dbsToTry) {
         try {
-            const args = ['-h', config.host, '-p', String(config.port), '-U', config.user, '-d', db, '-t', '-A', '-F', '\t', '-c', query];
+            const args = ['-h', config.host, '-p', String(config.port), '-U', config.user, '-d', db, '-t', '-A', '-F', '\t', '-c', pgStatsQuery];
             const { stdout } = await execFileAsync('psql', args, { env });
-
-            return stdout
-                .split('\n')
-                .map(line => line.trim())
-                .filter(line => line)
-                .map(line => {
-                    const parts = line.split('\t');
-                    return {
-                        name: parts[0],
-                        sizeInBytes: parseInt(parts[1], 10) || 0,
-                        tableCount: parseInt(parts[2], 10) || 0,
-                    };
-                });
+            return parseStatsOutput(stdout);
         } catch (error: unknown) {
             lastError = error;
         }

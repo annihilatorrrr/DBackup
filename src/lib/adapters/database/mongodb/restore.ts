@@ -4,8 +4,10 @@ import { MongoClient } from "mongodb";
 import { MongoDBConfig } from "@/lib/adapters/definitions";
 import { spawn } from "child_process";
 import { createReadStream } from "fs";
+import fs from "fs/promises";
 import { waitForProcess } from "@/lib/adapters/process";
 import path from "path";
+import { randomUUID } from "crypto";
 import {
     isMultiDbTar,
     extractSelectedDatabases,
@@ -14,6 +16,14 @@ import {
     shouldRestoreDatabase,
     getTargetDatabaseName,
 } from "../common/tar-utils";
+import {
+    SshClient,
+    isSSHMode,
+    extractSshConfig,
+    buildMongoArgs,
+    remoteBinaryCheck,
+    shellEscape,
+} from "@/lib/ssh";
 
 /** Extended config with optional privileged auth for restore operations */
 type MongoDBRestoreConfig = MongoDBConfig & {
@@ -48,6 +58,11 @@ function buildConnectionUri(config: MongoDBConfig): string {
 }
 
 export async function prepareRestore(config: MongoDBRestoreConfig, databases: string[]): Promise<void> {
+    if (isSSHMode(config)) {
+        // In SSH mode, we trust mongorestore to create databases. Skip the permission check.
+        return;
+    }
+
     // Determine credentials (privileged or standard)
     const usageConfig: MongoDBConfig = { ...config };
     if (config.privilegedAuth) {
@@ -99,6 +114,10 @@ async function restoreSingleDatabase(
     log: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void,
     fromStdin: boolean = false
 ): Promise<void> {
+    if (isSSHMode(config)) {
+        return restoreSingleDatabaseSSH(sourcePath, targetDb, sourceDb, config, log);
+    }
+
     const args: string[] = [];
 
     if (config.uri) {
@@ -159,6 +178,86 @@ async function restoreSingleDatabase(
     });
 
     await waitForProcess(restoreProcess, 'mongorestore');
+}
+
+/**
+ * SSH variant: upload archive via SFTP, then run mongorestore on the remote server.
+ * Uses SFTP protocol which guarantees data integrity (unlike piping through exec stdin).
+ */
+async function restoreSingleDatabaseSSH(
+    sourcePath: string,
+    targetDb: string | undefined,
+    sourceDb: string | undefined,
+    config: MongoDBRestoreConfig,
+    log: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void
+): Promise<void> {
+    const sshConfig = extractSshConfig(config)!;
+    const ssh = new SshClient();
+    await ssh.connect(sshConfig);
+
+    const remoteTempFile = `/tmp/dbackup_mongorestore_${randomUUID()}.archive`;
+
+    try {
+        const mongorestoreBin = await remoteBinaryCheck(ssh, "mongorestore");
+        const args = buildMongoArgs(config);
+
+        args.push(`--archive=${shellEscape(remoteTempFile)}`);
+        args.push("--gzip");
+        args.push("--drop");
+
+        if (sourceDb && targetDb && sourceDb !== targetDb) {
+            args.push("--nsFrom", shellEscape(`${sourceDb}.*`));
+            args.push("--nsTo", shellEscape(`${targetDb}.*`));
+            log(`Remapping database: ${sourceDb} -> ${targetDb}`, 'info');
+        } else if (targetDb) {
+            args.push("--nsInclude", shellEscape(`${targetDb}.*`));
+        }
+
+        // 1. Upload archive to remote via SFTP
+        const totalSize = (await fs.stat(sourcePath)).size;
+        log(`Uploading archive to remote server via SFTP (${(totalSize / 1024 / 1024).toFixed(1)} MB)...`, 'info');
+        await ssh.uploadFile(sourcePath, remoteTempFile);
+
+        // Verify upload integrity
+        try {
+            const sizeCheck = await ssh.exec(`stat -c '%s' ${shellEscape(remoteTempFile)} 2>/dev/null || stat -f '%z' ${shellEscape(remoteTempFile)}`);
+            const remoteSize = parseInt(sizeCheck.stdout.trim(), 10);
+            if (remoteSize !== totalSize) {
+                throw new Error(`Upload size mismatch! Local: ${totalSize}, Remote: ${remoteSize}`);
+            }
+            log(`Upload verified: ${(remoteSize / 1024 / 1024).toFixed(1)} MB`);
+        } catch (e) {
+            if (e instanceof Error && e.message.includes('mismatch')) throw e;
+        }
+
+        // 2. Run mongorestore on the remote server
+        const cmd = `${mongorestoreBin} ${args.join(" ")}`;
+        log(`Restoring database (SSH)`, 'info', 'command', `mongorestore ${args.join(' ').replace(config.password || '___NONE___', '******')}`);
+
+        await new Promise<void>((resolve, reject) => {
+            ssh.execStream(cmd, (err, stream) => {
+                if (err) return reject(err);
+
+                stream.on('data', () => {});
+
+                stream.stderr.on('data', (data: any) => {
+                    const msg = data.toString().trim();
+                    if (msg) log(`[mongorestore] ${msg}`, 'info');
+                });
+
+                stream.on('exit', (code: number | null, signal?: string) => {
+                    if (code === 0) resolve();
+                    else reject(new Error(`Remote mongorestore exited with code ${code ?? 'null'}${signal ? ` (signal: ${signal})` : ''}`));
+                });
+
+                stream.on('error', (err: Error) => reject(err));
+            });
+        });
+    } finally {
+        // Cleanup remote temp file
+        await ssh.exec(`rm -f ${shellEscape(remoteTempFile)}`).catch(() => {});
+        ssh.end();
+    }
 }
 
 export async function restore(

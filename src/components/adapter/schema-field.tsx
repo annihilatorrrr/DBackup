@@ -173,7 +173,9 @@ export function SchemaField({
                                 <SelectContent>
                                     {((unwrappedShape as any).options || (unwrappedShape as any)._def?.values || []).map((val: string) => (
                                         <SelectItem key={val} value={val} className="capitalize">
-                                            {val === "none" ? "None (Insecure)" : val === "ssl" ? "SSL / TLS" : val === "starttls" ? "STARTTLS" : val === "ssh" ? "SSH" : val}
+                                            {val === "none" ? "None (Insecure)" : val === "ssl" ? "SSL / TLS" : val === "starttls" ? "STARTTLS" : val === "ssh" ? (
+                                                <span className="inline-flex items-center gap-2">SSH <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary">Beta</span></span>
+                                            ) : val}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>

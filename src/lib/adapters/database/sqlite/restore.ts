@@ -1,15 +1,9 @@
 import { DatabaseAdapter } from "@/lib/core/interfaces";
 import { spawn } from "child_process";
 import fs from "fs";
-import { SshClient } from "./ssh-client";
+import { SshClient, shellEscape, extractSqliteSshConfig } from "@/lib/ssh";
 import { SQLiteConfig } from "@/lib/adapters/definitions";
-
-/**
- * Escapes a value for safe inclusion in a single-quoted shell string.
- */
-function shellEscape(value: string): string {
-    return "'" + value.replace(/'/g, "'\\''") + "'";
-}
+import { randomUUID } from "crypto";
 
 export const prepareRestore: DatabaseAdapter["prepareRestore"] = async (_config, _databases) => {
      // No major prep needed for SQLite mostly, but could check write permissions here
@@ -118,55 +112,73 @@ async function restoreSsh(config: SQLiteConfig, sourcePath: string, log: (msg: s
     const binaryPath = config.sqliteBinaryPath || "sqlite3";
     const dbPath = config.path;
 
-    await client.connect(config);
+    const sshConfig = extractSqliteSshConfig(config);
+    if (!sshConfig) throw new Error("SSH host and username are required");
+    await client.connect(sshConfig);
     log("SSH connection established.");
 
-    // Create remote backup and delete original
-    log("Creating remote backup of existing DB and cleaning up...");
-    const escapedPath = shellEscape(dbPath);
-    const backupCmd = `if [ -f ${escapedPath} ]; then cp ${escapedPath} ${escapedPath}.bak-$(date +%s); rm ${escapedPath}; echo "Backed up and removed old DB"; else echo "No existing DB"; fi`;
-    await client.exec(backupCmd);
+    const remoteTempFile = `/tmp/dbackup_sqlite_restore_${randomUUID()}.sql`;
 
-    return new Promise(async (resolve, reject) => {
-        const command = `${shellEscape(binaryPath)} ${escapedPath}`;
+    try {
+        // Create remote backup and delete original
+        log("Creating remote backup of existing DB and cleaning up...");
+        const escapedPath = shellEscape(dbPath);
+        const backupCmd = `if [ -f ${escapedPath} ]; then cp ${escapedPath} ${escapedPath}.bak-$(date +%s); rm ${escapedPath}; echo "Backed up and removed old DB"; else echo "No existing DB"; fi`;
+        await client.exec(backupCmd);
+
+        // 1. Upload SQL dump to remote via SFTP
+        const totalSize = (await fs.promises.stat(sourcePath)).size;
+        log(`Uploading dump to remote server via SFTP (${(totalSize / 1024 / 1024).toFixed(1)} MB)...`);
+        await client.uploadFile(sourcePath, remoteTempFile);
+
+        // Verify upload integrity
+        try {
+            const sizeCheck = await client.exec(`stat -c '%s' ${shellEscape(remoteTempFile)} 2>/dev/null || stat -f '%z' ${shellEscape(remoteTempFile)}`);
+            const remoteSize = parseInt(sizeCheck.stdout.trim(), 10);
+            if (remoteSize !== totalSize) {
+                throw new Error(`Upload size mismatch! Local: ${totalSize}, Remote: ${remoteSize}`);
+            }
+            log(`Upload verified: ${(remoteSize / 1024 / 1024).toFixed(1)} MB`);
+        } catch (e) {
+            if (e instanceof Error && e.message.includes('mismatch')) throw e;
+        }
+
+        if (onProgress) onProgress(50);
+
+        // 2. Run sqlite3 on the remote server with the uploaded file
+        const command = `${shellEscape(binaryPath)} ${escapedPath} < ${shellEscape(remoteTempFile)}`;
         log(`Executing remote command: ${binaryPath} ${dbPath}`);
 
-        client.execStream(command, async (err, stream) => {
-            if (err) {
-                client.end();
-                return reject(err);
-            }
+        await new Promise<void>((resolve, reject) => {
+            client.execStream(command, (err, stream) => {
+                if (err) return reject(err);
 
-            // Setup generic read stream with progress
-             const totalSize = (await fs.promises.stat(sourcePath)).size;
-             let processed = 0;
-             const readStream = fs.createReadStream(sourcePath);
+                stream.on('data', () => {});
 
-             if (onProgress) {
-                 readStream.on('data', (chunk) => {
-                     processed += chunk.length;
-                     const percent = Math.round((processed / totalSize) * 100);
-                     onProgress(percent);
-                 });
-             }
+                stream.stderr.on("data", (data: any) => {
+                    log(`[Remote Stderr]: ${data.toString()}`);
+                });
 
-            readStream.pipe(stream.stdin);
+                stream.on("exit", (code: number | null, signal?: string) => {
+                    if (code === 0) {
+                        if (onProgress) onProgress(100);
+                        log("Remote restore completed successfully.");
+                        resolve();
+                    } else {
+                        reject(new Error(`Remote process exited with code ${code ?? 'null'}${signal ? ` (signal: ${signal})` : ''}`));
+                    }
+                });
 
-            stream.stderr.on("data", (data: any) => {
-                log(`[Remote Stderr]: ${data.toString()}`);
-            });
-
-            stream.on("close", (code: number, _signal: any) => {
-                client.end();
-                if (code === 0) {
-                     log("Remote restore completed successfully.");
-                     resolve({ success: true });
-                } else {
-                    reject(new Error(`Remote process exited with code ${code}`));
-                }
+                stream.on('error', (err: Error) => reject(err));
             });
         });
-    });
+
+        return { success: true };
+    } finally {
+        // Cleanup remote temp file
+        await client.exec(`rm -f ${shellEscape(remoteTempFile)}`).catch(() => {});
+        client.end();
+    }
 }
 
 
