@@ -109,7 +109,7 @@ async function dumpSsh(config: SQLiteConfig, destinationPath: string, log: (msg:
                 log(`[Remote Stderr]: ${data.toString()}`);
             });
 
-            stream.on("exit", (code: number, _signal: any) => {
+            stream.on("exit", (code: number | null, signal?: string) => {
                 client.end();
                 if (code === 0) {
                      log("Remote dump completed successfully.");
@@ -118,7 +118,7 @@ async function dumpSsh(config: SQLiteConfig, destinationPath: string, log: (msg:
                          else resolve({ success: true, size: stats.size, path: destinationPath });
                      });
                 } else {
-                    reject(new Error(`Remote process exited with code ${code}`));
+                    reject(new Error(`Remote process exited with code ${code ?? 'null'}${signal ? ` (signal: ${signal})` : ''}`));
                 }
             });
         });

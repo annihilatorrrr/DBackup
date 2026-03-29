@@ -79,9 +79,46 @@ export function DatabaseFormContent({
     healthNotificationsDisabled,
     onHealthNotificationsDisabledChange,
 }: SectionProps) {
-    const { watch } = useFormContext();
+    const { watch, getValues } = useFormContext();
     const mode = watch("config.mode");
     const authType = watch("config.authType");
+    const [isTestingSqliteSsh, setIsTestingSqliteSsh] = useState(false);
+
+    const testSqliteSshConnection = async () => {
+        setIsTestingSqliteSsh(true);
+        const toastId = toast.loading("Testing SSH connection...");
+        try {
+            const config = getValues("config");
+            // Map SQLite field names to the generic SSH field names expected by the API
+            const mappedConfig = {
+                ...config,
+                sshHost: config.host,
+                sshPort: config.port,
+                sshUsername: config.username,
+                sshAuthType: config.authType,
+                sshPassword: config.password,
+                sshPrivateKey: config.privateKey,
+                sshPassphrase: config.passphrase,
+            };
+            const res = await fetch("/api/adapters/test-ssh", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ config: mappedConfig }),
+            });
+            const result = await res.json();
+            toast.dismiss(toastId);
+            if (result.success) {
+                toast.success(result.message || "SSH connection successful");
+            } else {
+                toast.error(result.message || "SSH connection failed");
+            }
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to test SSH connection");
+        } finally {
+            setIsTestingSqliteSsh(false);
+        }
+    };
 
     if (adapter.id === "sqlite") {
         if (!mode) return null;
@@ -139,6 +176,18 @@ export function DatabaseFormContent({
                             {authType === 'privateKey' && (
                                  <FieldList keys={['privateKey', 'passphrase']} adapter={adapter} />
                             )}
+                            <div className="flex justify-end pt-2">
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={testSqliteSshConnection}
+                                    disabled={isTestingSqliteSsh}
+                                >
+                                    {isTestingSqliteSsh && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Test SSH Connection
+                                </Button>
+                            </div>
                         </TabsContent>
 
                         <TabsContent value="configuration" className="space-y-4 pt-4 mt-2">

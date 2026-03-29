@@ -1,4 +1,4 @@
-import { Client, ConnectConfig, SFTPWrapper } from "ssh2";
+import { Client, ConnectConfig } from "ssh2";
 
 /**
  * Generic SSH connection configuration used across all adapters.
