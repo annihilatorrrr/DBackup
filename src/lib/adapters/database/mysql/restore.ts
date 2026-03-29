@@ -192,8 +192,6 @@ async function restoreSingleFileSSH(
 ): Promise<void> {
     const stats = await fs.stat(sourcePath);
     const totalSize = stats.size;
-    let processedSize = 0;
-    let lastProgress = 0;
 
     const sshConfig = extractSshConfig(config)!;
     const ssh = new SshClient();

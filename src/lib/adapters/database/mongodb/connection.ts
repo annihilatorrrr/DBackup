@@ -5,7 +5,6 @@ import {
     isSSHMode,
     extractSshConfig,
     buildMongoArgs,
-    remoteEnv,
     remoteBinaryCheck,
 } from "@/lib/ssh";
 import { logger } from "@/lib/logger";
