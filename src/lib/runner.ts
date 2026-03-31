@@ -6,10 +6,11 @@ import { stepRetention } from "@/lib/runner/steps/05-retention";
 import { stepCleanup, stepFinalize } from "@/lib/runner/steps/04-completion";
 import prisma from "@/lib/prisma";
 import { processQueue } from "@/lib/queue-manager";
-import { LogEntry, LogLevel, LogType } from "@/lib/core/logs";
+import { LogEntry, LogLevel, LogType, PipelineStage, PIPELINE_STAGES, stageProgress } from "@/lib/core/logs";
 import { logger } from "@/lib/logger";
 import { wrapError } from "@/lib/errors";
 import { registerExecution, unregisterExecution } from "@/lib/execution-abort";
+import { formatDuration } from "@/lib/utils";
 
 const log = logger.child({ module: "Runner" });
 
@@ -73,7 +74,9 @@ export async function performExecution(executionId: string, jobId: string) {
 
     let currentProgress = 0;
     let currentStage = "Initializing";
+    let currentDetail = "";
     let lastLogUpdate = 0;
+    const stageStartTimes = new Map<string, number>();
 
     // Declare ctx early
     let ctx = {
@@ -95,7 +98,10 @@ export async function performExecution(executionId: string, jobId: string) {
         updateProgress: async (p: number, s?: string) => {
             if (s) currentStage = s;
             currentProgress = p;
-        }
+        },
+        setStage: (_stage: PipelineStage) => {},
+        updateDetail: (_detail: string) => {},
+        updateStageProgress: (_percent: number) => {},
     } as unknown as RunnerContext;
 
     // Parse logs and normalize to LogEntry[]
@@ -138,7 +144,7 @@ export async function performExecution(executionId: string, jobId: string) {
                     where: { id: id },
                     data: {
                         logs: JSON.stringify(logs),
-                        metadata: JSON.stringify({ progress: currentProgress, stage: currentStage })
+                        metadata: JSON.stringify({ progress: currentProgress, stage: currentStage, detail: currentDetail })
                     }
                 });
             } catch (error) {
@@ -176,7 +182,47 @@ export async function performExecution(executionId: string, jobId: string) {
     const updateProgress = (percent: number, stage?: string) => {
         currentProgress = percent;
         if (stage) currentStage = stage;
+        currentDetail = ""; // Clear detail on legacy updateProgress calls
         if (ctx) ctx.metadata = { ...ctx.metadata, progress: currentProgress, stage: currentStage };
+        flushLogs(executionId);
+    };
+
+    /** Set the active pipeline stage. Automatically logs stage transition with duration. */
+    const setStage = (stage: PipelineStage) => {
+        // Finalize previous stage with duration
+        const prevStart = stageStartTimes.get(currentStage);
+        if (prevStart && currentStage !== stage) {
+            const durationMs = Date.now() - prevStart;
+            const entry: LogEntry = {
+                timestamp: new Date().toISOString(),
+                level: "success",
+                type: "general",
+                message: `${currentStage} completed (${formatDuration(durationMs)})`,
+                stage: currentStage,
+                durationMs,
+            };
+            logs.push(entry);
+        }
+
+        currentStage = stage;
+        currentDetail = "";
+        stageStartTimes.set(stage, Date.now());
+        currentProgress = stageProgress(stage, 0);
+        if (ctx) ctx.metadata = { ...ctx.metadata, progress: currentProgress, stage: currentStage, detail: currentDetail };
+        flushLogs(executionId);
+    };
+
+    /** Update the live detail text without changing the stage (e.g. "125.5 MB dumped...") */
+    const updateDetail = (detail: string) => {
+        currentDetail = detail;
+        if (ctx) ctx.metadata = { ...ctx.metadata, detail: currentDetail };
+        flushLogs(executionId);
+    };
+
+    /** Update internal progress within the current stage (0–100) → maps to global progress */
+    const updateStageProgress = (internalPercent: number) => {
+        currentProgress = stageProgress(currentStage as PipelineStage, internalPercent);
+        if (ctx) ctx.metadata = { ...ctx.metadata, progress: currentProgress };
         flushLogs(executionId);
     };
 
@@ -188,6 +234,9 @@ export async function performExecution(executionId: string, jobId: string) {
         logs,
         log: logEntry,
         updateProgress,
+        setStage,
+        updateDetail,
+        updateStageProgress,
         status: "Running",
         startedAt: new Date(),
         execution: initialExe as any,
@@ -207,23 +256,24 @@ export async function performExecution(executionId: string, jobId: string) {
 
         // 1. Initialize (Loads Job Data, Adapters)
         // This will update ctx.job and refresh ctx.execution
+        setStage(PIPELINE_STAGES.INITIALIZING);
         await stepInitialize(ctx);
         checkCancelled();
 
-        updateProgress(0, "Dumping Database");
         // 2. Dump
+        setStage(PIPELINE_STAGES.DUMPING);
         await stepExecuteDump(ctx);
         checkCancelled();
 
-        // 3. Upload (Stage will be set inside stepUpload to correctly distinguish processing/uploading)
+        // 3. Upload (stepUpload sets PROCESSING / UPLOADING / VERIFYING stages internally)
         await stepUpload(ctx);
         checkCancelled();
 
-        updateProgress(90, "Applying Retention Policy");
         // 4. Retention
+        setStage(PIPELINE_STAGES.RETENTION);
         await stepRetention(ctx);
 
-        updateProgress(100, "Completed");
+        setStage(PIPELINE_STAGES.COMPLETED);
         // Upload step may have set status to "Partial" — preserve it
         if (ctx.status === "Running") {
             ctx.status = "Success";

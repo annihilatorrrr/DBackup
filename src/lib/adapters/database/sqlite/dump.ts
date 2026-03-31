@@ -1,4 +1,5 @@
 import { DatabaseAdapter } from "@/lib/core/interfaces";
+import { LogLevel, LogType } from "@/lib/core/logs";
 import { spawn } from "child_process";
 import fs from "fs";
 import { SshClient, shellEscape, extractSqliteSshConfig } from "@/lib/ssh";
@@ -9,9 +10,9 @@ export const dump: DatabaseAdapter["dump"] = async (config, destinationPath, onL
     const mode = config.mode || "local";
     const logs: string[] = [];
 
-    const log = (msg: string) => {
+    const log = (msg: string, level: LogLevel = 'info', type: LogType = 'general', details?: string) => {
         logs.push(msg);
-        if (onLog) onLog(msg);
+        if (onLog) onLog(msg, level, type, details);
     };
 
     try {
@@ -48,12 +49,12 @@ export const dump: DatabaseAdapter["dump"] = async (config, destinationPath, onL
     }
 };
 
-async function dumpLocal(config: SQLiteConfig, destinationPath: string, log: (msg: string) => void, _onProgress?: (percent: number) => void): Promise<any> {
+async function dumpLocal(config: SQLiteConfig, destinationPath: string, log: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void, _onProgress?: (percent: number) => void): Promise<any> {
     const binaryPath = config.sqliteBinaryPath || "sqlite3";
     const dbPath = config.path;
     const writeStream = fs.createWriteStream(destinationPath);
 
-    log(`Executing: ${binaryPath} "${dbPath}" .dump`);
+    log(`Dumping database: ${dbPath}`, 'info', 'command', `${binaryPath} "${dbPath}" .dump`);
 
     return new Promise((resolve, reject) => {
         const child = spawn(binaryPath, [dbPath, ".dump"]);
@@ -61,12 +62,12 @@ async function dumpLocal(config: SQLiteConfig, destinationPath: string, log: (ms
         child.stdout.pipe(writeStream);
 
         child.stderr.on("data", (data) => {
-            log(`[SQLite Stderr]: ${data.toString()}`);
+            log(`SQLite stderr`, 'warning', 'general', data.toString().trim());
         });
 
         child.on("close", (code) => {
             if (code === 0) {
-                log("Dump completed successfully.");
+                log("Dump complete", 'success');
                 fs.stat(destinationPath, (err, stats) => {
                     if (err) resolve({ success: true }); // Should not happen usually
                     else resolve({ success: true, size: stats.size, path: destinationPath });
@@ -82,7 +83,7 @@ async function dumpLocal(config: SQLiteConfig, destinationPath: string, log: (ms
     });
 }
 
-async function dumpSsh(config: SQLiteConfig, destinationPath: string, log: (msg: string) => void, _onProgress?: (percent: number) => void): Promise<any> {
+async function dumpSsh(config: SQLiteConfig, destinationPath: string, log: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void, _onProgress?: (percent: number) => void): Promise<any> {
     const client = new SshClient();
     const writeStream = fs.createWriteStream(destinationPath);
     const binaryPath = config.sqliteBinaryPath || "sqlite3";
@@ -91,11 +92,11 @@ async function dumpSsh(config: SQLiteConfig, destinationPath: string, log: (msg:
     const sshConfig = extractSqliteSshConfig(config);
     if (!sshConfig) throw new Error("SSH host and username are required");
     await client.connect(sshConfig);
-    log("SSH connection established.");
+    log("SSH connection established");
 
     return new Promise((resolve, reject) => {
         const command = `${shellEscape(binaryPath)} ${shellEscape(dbPath)} .dump`;
-        log(`Executing remote command: ${binaryPath} ${dbPath} .dump`);
+        log(`Dumping database (SSH): ${dbPath}`, 'info', 'command', `${binaryPath} ${dbPath} .dump`);
 
         client.execStream(command, (err, stream) => {
             if (err) {
@@ -106,13 +107,13 @@ async function dumpSsh(config: SQLiteConfig, destinationPath: string, log: (msg:
             stream.pipe(writeStream);
 
             stream.stderr.on("data", (data: any) => {
-                log(`[Remote Stderr]: ${data.toString()}`);
+                log(`SQLite stderr`, 'warning', 'general', data.toString().trim());
             });
 
             stream.on("exit", (code: number | null, signal?: string) => {
                 client.end();
                 if (code === 0) {
-                     log("Remote dump completed successfully.");
+                     log("Dump complete", 'success');
                      fs.stat(destinationPath, (err, stats) => {
                          if (err) resolve({ success: true });
                          else resolve({ success: true, size: stats.size, path: destinationPath });

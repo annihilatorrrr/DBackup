@@ -8,6 +8,7 @@ import { logger } from "@/lib/logger";
 import { wrapError, getErrorMessage } from "@/lib/errors";
 import { renderTemplate, NOTIFICATION_EVENTS } from "@/lib/notifications";
 import { recordNotificationLog } from "@/services/notification-log-service";
+import { PIPELINE_STAGES } from "@/lib/core/logs";
 
 const log = logger.child({ step: "04-completion" });
 
@@ -79,6 +80,7 @@ export async function stepFinalize(ctx: RunnerContext) {
         if (!shouldNotify) {
             ctx.log(`Skipping notifications. Condition: ${condition}, Status: ${ctx.status}`);
         } else {
+            ctx.setStage(PIPELINE_STAGES.NOTIFICATIONS);
             ctx.log("Sending notifications...");
 
             for (const channel of ctx.job.notifications) {

@@ -11,6 +11,7 @@ import { ProgressMonitorStream } from "@/lib/streams/progress-monitor";
 import { formatBytes } from "@/lib/utils";
 import { calculateFileChecksum, verifyFileChecksum } from "@/lib/checksum";
 import { getTempDir } from "@/lib/temp-dir";
+import { PIPELINE_STAGES } from "@/lib/core/logs";
 
 export async function stepUpload(ctx: RunnerContext) {
     if (!ctx.job || ctx.destinations.length === 0 || !ctx.tempFile) throw new Error("Context not ready for upload");
@@ -25,9 +26,9 @@ export async function stepUpload(ctx: RunnerContext) {
     const processingLabel = actions.length > 0 ? actions.join(" & ") : "Processing";
 
     if (actions.length > 0) {
-        ctx.updateProgress(0, processingLabel + "...");
+        ctx.setStage(PIPELINE_STAGES.PROCESSING);
     } else {
-        ctx.updateProgress(0, "Uploading Backup...");
+        ctx.setStage(PIPELINE_STAGES.UPLOADING);
     }
 
     // --- PIPELINE CONSTRUCTION (once, shared across all destinations) ---
@@ -37,7 +38,8 @@ export async function stepUpload(ctx: RunnerContext) {
     const sourceStat = await fs.stat(ctx.tempFile);
     const sourceSize = sourceStat.size;
     const progressMonitor = new ProgressMonitorStream(sourceSize, (processed, total, percent) => {
-        ctx.updateProgress(percent, `${processingLabel} (${formatBytes(processed)} / ${formatBytes(total)})`);
+        ctx.updateDetail(`${processingLabel} (${formatBytes(processed)} / ${formatBytes(total)})`);
+        ctx.updateStageProgress(percent);
     });
 
     // 1. Compression Step
@@ -114,6 +116,7 @@ export async function stepUpload(ctx: RunnerContext) {
     }
 
     // --- CHECKSUM CALCULATION ---
+    ctx.setStage(PIPELINE_STAGES.VERIFYING);
     ctx.log("Calculating SHA-256 checksum...");
     const checksum = await calculateFileChecksum(ctx.tempFile);
     ctx.log(`Checksum: ${checksum}`);
@@ -147,7 +150,7 @@ export async function stepUpload(ctx: RunnerContext) {
     const remotePath = `${job.name}/${path.basename(ctx.tempFile)}`;
     const totalDests = ctx.destinations.length;
 
-    ctx.updateProgress(0, "Uploading Backup...");
+    ctx.setStage(PIPELINE_STAGES.UPLOADING);
 
     for (let i = 0; i < totalDests; i++) {
         const dest = ctx.destinations[i];
@@ -156,7 +159,9 @@ export async function stepUpload(ctx: RunnerContext) {
             // Distribute progress across destinations
             const basePercent = (i / totalDests) * 100;
             const slicePercent = (percent / totalDests);
-            ctx.updateProgress(Math.round(basePercent + slicePercent), `Uploading to ${dest.configName} (${percent}%)`);
+            const combinedPercent = Math.round(basePercent + slicePercent);
+            ctx.updateDetail(`${dest.configName} (${percent}%)`);
+            ctx.updateStageProgress(combinedPercent);
         };
 
         ctx.log(`${destLabel} Starting upload...`);

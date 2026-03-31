@@ -82,13 +82,18 @@ async function dumpSingleDatabase(
     log(`Dumping database: ${dbName}`, 'info', 'command', `mongodump ${logArgs.join(' ')}`);
 
     const dumpProcess = spawn('mongodump', args);
+    const stderrBuffer: string[] = [];
 
     dumpProcess.stderr.on('data', (data) => {
         const msg = data.toString().trim();
-        if (msg) log(msg, 'info');
+        if (msg) stderrBuffer.push(msg);
     });
 
     await waitForProcess(dumpProcess, 'mongodump');
+
+    if (stderrBuffer.length > 0) {
+        log(`mongodump output`, 'info', 'command', stderrBuffer.join('\n'));
+    }
 }
 
 /**
@@ -132,12 +137,16 @@ async function dumpSingleDatabaseSSH(
 
                 stream.pipe(writeStream);
 
+                const stderrChunks: string[] = [];
                 stream.stderr.on('data', (data: any) => {
                     const msg = data.toString().trim();
-                    if (msg) log(msg, 'info');
+                    if (msg) stderrChunks.push(msg);
                 });
 
                 stream.on('exit', (code: number | null, signal?: string) => {
+                    if (stderrChunks.length > 0) {
+                        log(`mongodump output`, 'info', 'command', stderrChunks.join('\n'));
+                    }
                     if (code === 0) resolve();
                     else reject(new Error(`Remote mongodump exited with code ${code ?? 'null'}${signal ? ` (signal: ${signal})` : ''}`));
                 });
@@ -211,14 +220,20 @@ export async function dump(
 
             const dumpProcess = spawn('mongodump', args);
             const writeStream = createWriteStream(destinationPath);
+            const stderrLines: string[] = [];
 
             dumpProcess.stdout.pipe(writeStream);
 
             dumpProcess.stderr.on('data', (data) => {
-                log(data.toString().trim());
+                const msg = data.toString().trim();
+                if (msg) stderrLines.push(msg);
             });
 
             await waitForProcess(dumpProcess, 'mongodump');
+
+            if (stderrLines.length > 0) {
+                log(`mongodump output`, 'info', 'command', stderrLines.join('\n'));
+            }
         }
         // Case 2: Multiple Databases - TAR archive with individual mongodump per DB
         else {

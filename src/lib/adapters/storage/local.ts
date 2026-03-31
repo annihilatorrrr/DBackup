@@ -40,8 +40,6 @@ export const LocalFileSystemAdapter: StorageAdapter = {
         try {
             const destDir = path.dirname(destPath);
 
-            if (onLog) onLog(`Preparing local destination: ${destDir}`, 'info', 'general');
-
             await fs.mkdir(destDir, { recursive: true });
 
             // fs.copyFile does not support progress, so we use streams

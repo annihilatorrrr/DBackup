@@ -2,6 +2,29 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.4.0 - Live History Redesign
+*Release: In Progress*
+
+### ✨ Features
+
+- **logging**: Pipeline stage system with typed stages (Initializing, Dumping, Processing, Uploading, Verifying, Retention, Notifications, Completed) and automatic progress calculation per stage
+- **logging**: Stage transitions now log duration of the previous stage for performance visibility
+- **ui**: LogViewer redesign with stages sorted by pipeline order, duration display per stage group, pending stages shown as greyed-out placeholders during execution, and duration badges on individual log entries
+
+### 🎨 Improvements
+
+- **logging**: Runner steps use structured `setStage()`, `updateDetail()`, and `updateStageProgress()` instead of raw progress strings — eliminates regex workarounds in the frontend
+- **logging**: MongoDB adapter now buffers stderr output and emits it as a single log entry with details instead of flooding the log with individual lines
+- **logging**: SQLite adapter logs now use typed log levels and log types for consistent display
+- **ui**: History dialog progress bar now shows stage name and detail text separately for clearer status indication
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.4.0`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v1.3.0 - SSH Remote Execution
 *Released: March 29, 2026*
 
