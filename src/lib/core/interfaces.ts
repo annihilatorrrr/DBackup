@@ -119,7 +119,7 @@ export interface DatabaseAdapter extends BaseAdapter {
      * @param onLog Optional callback for live logs
      * @param onProgress Optional callback for progress (0-100)
      */
-    restore(config: AdapterConfig, sourcePath: string, onLog?: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void, onProgress?: (percentage: number) => void): Promise<BackupResult>;
+    restore(config: AdapterConfig, sourcePath: string, onLog?: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void, onProgress?: (percentage: number, detail?: string) => void): Promise<BackupResult>;
 
     /**
      * Optional method to analyze a dump file and return contained databases

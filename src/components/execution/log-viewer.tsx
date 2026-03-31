@@ -9,10 +9,11 @@ import {
   ChevronDown,
   ArrowDown,
   Loader2,
-  Info
+  Info,
+  Clock
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { LogEntry } from "@/lib/core/logs";
+import { cn, formatDuration } from "@/lib/utils";
+import { LogEntry, BACKUP_STAGE_ORDER, RESTORE_STAGE_ORDER } from "@/lib/core/logs";
 import {
   Accordion,
   AccordionContent,
@@ -27,6 +28,7 @@ interface LogViewerProps {
   className?: string;
   autoScroll?: boolean;
   status?: string; // Overall job status
+  executionType?: string; // "Backup" | "Restore"
 }
 
 interface LogGroup {
@@ -34,9 +36,11 @@ interface LogGroup {
     logs: LogEntry[];
     status: 'pending' | 'running' | 'success' | 'failed';
     startTime?: string;
+    endTime?: string;
+    durationMs?: number;
 }
 
-export function LogViewer({ logs, className, autoScroll = true, status }: LogViewerProps) {
+export function LogViewer({ logs, className, autoScroll = true, status, executionType }: LogViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(autoScroll);
   const [activeStages, setActiveStages] = useState<string[]>([]);
@@ -56,47 +60,80 @@ export function LogViewer({ logs, className, autoScroll = true, status }: LogVie
             level: "info",
             type: "general",
             message: parts.slice(1).join(": ") || rawLog,
-            stage: "General" // Fallback stage
+            stage: "General"
         } as LogEntry;
      });
   }, [logs]);
 
-  // Grouping Logic
+  // Grouping Logic — group by stage, sort by stage order, fill pending stages
   const groupedLogs = useMemo(() => {
-      const groups: LogGroup[] = [];
-      let currentGroup: LogGroup | null = null;
+      // Detect execution type: explicit prop, or infer from stage names
+      const stageOrder = executionType === "Restore"
+          ? RESTORE_STAGE_ORDER
+          : BACKUP_STAGE_ORDER;
 
+      // Build a map of stage → logs
+      const stageMap = new Map<string, LogEntry[]>();
       parsedLogs.forEach(log => {
-          // Normalize stage name by removing parenthesis content (e.g. "Dumping (50%)" -> "Dumping")
-          // Also remove trailing ellipsis "..." and trim whitespace
-          const rawStage = log.stage || "General";
-          const stageName = rawStage.replace(/\s*\(.*\).*$/, "").replace(/\.{3,}$/, "").trim();
+          const stage = log.stage || "General";
+          if (!stageMap.has(stage)) stageMap.set(stage, []);
+          stageMap.get(stage)!.push(log);
+      });
 
-          if (!currentGroup || currentGroup.stage !== stageName) {
-              // Finish previous group status check
-              if (currentGroup) {
-                  const hasError = currentGroup.logs.some(l => l.level === 'error');
-                  if (hasError) currentGroup.status = 'failed';
-                  else currentGroup.status = 'success'; // Assume success if moved to next stage without error
-              }
+      // Determine which known stages appeared
+      const seenStages = new Set(stageMap.keys());
+      const isRunning = !status || status === "Running";
 
-              // Start new group
-                  // Start new group
-                  currentGroup = {
-                      stage: stageName,
-                      logs: [],
-                      status: 'running', // Initially running
-                      startTime: log.timestamp
-                  };
-                  groups.push(currentGroup);
-              }
+      // Find the furthest known stage reached (by stage order index)
+      let maxStageIdx = -1;
+      for (const stage of seenStages) {
+          const idx = stageOrder.indexOf(stage);
+          if (idx > maxStageIdx) maxStageIdx = idx;
+      }
 
-              currentGroup.logs.push(log);
-              if (log.level === 'error') currentGroup.status = 'failed';
+      const groups: LogGroup[] = [];
+
+      // Add known pipeline stages in order
+      for (let i = 0; i < stageOrder.length; i++) {
+          const stage = stageOrder[i];
+          const stageLogs = stageMap.get(stage);
+
+          if (stageLogs && stageLogs.length > 0) {
+              const hasError = stageLogs.some(l => l.level === "error");
+              const isLast = i === maxStageIdx;
+              const firstTs = stageLogs[0].timestamp;
+              const lastTs = stageLogs[stageLogs.length - 1].timestamp;
+              const duration = new Date(lastTs).getTime() - new Date(firstTs).getTime();
+
+              groups.push({
+                  stage,
+                  logs: stageLogs,
+                  status: hasError ? "failed" : (isLast && isRunning) ? "running" : "success",
+                  startTime: firstTs,
+                  endTime: lastTs,
+                  durationMs: duration >= 0 ? duration : undefined,
+              });
+
+              stageMap.delete(stage);
+          } else if (isRunning && i > maxStageIdx && maxStageIdx >= 0) {
+              // Pending future stage
+              groups.push({ stage, logs: [], status: "pending" });
+          }
+      }
+
+      // Append any non-pipeline stages (e.g. "General") at the end
+      for (const [stage, stageLogs] of stageMap) {
+          const hasError = stageLogs.some(l => l.level === "error");
+          groups.push({
+              stage,
+              logs: stageLogs,
+              status: hasError ? "failed" : "success",
+              startTime: stageLogs[0].timestamp,
           });
+      }
 
-          return groups;
-      }, [parsedLogs]);
+      return groups;
+  }, [parsedLogs, status, executionType]);
   // Auto-expand latest running stage only if user hasn't manually collapsed/expanded things
   useEffect(() => {
      if (userInteracted) return;
@@ -157,9 +194,29 @@ export function LogViewer({ logs, className, autoScroll = true, status }: LogVie
             className="space-y-4"
         >
             {groupedLogs.map((group, groupIdx) => {
-                const isRunning = group.status === 'running' &&
-                                  groupIdx === groupedLogs.length - 1 &&
-                                  (!status || status === 'Running');
+                const isPending = group.status === "pending";
+
+                if (isPending) {
+                    return (
+                        <div
+                            key={`${group.stage}-${groupIdx}`}
+                            className="border border-border/40 rounded-lg bg-card/10 px-4 py-3 opacity-40"
+                        >
+                            <div className="flex items-center gap-3">
+                                <Clock className="w-4 h-4 text-muted-foreground" />
+                                <span className="font-semibold text-muted-foreground">{group.stage}</span>
+                            </div>
+                        </div>
+                    );
+                }
+
+                const StageIcon = group.status === "failed" ? AlertCircle
+                    : group.status === "running" ? Loader2
+                    : CheckCircle2;
+
+                const stageColor = group.status === "failed" ? "text-red-500 dark:text-red-400"
+                    : group.status === "running" ? "text-blue-500 dark:text-blue-400"
+                    : "text-green-500 dark:text-green-400";
 
                 return (
                     <AccordionItem
@@ -169,25 +226,18 @@ export function LogViewer({ logs, className, autoScroll = true, status }: LogVie
                     >
                         <AccordionTrigger className="hover:no-underline py-3 px-2">
                              <div className="flex items-center gap-3 w-full">
-                                {group.status === 'failed' ? (
-                                    <AlertCircle className="w-4 h-4 text-red-500 dark:text-red-400" />
-                                ) : isRunning ? (
-                                    <Loader2 className="w-4 h-4 text-blue-500 dark:text-blue-400 animate-spin" />
-                                ) : (
-                                    <CheckCircle2 className="w-4 h-4 text-green-500 dark:text-green-400" />
-                                )}
+                                <StageIcon className={cn("w-4 h-4 shrink-0", stageColor, group.status === "running" && "animate-spin")} />
 
-                                <span className={cn(
-                                    "font-semibold",
-                                    group.status === 'failed' ? "text-red-500 dark:text-red-400" :
-                                    isRunning ? "text-blue-500 dark:text-blue-400" : "text-green-500 dark:text-green-400"
-                                )}>
+                                <span className={cn("font-semibold", stageColor)}>
                                     {group.stage}
                                 </span>
 
-                                <span className="ml-auto text-xs text-muted-foreground font-normal mr-4">
-                                    {group.logs.length} logs
-                                </span>
+                                <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground font-normal mr-4">
+                                    {group.durationMs != null && (
+                                        <span>{formatDuration(group.durationMs)}</span>
+                                    )}
+                                    <span>{group.logs.length} {group.logs.length === 1 ? "log" : "logs"}</span>
+                                </div>
                              </div>
                         </AccordionTrigger>
                         <AccordionContent className="pt-2 pb-4 px-2 border-t border-border/50">
@@ -259,6 +309,11 @@ function LogItem({ entry }: { entry: LogEntry }) {
                     <span className={cn("text-sm break-all", entry.level === 'error' ? "text-destructive" : "text-foreground")}>
                          {entry.message}
                     </span>
+                    {entry.durationMs != null && (
+                        <span className="shrink-0 text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-mono">
+                            {formatDuration(entry.durationMs)}
+                        </span>
+                    )}
                     {hasDetails && (
                          <span className="text-muted-foreground">
                              {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}

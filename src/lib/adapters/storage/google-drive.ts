@@ -1,7 +1,7 @@
 import { StorageAdapter, FileInfo } from "@/lib/core/interfaces";
 import { GoogleDriveSchema } from "@/lib/adapters/definitions";
 import { google, drive_v3 } from "googleapis";
-import { Readable } from "stream";
+import { Readable, Transform } from "stream";
 import fs from "fs/promises";
 import { createReadStream, createWriteStream } from "fs";
 import path from "path";
@@ -178,8 +178,18 @@ export const GoogleDriveAdapter: StorageAdapter = {
             const stats = await fs.stat(localPath);
             const fileSize = stats.size;
 
+            // Track upload progress via stream
+            const fileStream = createReadStream(localPath);
+            let uploaded = 0;
+            fileStream.on('data', (chunk) => {
+                uploaded += chunk.length;
+                if (onProgress && fileSize > 0) {
+                    onProgress(Math.min(99, Math.round((uploaded / fileSize) * 100)));
+                }
+            });
+
             const media = {
-                body: createReadStream(localPath),
+                body: fileStream,
             };
 
             if (existing) {
@@ -242,8 +252,22 @@ export const GoogleDriveAdapter: StorageAdapter = {
                 { responseType: "stream" }
             );
 
-            const writeStream = createWriteStream(localPath);
-            await pipeline(res.data as unknown as Readable, writeStream);
+            const source = res.data as unknown as Readable;
+            const total = Number(file.size) || 0;
+
+            if (onProgress && total > 0) {
+                let processed = 0;
+                const tracker = new Transform({
+                    transform(chunk, _encoding, callback) {
+                        processed += chunk.length;
+                        onProgress!(processed, total);
+                        callback(null, chunk);
+                    }
+                });
+                await pipeline(source, tracker, createWriteStream(localPath));
+            } else {
+                await pipeline(source, createWriteStream(localPath));
+            }
 
             if (onLog) onLog(`Google Drive download completed: ${remotePath}`, "info", "storage");
             return true;

@@ -2,6 +2,34 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.4.0 - Live History Redesign
+*Released: March 31, 2026*
+
+### ✨ Features
+
+- **logging**: Pipeline stage system for backups (Queued → Initializing → Dumping → Processing → Uploading → Verifying → Retention → Notifications → Completed) and restores (Downloading → Decrypting → Decompressing → Restoring Database → Completed) with automatic progress calculation and duration tracking per stage
+- **ui**: LogViewer redesign with pipeline stage grouping, duration badges, pending stage placeholders, and auto-expanding latest stage during execution
+- **ui**: Real-time speed (MB/s) and byte progress display for all backup and restore operations — dump, compress, encrypt, upload, download, decrypt, decompress, and SFTP transfer
+
+### 🎨 Improvements
+
+- **logging**: MongoDB adapter now buffers stderr output and emits it as a single structured log entry instead of flooding the log with individual lines
+- **logging**: SQLite adapter logs now use typed log levels for consistent display
+- **storage**: Google Drive adapter now reports intermediate upload progress instead of only 100% at completion
+- **storage**: Download progress tracking added to S3, SFTP, Google Drive, OneDrive, WebDAV, and FTP adapters for restore operations
+- **restore**: MySQL/MariaDB SSH restore now shows SFTP upload progress with real-time byte tracking
+
+### 🐛 Bug Fixes
+
+- **storage**: Fixed local filesystem adapter logging "Preparing local destination" twice per upload
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.4.0`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v1.3.0 - SSH Remote Execution
 *Released: March 29, 2026*
 

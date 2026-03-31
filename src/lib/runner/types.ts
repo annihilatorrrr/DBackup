@@ -1,6 +1,6 @@
 import { DatabaseAdapter, StorageAdapter } from "@/lib/core/interfaces";
 import { Job, AdapterConfig, Execution, JobDestination } from "@prisma/client";
-import { LogEntry, LogLevel, LogType } from "@/lib/core/logs";
+import { LogEntry, LogLevel, LogType, PipelineStage } from "@/lib/core/logs";
 import { RetentionConfiguration } from "@/lib/core/retention";
 
 export type JobDestinationWithConfig = JobDestination & {
@@ -37,6 +37,11 @@ export interface RunnerContext {
     // Extended log function, simplified version compatible with old signature (msg: string)
     log: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void;
     updateProgress: (percent: number, stage?: string) => void;
+
+    // New structured stage API
+    setStage: (stage: PipelineStage) => void;
+    updateDetail: (detail: string) => void;
+    updateStageProgress: (internalPercent: number) => void;
 
     sourceAdapter?: DatabaseAdapter;
     destinations: DestinationContext[];

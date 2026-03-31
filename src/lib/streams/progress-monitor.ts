@@ -7,13 +7,14 @@ import { Transform, TransformCallback } from 'stream';
 export class ProgressMonitorStream extends Transform {
     private processedBytes = 0;
     private totalBytes: number;
-    private onProgress: (processed: number, total: number, percent: number) => void;
+    private onProgress: (processed: number, total: number, percent: number, speed: number) => void;
     private lastUpdate = 0;
     private interval = 300; // ms throttle
+    private startTime = Date.now();
 
     constructor(
         totalBytes: number,
-        onProgress: (processed: number, total: number, percent: number) => void
+        onProgress: (processed: number, total: number, percent: number, speed: number) => void
     ) {
         super();
         this.totalBytes = totalBytes;
@@ -42,6 +43,8 @@ export class ProgressMonitorStream extends Transform {
         const percent = this.totalBytes > 0
             ? Math.round((this.processedBytes / this.totalBytes) * 100)
             : 0;
-        this.onProgress(this.processedBytes, this.totalBytes, percent);
+        const elapsed = (Date.now() - this.startTime) / 1000;
+        const speed = elapsed > 0 ? Math.round(this.processedBytes / elapsed) : 0;
+        this.onProgress(this.processedBytes, this.totalBytes, percent, speed);
     }
 }

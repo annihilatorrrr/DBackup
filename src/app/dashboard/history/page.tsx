@@ -210,6 +210,7 @@ function HistoryContent() {
     const metadata = selectedLog ? parseMetadata(selectedLog.metadata) : null;
     const progress = metadata?.progress ?? 0;
     const stage = metadata?.stage || (selectedLog?.type === "Restore" ? "Restoring..." : "Initializing...");
+    const detail = metadata?.detail || null;
 
     return (
         <div className="space-y-6">
@@ -291,8 +292,9 @@ function HistoryContent() {
                         <div className="px-6 py-3 bg-card/50 border-b border-border/50 shrink-0">
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                    <span>{selectedLog?.status === "Pending" ? "Waiting in queue..." : stage}</span>
-                                    {selectedLog?.status === "Running" && progress > 0 && <span>{progress}%</span>}
+                                    <span className="font-medium">{selectedLog?.status === "Pending" ? "Waiting in queue..." : stage}</span>
+                                    {detail && <span className="opacity-70">— {detail}</span>}
+                                    {selectedLog?.status === "Running" && progress > 0 && !detail && <span>{progress}%</span>}
                                 </div>
                                 <Button
                                     variant="destructive"
@@ -325,6 +327,7 @@ function HistoryContent() {
                          <LogViewer
                             logs={selectedLog ? parseLogs(selectedLog.logs) : []}
                             status={selectedLog?.status}
+                            executionType={selectedLog?.type}
                             className="h-full border-0 bg-transparent"
                          />
                     </div>

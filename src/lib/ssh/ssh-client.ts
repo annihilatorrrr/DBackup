@@ -92,12 +92,19 @@ export class SshClient {
      * Upload a local file to the remote server via SFTP.
      * Uses SFTP protocol which guarantees data integrity (unlike piping through exec).
      */
-    public uploadFile(localPath: string, remotePath: string): Promise<void> {
+    public uploadFile(localPath: string, remotePath: string, onProgress?: (transferred: number, total: number) => void): Promise<void> {
         return new Promise((resolve, reject) => {
             this.client.sftp((err, sftp) => {
                 if (err) return reject(new Error(`SFTP session failed: ${err.message}`));
 
-                sftp.fastPut(localPath, remotePath, (err) => {
+                const opts: Record<string, any> = {};
+                if (onProgress) {
+                    opts.step = (totalTransferred: number, _chunk: number, total: number) => {
+                        onProgress(totalTransferred, total);
+                    };
+                }
+
+                sftp.fastPut(localPath, remotePath, opts, (err) => {
                     sftp.end();
                     if (err) return reject(new Error(`SFTP upload failed: ${err.message}`));
                     resolve();

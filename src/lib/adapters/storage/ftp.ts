@@ -115,11 +115,13 @@ export const FTPAdapter: StorageAdapter = {
 
             if (onLog) onLog(`Downloading from FTP: ${source}`, "info", "storage");
 
-            client.trackProgress((info) => {
-                if (onProgress) {
-                    onProgress(info.bytesOverall, info.bytesOverall);
-                }
-            });
+            if (onProgress) {
+                let total = 0;
+                try { total = await client.size(source); } catch { /* size not supported */ }
+                client.trackProgress((info) => {
+                    onProgress(info.bytesOverall, total || info.bytesOverall);
+                });
+            }
 
             await client.downloadTo(createWriteStream(localPath), source);
 

@@ -3,12 +3,13 @@ import { registry } from "@/lib/core/registry";
 import { registerAdapters } from "@/lib/adapters";
 import { StorageAdapter, DatabaseAdapter, BackupMetadata } from "@/lib/core/interfaces";
 import { decryptConfig } from "@/lib/crypto";
-import { compareVersions } from "@/lib/utils";
+import { compareVersions, formatDuration, formatBytes } from "@/lib/utils";
 import { getTempDir } from "@/lib/temp-dir";
 import path from "path";
 import fs from "fs";
 import { pipeline } from "stream/promises";
 import { createReadStream, createWriteStream } from "fs";
+import { Transform } from "stream";
 import { getProfileMasterKey, getEncryptionProfiles } from "@/services/encryption-service";
 import { createDecryptionStream } from "@/lib/crypto-stream";
 import { getDecompressionStream, CompressionType } from "@/lib/compression";
@@ -180,6 +181,9 @@ export class RestoreService {
         let lastLogUpdate = Date.now();
         let currentProgress = 0;
         let currentStage = "Initializing";
+        let currentDetail: string | null = null;
+        const stageStartTimes = new Map<string, number>();
+        stageStartTimes.set("Initializing", Date.now());
 
         const flushLogs = async (force = false) => {
             const now = Date.now();
@@ -188,7 +192,7 @@ export class RestoreService {
                     where: { id: executionId },
                     data: {
                         logs: JSON.stringify(internalLogs),
-                        metadata: JSON.stringify({ progress: currentProgress, stage: currentStage })
+                        metadata: JSON.stringify({ progress: currentProgress, stage: currentStage, detail: currentDetail })
                     }
                 }).catch(() => {});
                 lastLogUpdate = now;
@@ -208,9 +212,41 @@ export class RestoreService {
             flushLogs(level === 'error'); // Force flush on error
         };
 
-        const updateProgress = (p: number, stage?: string) => {
+        const setStage = (stage: string) => {
+            // Log duration of previous stage
+            const prevStart = stageStartTimes.get(currentStage);
+            if (prevStart && currentStage !== stage) {
+                const durationMs = Date.now() - prevStart;
+                const isTerminal = stage === "Cancelled" || stage === "Failed";
+                const durationEntry: LogEntry = {
+                    timestamp: new Date().toISOString(),
+                    message: isTerminal
+                        ? `${currentStage} aborted (${formatDuration(durationMs)})`
+                        : `${currentStage} completed (${formatDuration(durationMs)})`,
+                    level: isTerminal ? 'warning' : 'success',
+                    type: 'general',
+                    stage: currentStage,
+                    durationMs
+                };
+                internalLogs.push(durationEntry);
+            }
+
+            currentStage = stage;
+            currentDetail = null;
+            currentProgress = 0;
+            stageStartTimes.set(stage, Date.now());
+            flushLogs(true);
+        };
+
+        const updateDetail = (detail: string) => {
+            currentDetail = detail;
+            flushLogs();
+        };
+
+        const _updateProgress = (p: number, stage?: string) => {
              currentProgress = p;
-             if (stage) currentStage = stage;
+             if (stage && stage !== currentStage) setStage(stage);
+             else if (stage) currentStage = stage;
              flushLogs();
         };
 
@@ -252,7 +288,7 @@ export class RestoreService {
             }
 
             // 3. Download File
-            updateProgress(5, "Downloading");
+            setStage("Downloading");
             log(`Downloading backup file: ${file}...`, 'info');
             const tempDir = getTempDir();
             tempFile = path.join(tempDir, path.basename(file));
@@ -330,13 +366,15 @@ export class RestoreService {
             // --- END METADATA CHECK ---
 
 
+            const downloadStartTime = Date.now();
             const downloadSuccess = await storageAdapter.download(sConf, file, tempFile, (processed, total) => {
                 const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
-                // Only log sparingly or update progress
-                if (percent % 10 === 0 && percent > 0) {
-                     // We don't want to spam logs
+                currentProgress = percent;
+                if (total > 0) {
+                    const elapsed = (Date.now() - downloadStartTime) / 1000;
+                    const speed = elapsed > 0 ? processed / elapsed : 0;
+                    updateDetail(`${formatBytes(processed)} / ${formatBytes(total)} (${formatBytes(speed)}/s)`);
                 }
-                updateProgress(Math.floor(percent / 2), "Downloading"); // Map download to 0-50% overall? Or just use stage "Downloading"
             });
 
             if (!downloadSuccess) {
@@ -369,7 +407,7 @@ export class RestoreService {
 
             // --- DECRYPTION EXECUTION ---
             if (isEncrypted && encryptionMeta) {
-                updateProgress(0, "Decrypting"); // Set stage to Decrypting immediately
+                setStage("Decrypting"); // Set stage to Decrypting immediately
 
                 let masterKey: Buffer;
 
@@ -480,8 +518,22 @@ export class RestoreService {
                         decryptedTempFile = tempFile + ".dec";
                     }
 
+                    const encFileSize = (await fs.promises.stat(tempFile)).size;
+                    const decryptStart = Date.now();
+                    let decProcessed = 0;
+                    const decryptTracker = new Transform({
+                        transform(chunk, _encoding, callback) {
+                            decProcessed += chunk.length;
+                            const elapsed = (Date.now() - decryptStart) / 1000;
+                            const speed = elapsed > 0 ? Math.round(decProcessed / elapsed) : 0;
+                                    updateDetail(`${formatBytes(decProcessed)} / ${formatBytes(encFileSize)} – ${formatBytes(speed)}/s`);
+                            callback(null, chunk);
+                        }
+                    });
+
                     await pipeline(
                         createReadStream(tempFile),
+                        decryptTracker,
                         decryptStream,
                         createWriteStream(decryptedTempFile)
                     );
@@ -505,7 +557,7 @@ export class RestoreService {
             if (compressionMeta && compressionMeta !== 'NONE') {
                 try {
                     log(`Decompressing backup (${compressionMeta})...`, 'info');
-                    updateProgress(0, "Decompressing");
+                    setStage("Decompressing");
 
                     const decompStream = getDecompressionStream(compressionMeta);
                     if (decompStream) {
@@ -517,8 +569,22 @@ export class RestoreService {
                             unpackedFile = tempFile + ".unpacked";
                         }
 
+                        const compFileSize = (await fs.promises.stat(tempFile)).size;
+                        const decompStart = Date.now();
+                        let decompProcessed = 0;
+                        const decompTracker = new Transform({
+                            transform(chunk, _encoding, callback) {
+                                decompProcessed += chunk.length;
+                                const elapsed = (Date.now() - decompStart) / 1000;
+                                const speed = elapsed > 0 ? Math.round(decompProcessed / elapsed) : 0;
+                                updateDetail(`${formatBytes(decompProcessed)} / ${formatBytes(compFileSize)} – ${formatBytes(speed)}/s`);
+                                callback(null, chunk);
+                            }
+                        });
+
                         await pipeline(
                             createReadStream(tempFile),
+                            decompTracker,
                             decompStream,
                             createWriteStream(unpackedFile)
                         );
@@ -558,7 +624,7 @@ export class RestoreService {
             // --- END MULTI-DB TAR DETECTION ---
 
             // 4. Restore
-            updateProgress(0, "Restoring Database");
+            setStage("Restoring Database");
             log(`Starting database restore on ${sourceConfig.name}...`, 'info');
 
             const dbConf = decryptConfig(JSON.parse(sourceConfig.config));
@@ -625,8 +691,10 @@ export class RestoreService {
                 }
 
                 log(msg, finalLevel, type, details);
-            }, (p) => {
-                updateProgress(p, "Restoring Database");
+            }, (p, detail) => {
+                currentProgress = p;
+                currentDetail = detail || null;
+                flushLogs();
             });
 
             if (!restoreResult.success) {
@@ -635,7 +703,7 @@ export class RestoreService {
                 }
 
                 log(`Restore adapter reported failure. Check logs above.`, 'error');
-                updateProgress(100, "Failed");
+                setStage("Failed");
 
                 await prisma.execution.update({
                     where: { id: executionId },
@@ -647,7 +715,7 @@ export class RestoreService {
                 });
             } else {
                 log(`Restore completed successfully.`, 'success');
-                updateProgress(100, "Completed");
+                setStage("Completed");
                 await prisma.execution.update({
                     where: { id: executionId },
                     data: {
@@ -677,8 +745,8 @@ export class RestoreService {
             // Distinguish cancellation from real failures
             if (abortController.signal.aborted) {
                 svcLog.info("Restore cancelled by user", { executionId });
+                setStage("Cancelled");
                 log("Restore was cancelled by user", 'warning');
-                updateProgress(100, "Cancelled");
 
                 await prisma.execution.update({
                     where: { id: executionId },
@@ -686,8 +754,8 @@ export class RestoreService {
                 });
             } else {
                 svcLog.error("Restore service error", {}, wrapError(error));
+                setStage("Failed");
                 log(`Fatal Error: ${getErrorMessage(error)}`, 'error');
-                updateProgress(100, "Failed");
 
                 await prisma.execution.update({
                     where: { id: executionId },

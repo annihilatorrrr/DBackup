@@ -156,7 +156,7 @@ export const SFTPAdapter: StorageAdapter = {
         }
     },
 
-    async download(config: SFTPConfig, remotePath: string, localPath: string): Promise<boolean> {
+    async download(config: SFTPConfig, remotePath: string, localPath: string, onProgress?: (processed: number, total: number) => void): Promise<boolean> {
         let sftp: Client | null = null;
         try {
             sftp = await connectSFTP(config);
@@ -165,7 +165,19 @@ export const SFTPAdapter: StorageAdapter = {
                 ? path.posix.join(config.pathPrefix, remotePath)
                 : remotePath;
 
-            await sftp.get(source, localPath);
+            if (onProgress) {
+                const stat = await sftp.stat(source);
+                const total = stat.size;
+                let processed = 0;
+                await sftp.fastGet(source, localPath, {
+                    step: (transferred) => {
+                        processed = transferred;
+                        onProgress(processed, total);
+                    }
+                });
+            } else {
+                await sftp.get(source, localPath);
+            }
             return true;
         } catch (error) {
             log.error("SFTP download failed", { host: config.host, remotePath }, wrapError(error));

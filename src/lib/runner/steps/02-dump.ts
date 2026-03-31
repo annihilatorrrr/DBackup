@@ -7,6 +7,7 @@ import { isMultiDbTar, readTarManifest } from "@/lib/adapters/database/common/ta
 import { logger } from "@/lib/logger";
 import { wrapError } from "@/lib/errors";
 import { getBackupFileExtension } from "@/lib/backup-extensions";
+import { formatBytes } from "@/lib/utils";
 
 const log = logger.child({ step: "02-dump" });
 
@@ -182,14 +183,17 @@ export async function stepExecuteDump(ctx: RunnerContext) {
     };
 
     // Start monitoring file size for progress updates
+    const dumpStart = Date.now();
     const watcher = setInterval(async () => {
              // Check if file exists and get size
              try {
-                 // Note: tempFile might change if adapter appends extension, but initially it starts here
                  const stats = await fs.stat(tempFile).catch(() => null);
                  if (stats && stats.size > 0) {
+                     const elapsed = (Date.now() - dumpStart) / 1000;
+                     const speed = elapsed > 0 ? Math.round(stats.size / elapsed) : 0;
                      const sizeMB = (stats.size / 1024 / 1024).toFixed(2);
-                     ctx.updateProgress(0, `Dumping Database (${sizeMB} MB...)`);
+                     const speedStr = formatBytes(speed);
+                     ctx.updateDetail(`${sizeMB} MB dumped – ${speedStr}/s`);
                  }
              } catch {}
     }, 800);
