@@ -251,7 +251,6 @@ async function restoreSingleDatabaseSSH(
 
         // 1. Upload dump file to remote temp location via SFTP (guarantees data integrity)
         log(`Uploading dump to remote via SFTP: ${remoteTempFile}`, 'info');
-        const totalSize = (await fs.stat(sourcePath)).size;
         await ssh.uploadFile(sourcePath, remoteTempFile);
 
         // 2. Run pg_restore on the remote

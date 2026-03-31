@@ -243,7 +243,7 @@ export class RestoreService {
             flushLogs();
         };
 
-        const updateProgress = (p: number, stage?: string) => {
+        const _updateProgress = (p: number, stage?: string) => {
              currentProgress = p;
              if (stage && stage !== currentStage) setStage(stage);
              else if (stage) currentStage = stage;
@@ -526,8 +526,7 @@ export class RestoreService {
                             decProcessed += chunk.length;
                             const elapsed = (Date.now() - decryptStart) / 1000;
                             const speed = elapsed > 0 ? Math.round(decProcessed / elapsed) : 0;
-                            const percent = encFileSize > 0 ? Math.round((decProcessed / encFileSize) * 100) : 0;
-                            updateDetail(`${formatBytes(decProcessed)} / ${formatBytes(encFileSize)} – ${formatBytes(speed)}/s`);
+                                    updateDetail(`${formatBytes(decProcessed)} / ${formatBytes(encFileSize)} – ${formatBytes(speed)}/s`);
                             callback(null, chunk);
                         }
                     });
@@ -578,7 +577,6 @@ export class RestoreService {
                                 decompProcessed += chunk.length;
                                 const elapsed = (Date.now() - decompStart) / 1000;
                                 const speed = elapsed > 0 ? Math.round(decompProcessed / elapsed) : 0;
-                                const percent = compFileSize > 0 ? Math.round((decompProcessed / compFileSize) * 100) : 0;
                                 updateDetail(`${formatBytes(decompProcessed)} / ${formatBytes(compFileSize)} – ${formatBytes(speed)}/s`);
                                 callback(null, chunk);
                             }

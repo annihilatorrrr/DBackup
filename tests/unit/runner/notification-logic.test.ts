@@ -55,6 +55,9 @@ describe('Runner Step: Finalize & Notifications', () => {
             logs: [],
             log: vi.fn(),
             updateProgress: vi.fn(),
+            setStage: vi.fn(),
+            updateDetail: vi.fn(),
+            updateStageProgress: vi.fn(),
             execution: { id: 'exec-1' } as any,
             destinations: [],
             job: {
