@@ -3,50 +3,25 @@
 All notable changes to DBackup are documented here.
 
 ## v1.4.0 - Live History Redesign
-*Release: In Progress*
+*Released: March 31, 2026*
 
 ### ✨ Features
 
-- **logging**: Pipeline stage system with typed stages (Queued, Initializing, Dumping, Processing, Uploading, Verifying, Retention, Notifications, Completed) and automatic progress calculation per stage
-- **logging**: Stage transitions now log duration of the previous stage for performance visibility
-- **logging**: Separate restore pipeline stages (Downloading, Decrypting, Decompressing, Restoring Database) with type-aware LogViewer — restore executions no longer show backup stages as pending
-- **ui**: LogViewer redesign with stages sorted by pipeline order, duration display per stage group, pending stages shown as greyed-out placeholders during execution, and duration badges on individual log entries
-- **ui**: Upload progress now shows transferred/total bytes (e.g. "Google Drive — 45 MB / 132 MB") instead of just percentage
-- **ui**: Speed display (MB/s) for dump, processing (compress/encrypt), upload, download, decrypt, decompress, and restore operations — visible in real-time during execution
+- **logging**: Pipeline stage system for backups (Queued → Initializing → Dumping → Processing → Uploading → Verifying → Retention → Notifications → Completed) and restores (Downloading → Decrypting → Decompressing → Restoring Database → Completed) with automatic progress calculation and duration tracking per stage
+- **ui**: LogViewer redesign with pipeline stage grouping, duration badges, pending stage placeholders, and auto-expanding latest stage during execution
+- **ui**: Real-time speed (MB/s) and byte progress display for all backup and restore operations — dump, compress, encrypt, upload, download, decrypt, decompress, and SFTP transfer
 
 ### 🎨 Improvements
 
-- **logging**: Runner steps use structured `setStage()`, `updateDetail()`, and `updateStageProgress()` instead of raw progress strings — eliminates regex workarounds in the frontend
-- **logging**: Restore service uses proper `setStage()` with duration tracking and `updateDetail()` for download speed display, consistent with the backup pipeline
-- **logging**: MongoDB adapter now buffers stderr output and emits it as a single log entry with details instead of flooding the log with individual lines
-- **logging**: SQLite adapter logs now use typed log levels and log types for consistent display
-- **logging**: ProgressMonitorStream now tracks throughput speed (bytes/s) alongside progress percentage
-- **ui**: History dialog progress bar now shows stage name and detail text separately for clearer status indication
+- **logging**: MongoDB adapter now buffers stderr output and emits it as a single structured log entry instead of flooding the log with individual lines
+- **logging**: SQLite adapter logs now use typed log levels for consistent display
 - **storage**: Google Drive adapter now reports intermediate upload progress instead of only 100% at completion
-- **storage**: Download progress tracking added to S3, SFTP, Google Drive, OneDrive, WebDAV, and FTP adapters — all now report real-time bytes transferred and total size during restore downloads
-- **restore**: Decryption and decompression stages now show byte progress and speed (MB/s) during restore
-- **restore**: MySQL/MariaDB SSH restore now shows SFTP upload progress (0-90%) with real-time byte tracking instead of jumping straight to 90%
-- **ssh**: `SshClient.uploadFile()` now accepts optional progress callback using SFTP `fastPut` step events
+- **storage**: Download progress tracking added to S3, SFTP, Google Drive, OneDrive, WebDAV, and FTP adapters for restore operations
+- **restore**: MySQL/MariaDB SSH restore now shows SFTP upload progress with real-time byte tracking
 
 ### 🐛 Bug Fixes
 
-- **logging**: Fixed "Verifying" stage appearing during upload — checksum calculation now stays in Processing stage, Verifying only starts after all uploads complete
-- **logging**: Post-upload integrity checks (local filesystem) moved from inline upload loop to a dedicated Verifying stage
-- **ui**: Fixed "Queued" stage appearing at the bottom of the log viewer instead of at the top — added Queued to pipeline stage order
 - **storage**: Fixed local filesystem adapter logging "Preparing local destination" twice per upload
-- **ui**: Fixed stage duration not showing when it was 0ms — now always displays duration for completed stages
-- **storage**: Fixed FTP download progress reporting same value for processed and total bytes — now queries file size upfront for accurate progress
-- **restore**: Fixed "Cancelled" stage not appearing in LogViewer after restore cancellation — `setStage()` is now called before the log message so entries receive the correct stage
-- **restore**: Fixed "Failed" stage not appearing in LogViewer after restore failure — same root cause as Cancelled
-- **restore**: Fixed stale 50% progress bar persisting during Decrypting/Decompressing/Restoring stages — progress resets to 0 on each stage transition
-- **ui**: Fixed history dialog showing duplicate percentage text (e.g. "19% 50%") — raw progress number is now hidden when stage detail is already displayed
-- **restore**: Fixed MySQL/MariaDB SSH restore showing only percentage instead of byte progress during SFTP upload — now displays transferred/total bytes with speed
-- **restore**: Fixed stale upload progress (bytes/speed) persisting during SSH restore command execution — detail is now cleared after upload and replaced with "Executing restore command..." status
-- **restore**: Fixed "Upload verified" log appearing after restore completion — verification now runs immediately after upload before the restore command starts
-
-### 🔧 CI/CD
-
-- **scripts**: New `setup-dev-debian.sh` script to install all database client binaries on Debian/Ubuntu — MySQL, PostgreSQL 14/16/17/18 (with `/opt/pgXX/bin` symlinks matching Docker), MongoDB tools + mongosh, SQLite3, Redis CLI, plus SSH/rsync/smbclient
 
 ### 🐳 Docker
 
