@@ -4,7 +4,7 @@ import { Client } from "@microsoft/microsoft-graph-client";
 import fs from "fs/promises";
 import { createReadStream, createWriteStream } from "fs";
 import path from "path";
-import { Readable } from "stream";
+import { Readable, Transform } from "stream";
 import { pipeline } from "stream/promises";
 import { LogLevel, LogType } from "@/lib/core/logs";
 import { logger } from "@/lib/logger";
@@ -299,8 +299,22 @@ export const OneDriveAdapter: StorageAdapter = {
                 throw new Error(`Download failed with status ${res.status}`);
             }
 
-            const writeStream = createWriteStream(localPath);
-            await pipeline(Readable.fromWeb(res.body as any), writeStream);
+            const total = Number(item.size) || 0;
+            const source = Readable.fromWeb(res.body as any);
+
+            if (onProgress && total > 0) {
+                let processed = 0;
+                const tracker = new Transform({
+                    transform(chunk, _encoding, callback) {
+                        processed += chunk.length;
+                        onProgress!(processed, total);
+                        callback(null, chunk);
+                    }
+                });
+                await pipeline(source, tracker, createWriteStream(localPath));
+            } else {
+                await pipeline(source, createWriteStream(localPath));
+            }
 
             if (onLog) onLog(`OneDrive download completed: ${drivePath}`, "info", "storage");
             return true;

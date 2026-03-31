@@ -327,6 +327,7 @@ function HistoryContent() {
                          <LogViewer
                             logs={selectedLog ? parseLogs(selectedLog.logs) : []}
                             status={selectedLog?.status}
+                            executionType={selectedLog?.type}
                             className="h-full border-0 bg-transparent"
                          />
                     </div>

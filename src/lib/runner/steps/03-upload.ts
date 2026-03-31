@@ -37,8 +37,8 @@ export async function stepUpload(ctx: RunnerContext) {
 
     const sourceStat = await fs.stat(ctx.tempFile);
     const sourceSize = sourceStat.size;
-    const progressMonitor = new ProgressMonitorStream(sourceSize, (processed, total, percent) => {
-        ctx.updateDetail(`${processingLabel} (${formatBytes(processed)} / ${formatBytes(total)})`);
+    const progressMonitor = new ProgressMonitorStream(sourceSize, (processed, total, percent, speed) => {
+        ctx.updateDetail(`${processingLabel} (${formatBytes(processed)} / ${formatBytes(total)}) – ${formatBytes(speed)}/s`);
         ctx.updateStageProgress(percent);
     });
 
@@ -116,7 +116,6 @@ export async function stepUpload(ctx: RunnerContext) {
     }
 
     // --- CHECKSUM CALCULATION ---
-    ctx.setStage(PIPELINE_STAGES.VERIFYING);
     ctx.log("Calculating SHA-256 checksum...");
     const checksum = await calculateFileChecksum(ctx.tempFile);
     ctx.log(`Checksum: ${checksum}`);
@@ -152,15 +151,26 @@ export async function stepUpload(ctx: RunnerContext) {
 
     ctx.setStage(PIPELINE_STAGES.UPLOADING);
 
+    // Collect destinations that need post-upload integrity verification
+    const verifyQueue: { dest: typeof ctx.destinations[number]; destLabel: string }[] = [];
+
     for (let i = 0; i < totalDests; i++) {
         const dest = ctx.destinations[i];
         const destLabel = `[${dest.configName}]`;
+        const uploadStart = Date.now();
         const destProgress = (percent: number) => {
             // Distribute progress across destinations
             const basePercent = (i / totalDests) * 100;
             const slicePercent = (percent / totalDests);
             const combinedPercent = Math.round(basePercent + slicePercent);
-            ctx.updateDetail(`${dest.configName} (${percent}%)`);
+            if (ctx.dumpSize && ctx.dumpSize > 0) {
+                const uploadedBytes = Math.round((percent / 100) * ctx.dumpSize);
+                const elapsed = (Date.now() - uploadStart) / 1000;
+                const speed = elapsed > 0 ? Math.round(uploadedBytes / elapsed) : 0;
+                ctx.updateDetail(`${dest.configName} — ${formatBytes(uploadedBytes)} / ${formatBytes(ctx.dumpSize)} – ${formatBytes(speed)}/s`);
+            } else {
+                ctx.updateDetail(`${dest.configName} (${percent}%)`);
+            }
             ctx.updateStageProgress(combinedPercent);
         };
 
@@ -193,25 +203,9 @@ export async function stepUpload(ctx: RunnerContext) {
             dest.uploadResult = { success: true, path: remotePath };
             ctx.log(`${destLabel} Upload complete: ${remotePath}`);
 
-            // Post-upload verification for local storage
+            // Queue integrity verification for local storage
             if (dest.adapterId === "local-filesystem") {
-                try {
-                    ctx.log(`${destLabel} Verifying upload integrity...`);
-                    const verifyPath = path.join(getTempDir(), `verify_${Date.now()}_${path.basename(ctx.tempFile)}`);
-                    const downloadOk = await dest.adapter.download(dest.config, remotePath, verifyPath);
-                    if (downloadOk) {
-                        const result = await verifyFileChecksum(verifyPath, checksum);
-                        if (result.valid) {
-                            ctx.log(`${destLabel} Integrity check passed ✓`);
-                        } else {
-                            ctx.log(`${destLabel} WARNING: Integrity check FAILED! Expected: ${result.expected}, Got: ${result.actual}`, 'warning');
-                        }
-                        await fs.unlink(verifyPath).catch(() => {});
-                    }
-                } catch (e: unknown) {
-                    const message = e instanceof Error ? e.message : String(e);
-                    ctx.log(`${destLabel} Integrity verification skipped: ${message}`, 'warning');
-                }
+                verifyQueue.push({ dest, destLabel });
             }
 
         } catch (e: unknown) {
@@ -223,6 +217,33 @@ export async function stepUpload(ctx: RunnerContext) {
 
     // Cleanup temp metadata file
     await fs.unlink(metaPath).catch(() => {});
+
+    // --- POST-UPLOAD VERIFICATION ---
+    ctx.setStage(PIPELINE_STAGES.VERIFYING);
+
+    if (verifyQueue.length > 0) {
+        for (const { dest, destLabel } of verifyQueue) {
+            try {
+                ctx.log(`${destLabel} Verifying upload integrity...`);
+                const verifyPath = path.join(getTempDir(), `verify_${Date.now()}_${path.basename(ctx.tempFile)}`);
+                const downloadOk = await dest.adapter.download(dest.config, remotePath, verifyPath);
+                if (downloadOk) {
+                    const result = await verifyFileChecksum(verifyPath, checksum);
+                    if (result.valid) {
+                        ctx.log(`${destLabel} Integrity check passed ✓`, 'success');
+                    } else {
+                        ctx.log(`${destLabel} WARNING: Integrity check FAILED! Expected: ${result.expected}, Got: ${result.actual}`, 'warning');
+                    }
+                    await fs.unlink(verifyPath).catch(() => {});
+                }
+            } catch (e: unknown) {
+                const message = e instanceof Error ? e.message : String(e);
+                ctx.log(`${destLabel} Integrity verification skipped: ${message}`, 'warning');
+            }
+        }
+    } else {
+        ctx.log("No local destinations — skipping integrity verification");
+    }
 
     // --- EVALUATE RESULTS ---
     const successCount = ctx.destinations.filter(d => d.uploadResult?.success).length;

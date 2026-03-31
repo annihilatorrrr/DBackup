@@ -7,16 +7,38 @@ All notable changes to DBackup are documented here.
 
 ### ✨ Features
 
-- **logging**: Pipeline stage system with typed stages (Initializing, Dumping, Processing, Uploading, Verifying, Retention, Notifications, Completed) and automatic progress calculation per stage
+- **logging**: Pipeline stage system with typed stages (Queued, Initializing, Dumping, Processing, Uploading, Verifying, Retention, Notifications, Completed) and automatic progress calculation per stage
 - **logging**: Stage transitions now log duration of the previous stage for performance visibility
+- **logging**: Separate restore pipeline stages (Downloading, Decrypting, Decompressing, Restoring Database) with type-aware LogViewer — restore executions no longer show backup stages as pending
 - **ui**: LogViewer redesign with stages sorted by pipeline order, duration display per stage group, pending stages shown as greyed-out placeholders during execution, and duration badges on individual log entries
+- **ui**: Upload progress now shows transferred/total bytes (e.g. "Google Drive — 45 MB / 132 MB") instead of just percentage
+- **ui**: Speed display (MB/s) for dump, processing (compress/encrypt), upload, download, decrypt, decompress, and restore operations — visible in real-time during execution
 
 ### 🎨 Improvements
 
 - **logging**: Runner steps use structured `setStage()`, `updateDetail()`, and `updateStageProgress()` instead of raw progress strings — eliminates regex workarounds in the frontend
+- **logging**: Restore service uses proper `setStage()` with duration tracking and `updateDetail()` for download speed display, consistent with the backup pipeline
 - **logging**: MongoDB adapter now buffers stderr output and emits it as a single log entry with details instead of flooding the log with individual lines
 - **logging**: SQLite adapter logs now use typed log levels and log types for consistent display
+- **logging**: ProgressMonitorStream now tracks throughput speed (bytes/s) alongside progress percentage
 - **ui**: History dialog progress bar now shows stage name and detail text separately for clearer status indication
+- **storage**: Google Drive adapter now reports intermediate upload progress instead of only 100% at completion
+- **storage**: Download progress tracking added to S3, SFTP, Google Drive, OneDrive, WebDAV, and FTP adapters — all now report real-time bytes transferred and total size during restore downloads
+- **restore**: Decryption and decompression stages now show byte progress and speed (MB/s) during restore
+- **restore**: Database restore stage shows file-based progress with speed (e.g. "12 MB / 45 MB – 8.2 MB/s") for MySQL, MariaDB, SQLite, and multi-DB TAR restores
+
+### 🐛 Bug Fixes
+
+- **logging**: Fixed "Verifying" stage appearing during upload — checksum calculation now stays in Processing stage, Verifying only starts after all uploads complete
+- **logging**: Post-upload integrity checks (local filesystem) moved from inline upload loop to a dedicated Verifying stage
+- **ui**: Fixed "Queued" stage appearing at the bottom of the log viewer instead of at the top — added Queued to pipeline stage order
+- **storage**: Fixed local filesystem adapter logging "Preparing local destination" twice per upload
+- **ui**: Fixed stage duration not showing when it was 0ms — now always displays duration for completed stages
+- **storage**: Fixed FTP download progress reporting same value for processed and total bytes — now queries file size upfront for accurate progress
+
+### 🔧 CI/CD
+
+- **scripts**: New `setup-dev-debian.sh` script to install all database client binaries on Debian/Ubuntu — MySQL, PostgreSQL 14/16/17/18 (with `/opt/pgXX/bin` symlinks matching Docker), MongoDB tools + mongosh, SQLite3, Redis CLI, plus SSH/rsync/smbclient
 
 ### 🐳 Docker
 

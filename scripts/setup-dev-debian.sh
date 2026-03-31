@@ -1,0 +1,175 @@
+#!/usr/bin/env bash
+# -------------------------------------------------------------------
+# DBackup — Install all database client binaries on Debian/Ubuntu
+#
+# Supported databases:
+#   MySQL / MariaDB  → mysqldump, mysql
+#   PostgreSQL 14-17 → pg_dump, pg_restore (versioned, like Docker image)
+#   MongoDB          → mongodump, mongorestore, mongosh
+#   SQLite           → sqlite3
+#   MSSQL            → (no binary needed, uses Node.js mssql driver)
+#
+# Usage:  sudo ./scripts/setup-dev-debian.sh
+# -------------------------------------------------------------------
+set -euo pipefail
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
+warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
+error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
+
+# Require root
+[[ $EUID -eq 0 ]] || error "This script must be run as root (sudo)."
+
+# Detect architecture
+ARCH=$(dpkg --print-architecture)
+info "Detected architecture: $ARCH"
+
+# -------------------------------------------------------------------
+# 1. Common prerequisites
+# -------------------------------------------------------------------
+info "Installing common prerequisites..."
+apt-get update -qq
+apt-get install -y -qq curl gnupg lsb-release ca-certificates apt-transport-https wget > /dev/null
+CODENAME=$(lsb_release -cs)
+info "Detected Debian/Ubuntu codename: $CODENAME"
+
+# -------------------------------------------------------------------
+# 2. MySQL / MariaDB client (mysqldump, mysql)
+# -------------------------------------------------------------------
+info "Installing MySQL client tools..."
+apt-get install -y -qq default-mysql-client > /dev/null
+mysql --version && info "MySQL client installed ✓" || warn "MySQL client check failed"
+
+# -------------------------------------------------------------------
+# 3. PostgreSQL clients — versioned (14, 16, 17, 18)
+#    Mirrors the Docker image strategy with /opt/pgXX/bin symlinks
+# -------------------------------------------------------------------
+info "Adding PostgreSQL APT repository..."
+curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/postgresql-archive-keyring.gpg] https://apt.postgresql.org/pub/repos/apt ${CODENAME}-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+apt-get update -qq
+
+PG_VERSIONS=(14 16 17 18)
+for ver in "${PG_VERSIONS[@]}"; do
+    info "Installing PostgreSQL $ver client..."
+    apt-get install -y -qq "postgresql-client-${ver}" > /dev/null 2>&1 || {
+        warn "PostgreSQL $ver client not available for $CODENAME — skipping"
+        continue
+    }
+
+    # Create /opt/pgXX/bin/ symlinks (same layout as Docker image)
+    mkdir -p "/opt/pg${ver}/bin"
+    for bin in pg_dump pg_restore psql; do
+        ln -sf "/usr/lib/postgresql/${ver}/bin/${bin}" "/opt/pg${ver}/bin/${bin}"
+    done
+
+    "/opt/pg${ver}/bin/pg_dump" --version && info "PostgreSQL $ver client installed ✓" || warn "PostgreSQL $ver validation failed"
+done
+
+# -------------------------------------------------------------------
+# 4. MongoDB Database Tools (mongodump, mongorestore)
+# -------------------------------------------------------------------
+info "Installing MongoDB Database Tools..."
+if [[ "$ARCH" == "amd64" || "$ARCH" == "arm64" ]]; then
+    MONGO_INSTALLED=false
+
+    # Detect distro (debian vs ubuntu) and map to a supported codename
+    DISTRO_ID=$(. /etc/os-release && echo "$ID")
+    if [[ "$DISTRO_ID" == "ubuntu" ]]; then
+        # Ubuntu: use codename directly, fallback to noble
+        MONGO_CODENAME="$CODENAME"
+        MONGO_REPO_BASE="https://repo.mongodb.org/apt/ubuntu"
+    else
+        # Debian: MongoDB only supports specific versions — map to nearest supported
+        case "$CODENAME" in
+            bookworm) MONGO_CODENAME="bookworm" ;;
+            trixie|sid|*) MONGO_CODENAME="bookworm" ;; # Fallback to latest supported
+        esac
+        MONGO_REPO_BASE="https://repo.mongodb.org/apt/debian"
+    fi
+
+    info "Using MongoDB repo for $DISTRO_ID/$MONGO_CODENAME..."
+    curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | gpg --dearmor --yes -o /usr/share/keyrings/mongodb-server-8.0.gpg
+    echo "deb [signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg] ${MONGO_REPO_BASE} ${MONGO_CODENAME}/mongodb-org/8.0 main" > /etc/apt/sources.list.d/mongodb-org-8.0.list
+    apt-get update -qq
+    apt-get install -y -qq mongodb-database-tools > /dev/null 2>&1 && MONGO_INSTALLED=true
+
+    # Fallback: install via mongodb-org meta-package (includes tools)
+    if [[ "$MONGO_INSTALLED" == false ]]; then
+        warn "mongodb-database-tools standalone not available — trying mongodb-org package"
+        apt-get install -y -qq mongodb-org-tools > /dev/null 2>&1 && MONGO_INSTALLED=true
+    fi
+
+    if [[ "$MONGO_INSTALLED" == true ]]; then
+        mongodump --version 2>/dev/null && info "MongoDB Database Tools installed ✓" || warn "mongodump not found in PATH"
+    else
+        warn "MongoDB tools could not be installed via APT for $DISTRO_ID/$MONGO_CODENAME"
+        warn "Install manually: https://www.mongodb.com/try/download/database-tools"
+    fi
+
+    # Install mongosh (MongoDB Shell) — required for SSH connection tests and database listing
+    info "Installing MongoDB Shell (mongosh)..."
+    apt-get install -y -qq mongodb-mongosh > /dev/null 2>&1 && {
+        mongosh --version 2>/dev/null && info "mongosh installed ✓"
+    } || {
+        warn "mongosh not available via APT — trying direct install"
+        MONGOSH_URL="https://downloads.mongodb.com/compass/mongodb-mongosh_2.5.0_${ARCH}.deb"
+        wget -q "$MONGOSH_URL" -O /tmp/mongosh.deb 2>/dev/null && dpkg -i /tmp/mongosh.deb > /dev/null 2>&1 && rm -f /tmp/mongosh.deb && {
+            mongosh --version 2>/dev/null && info "mongosh installed ✓"
+        } || warn "mongosh installation failed — install manually: https://www.mongodb.com/try/download/shell"
+    }
+else
+    warn "MongoDB Database Tools: unsupported architecture $ARCH — skipping"
+fi
+
+# -------------------------------------------------------------------
+# 5. SQLite3
+# -------------------------------------------------------------------
+info "Installing SQLite3..."
+apt-get install -y -qq sqlite3 > /dev/null
+sqlite3 --version && info "SQLite3 installed ✓" || warn "SQLite3 check failed"
+
+# -------------------------------------------------------------------
+# 6. Redis CLI (redis-cli)
+# -------------------------------------------------------------------
+info "Installing Redis tools..."
+apt-get install -y -qq redis-tools > /dev/null
+redis-cli --version && info "Redis CLI installed ✓" || warn "Redis CLI check failed"
+
+# -------------------------------------------------------------------
+# 7. Additional tools used by DBackup (SSH, rsync, smbclient)
+# -------------------------------------------------------------------
+info "Installing additional tools (SSH, rsync, smbclient)..."
+apt-get install -y -qq openssh-client sshpass rsync smbclient openssl zip > /dev/null
+
+# -------------------------------------------------------------------
+# Summary
+# -------------------------------------------------------------------
+echo ""
+info "========================================="
+info "  DBackup Dev Dependencies — Summary"
+info "========================================="
+echo ""
+for cmd in mysql mysqldump mongodump mongorestore mongosh sqlite3 redis-cli pg_dump psql rsync smbclient sshpass; do
+    if command -v "$cmd" &>/dev/null; then
+        echo -e "  ${GREEN}✓${NC}  $cmd  ($(command -v "$cmd"))"
+    else
+        echo -e "  ${RED}✗${NC}  $cmd  (not found)"
+    fi
+done
+echo ""
+for ver in "${PG_VERSIONS[@]}"; do
+    if [[ -x "/opt/pg${ver}/bin/pg_dump" ]]; then
+        echo -e "  ${GREEN}✓${NC}  /opt/pg${ver}/bin/pg_dump  ($("/opt/pg${ver}/bin/pg_dump" --version 2>/dev/null | head -1))"
+    else
+        echo -e "  ${RED}✗${NC}  /opt/pg${ver}/bin/pg_dump  (not installed)"
+    fi
+done
+echo ""
+info "Done. MSSQL uses the Node.js mssql driver — no binary needed."

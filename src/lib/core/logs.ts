@@ -29,8 +29,22 @@ export const PIPELINE_STAGES = {
 
 export type PipelineStage = typeof PIPELINE_STAGES[keyof typeof PIPELINE_STAGES];
 
-/** Ordered list of stages for frontend rendering (skip FAILED — it's a terminal state) */
-export const STAGE_ORDER: PipelineStage[] = [
+/** Restore-specific stages */
+export const RESTORE_STAGES = {
+  INITIALIZING: "Initializing",
+  DOWNLOADING: "Downloading",
+  DECRYPTING: "Decrypting",
+  DECOMPRESSING: "Decompressing",
+  RESTORING: "Restoring Database",
+  COMPLETED: "Completed",
+  FAILED: "Failed",
+  CANCELLED: "Cancelled",
+} as const;
+
+export type RestoreStage = typeof RESTORE_STAGES[keyof typeof RESTORE_STAGES];
+
+/** Ordered list of backup stages for frontend rendering */
+export const BACKUP_STAGE_ORDER: string[] = [
   PIPELINE_STAGES.QUEUED,
   PIPELINE_STAGES.INITIALIZING,
   PIPELINE_STAGES.DUMPING,
@@ -41,6 +55,19 @@ export const STAGE_ORDER: PipelineStage[] = [
   PIPELINE_STAGES.NOTIFICATIONS,
   PIPELINE_STAGES.COMPLETED,
 ];
+
+/** Ordered list of restore stages for frontend rendering */
+export const RESTORE_STAGE_ORDER: string[] = [
+  RESTORE_STAGES.INITIALIZING,
+  RESTORE_STAGES.DOWNLOADING,
+  RESTORE_STAGES.DECRYPTING,
+  RESTORE_STAGES.DECOMPRESSING,
+  RESTORE_STAGES.RESTORING,
+  RESTORE_STAGES.COMPLETED,
+];
+
+/** @deprecated Use BACKUP_STAGE_ORDER instead */
+export const STAGE_ORDER: PipelineStage[] = BACKUP_STAGE_ORDER as PipelineStage[];
 
 /** Progress ranges [min, max] for each stage, forming a continuous 0→100 scale */
 export const STAGE_PROGRESS_MAP: Record<PipelineStage, [number, number]> = {

@@ -13,7 +13,7 @@ import {
   Clock
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
-import { LogEntry, STAGE_ORDER, PipelineStage } from "@/lib/core/logs";
+import { LogEntry, BACKUP_STAGE_ORDER, RESTORE_STAGE_ORDER } from "@/lib/core/logs";
 import {
   Accordion,
   AccordionContent,
@@ -28,6 +28,7 @@ interface LogViewerProps {
   className?: string;
   autoScroll?: boolean;
   status?: string; // Overall job status
+  executionType?: string; // "Backup" | "Restore"
 }
 
 interface LogGroup {
@@ -39,7 +40,7 @@ interface LogGroup {
     durationMs?: number;
 }
 
-export function LogViewer({ logs, className, autoScroll = true, status }: LogViewerProps) {
+export function LogViewer({ logs, className, autoScroll = true, status, executionType }: LogViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(autoScroll);
   const [activeStages, setActiveStages] = useState<string[]>([]);
@@ -64,8 +65,13 @@ export function LogViewer({ logs, className, autoScroll = true, status }: LogVie
      });
   }, [logs]);
 
-  // Grouping Logic — group by stage, sort by STAGE_ORDER, fill pending stages
+  // Grouping Logic — group by stage, sort by stage order, fill pending stages
   const groupedLogs = useMemo(() => {
+      // Detect execution type: explicit prop, or infer from stage names
+      const stageOrder = executionType === "Restore"
+          ? RESTORE_STAGE_ORDER
+          : BACKUP_STAGE_ORDER;
+
       // Build a map of stage → logs
       const stageMap = new Map<string, LogEntry[]>();
       parsedLogs.forEach(log => {
@@ -78,18 +84,18 @@ export function LogViewer({ logs, className, autoScroll = true, status }: LogVie
       const seenStages = new Set(stageMap.keys());
       const isRunning = !status || status === "Running";
 
-      // Find the furthest known stage reached (by STAGE_ORDER index)
+      // Find the furthest known stage reached (by stage order index)
       let maxStageIdx = -1;
       for (const stage of seenStages) {
-          const idx = STAGE_ORDER.indexOf(stage as PipelineStage);
+          const idx = stageOrder.indexOf(stage);
           if (idx > maxStageIdx) maxStageIdx = idx;
       }
 
       const groups: LogGroup[] = [];
 
       // Add known pipeline stages in order
-      for (let i = 0; i < STAGE_ORDER.length; i++) {
-          const stage = STAGE_ORDER[i];
+      for (let i = 0; i < stageOrder.length; i++) {
+          const stage = stageOrder[i];
           const stageLogs = stageMap.get(stage);
 
           if (stageLogs && stageLogs.length > 0) {
@@ -127,7 +133,7 @@ export function LogViewer({ logs, className, autoScroll = true, status }: LogVie
       }
 
       return groups;
-  }, [parsedLogs, status]);
+  }, [parsedLogs, status, executionType]);
   // Auto-expand latest running stage only if user hasn't manually collapsed/expanded things
   useEffect(() => {
      if (userInteracted) return;

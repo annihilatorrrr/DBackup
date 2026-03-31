@@ -4,6 +4,7 @@ import { S3Client, ListObjectsV2Command, GetObjectCommand, DeleteObjectCommand, 
 import { Upload } from "@aws-sdk/lib-storage";
 import { createReadStream, createWriteStream } from "fs";
 import { pipeline } from "stream/promises";
+import { Transform } from "stream";
 import path from "path";
 import { LogLevel, LogType } from "@/lib/core/logs";
 import { logger } from "@/lib/logger";
@@ -108,7 +109,7 @@ async function s3Download(
     internalConfig: S3InternalConfig,
     remotePath: string,
     localPath: string,
-    _onProgress?: (processed: number, total: number) => void,
+    onProgress?: (processed: number, total: number) => void,
     _onLog?: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void
 ): Promise<boolean> {
     const client = S3ClientFactory.create(internalConfig);
@@ -125,7 +126,21 @@ async function s3Download(
 
         if (!webStream) throw new Error("Empty response body");
 
-        await pipeline(webStream, createWriteStream(localPath));
+        const total = response.ContentLength ?? 0;
+
+        if (onProgress && total > 0) {
+            let processed = 0;
+            const tracker = new Transform({
+                transform(chunk, _encoding, callback) {
+                    processed += chunk.length;
+                    onProgress(processed, total);
+                    callback(null, chunk);
+                }
+            });
+            await pipeline(webStream, tracker, createWriteStream(localPath));
+        } else {
+            await pipeline(webStream, createWriteStream(localPath));
+        }
         return true;
     } catch (error) {
         log.error("S3 download failed", { bucket: internalConfig.bucket, targetKey }, wrapError(error));

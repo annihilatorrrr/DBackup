@@ -2,6 +2,7 @@ import { StorageAdapter, FileInfo } from "@/lib/core/interfaces";
 import { WebDAVSchema } from "@/lib/adapters/definitions";
 import { createClient, WebDAVClient, FileStat } from "webdav";
 import { createWriteStream } from "fs";
+import { Transform } from "stream";
 import fs from "fs/promises";
 import path from "path";
 import { pipeline } from "stream/promises";
@@ -71,7 +72,7 @@ export const WebDAVAdapter: StorageAdapter = {
         }
     },
 
-    async download(config: WebDAVConfig, remotePath: string, localPath: string, _onProgress?: (processed: number, total: number) => void, onLog?: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void): Promise<boolean> {
+    async download(config: WebDAVConfig, remotePath: string, localPath: string, onProgress?: (processed: number, total: number) => void, onLog?: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void): Promise<boolean> {
         try {
             const client = getClient(config);
             const source = resolvePath(config, remotePath);
@@ -79,8 +80,29 @@ export const WebDAVAdapter: StorageAdapter = {
             if (onLog) onLog(`Downloading from WebDAV: ${source}`, "info", "storage");
 
             const readStream = client.createReadStream(source);
-            const writeStream = createWriteStream(localPath);
-            await pipeline(readStream, writeStream);
+
+            if (onProgress) {
+                try {
+                    const stat = await client.stat(source) as FileStat;
+                    const total = stat.size;
+                    if (total > 0) {
+                        let processed = 0;
+                        const tracker = new Transform({
+                            transform(chunk, _encoding, callback) {
+                                processed += chunk.length;
+                                onProgress!(processed, total);
+                                callback(null, chunk);
+                            }
+                        });
+                        await pipeline(readStream, tracker, createWriteStream(localPath));
+                        return true;
+                    }
+                } catch {
+                    // stat failed — proceed without progress
+                }
+            }
+
+            await pipeline(readStream, createWriteStream(localPath));
 
             return true;
         } catch (error: unknown) {
