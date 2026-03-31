@@ -695,7 +695,7 @@ export class RestoreService {
                 log(msg, finalLevel, type, details);
             }, (p, detail) => {
                 currentProgress = p;
-                currentDetail = detail ?? null;
+                currentDetail = detail || null;
                 flushLogs();
             });
 

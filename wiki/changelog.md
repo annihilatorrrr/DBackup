@@ -41,6 +41,8 @@ All notable changes to DBackup are documented here.
 - **restore**: Fixed stale 50% progress bar persisting during Decrypting/Decompressing/Restoring stages — progress resets to 0 on each stage transition
 - **ui**: Fixed history dialog showing duplicate percentage text (e.g. "19% 50%") — raw progress number is now hidden when stage detail is already displayed
 - **restore**: Fixed MySQL/MariaDB SSH restore showing only percentage instead of byte progress during SFTP upload — now displays transferred/total bytes with speed
+- **restore**: Fixed stale upload progress (bytes/speed) persisting during SSH restore command execution — detail is now cleared after upload and replaced with "Executing restore command..." status
+- **restore**: Fixed "Upload verified" log appearing after restore completion — verification now runs immediately after upload before the restore command starts
 
 ### 🔧 CI/CD
 

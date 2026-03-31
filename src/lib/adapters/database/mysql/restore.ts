@@ -272,7 +272,7 @@ async function restoreSingleFileSSH(
                 stream.on('exit', (code: number | null, signal?: string) => {
                     stderr.flush();
                     if (code === 0) {
-                        onProgress?.(100);
+                        onProgress?.(100, '');
                         resolve();
                     } else {
                         reject(new Error(`Remote mysql exited with code ${code ?? 'null'}${signal ? ` (signal: ${signal})` : ''}`));
