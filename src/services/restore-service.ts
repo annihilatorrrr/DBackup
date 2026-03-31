@@ -217,10 +217,13 @@ export class RestoreService {
             const prevStart = stageStartTimes.get(currentStage);
             if (prevStart && currentStage !== stage) {
                 const durationMs = Date.now() - prevStart;
+                const isTerminal = stage === "Cancelled" || stage === "Failed";
                 const durationEntry: LogEntry = {
                     timestamp: new Date().toISOString(),
-                    message: `${currentStage} completed (${formatDuration(durationMs)})`,
-                    level: 'success',
+                    message: isTerminal
+                        ? `${currentStage} aborted (${formatDuration(durationMs)})`
+                        : `${currentStage} completed (${formatDuration(durationMs)})`,
+                    level: isTerminal ? 'warning' : 'success',
                     type: 'general',
                     stage: currentStage,
                     durationMs
@@ -230,6 +233,7 @@ export class RestoreService {
 
             currentStage = stage;
             currentDetail = null;
+            currentProgress = 0;
             stageStartTimes.set(stage, Date.now());
             flushLogs(true);
         };
@@ -365,7 +369,7 @@ export class RestoreService {
             const downloadStartTime = Date.now();
             const downloadSuccess = await storageAdapter.download(sConf, file, tempFile, (processed, total) => {
                 const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
-                currentProgress = Math.floor(percent / 2);
+                currentProgress = percent;
                 if (total > 0) {
                     const elapsed = (Date.now() - downloadStartTime) / 1000;
                     const speed = elapsed > 0 ? processed / elapsed : 0;
@@ -673,9 +677,6 @@ export class RestoreService {
                 dbConf.privilegedAuth = privilegedAuth;
             }
 
-            const restoreFileSize = await fs.promises.stat(tempFile).then(s => s.size).catch(() => 0);
-            const restoreStartDetail = Date.now();
-
             const restoreResult = await sourceAdapter.restore(dbConf, tempFile, (msg, level?: LogLevel, type?: LogType, details?: string) => {
                 // Use provided level, or determine based on msg content
                 let finalLevel: LogLevel = level || 'info';
@@ -692,15 +693,10 @@ export class RestoreService {
                 }
 
                 log(msg, finalLevel, type, details);
-            }, (p) => {
-                if (restoreFileSize > 0) {
-                    const processed = Math.round((p / 100) * restoreFileSize);
-                    const elapsed = (Date.now() - restoreStartDetail) / 1000;
-                    const speed = elapsed > 0 ? Math.round(processed / elapsed) : 0;
-                    updateDetail(`${formatBytes(processed)} / ${formatBytes(restoreFileSize)} – ${formatBytes(speed)}/s`);
-                } else {
-                    updateDetail(`${p}%`);
-                }
+            }, (p, detail) => {
+                currentProgress = p;
+                currentDetail = detail ?? null;
+                flushLogs();
             });
 
             if (!restoreResult.success) {
@@ -751,8 +747,8 @@ export class RestoreService {
             // Distinguish cancellation from real failures
             if (abortController.signal.aborted) {
                 svcLog.info("Restore cancelled by user", { executionId });
-                log("Restore was cancelled by user", 'warning');
                 setStage("Cancelled");
+                log("Restore was cancelled by user", 'warning');
 
                 await prisma.execution.update({
                     where: { id: executionId },
@@ -760,8 +756,8 @@ export class RestoreService {
                 });
             } else {
                 svcLog.error("Restore service error", {}, wrapError(error));
-                log(`Fatal Error: ${getErrorMessage(error)}`, 'error');
                 setStage("Failed");
+                log(`Fatal Error: ${getErrorMessage(error)}`, 'error');
 
                 await prisma.execution.update({
                     where: { id: executionId },

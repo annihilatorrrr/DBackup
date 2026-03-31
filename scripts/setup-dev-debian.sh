@@ -7,6 +7,7 @@
 #   PostgreSQL 14-17 → pg_dump, pg_restore (versioned, like Docker image)
 #   MongoDB          → mongodump, mongorestore, mongosh
 #   SQLite           → sqlite3
+#   Redis            → redis-cli
 #   MSSQL            → (no binary needed, uses Node.js mssql driver)
 #
 # Usage:  sudo ./scripts/setup-dev-debian.sh

@@ -18,6 +18,7 @@ import {
     shouldRestoreDatabase,
     getTargetDatabaseName,
 } from "../common/tar-utils";
+import { formatBytes } from "@/lib/utils";
 import {
     SshClient,
     isSSHMode,
@@ -134,7 +135,7 @@ async function restoreSingleFile(
     sourcePath: string,
     targetDb: string,
     onLog: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void,
-    onProgress?: (percentage: number) => void
+    onProgress?: (percentage: number, detail?: string) => void
 ): Promise<void> {
     if (isSSHMode(config)) {
         return restoreSingleFileSSH(config, sourcePath, targetDb, onLog, onProgress);
@@ -188,7 +189,7 @@ async function restoreSingleFileSSH(
     sourcePath: string,
     targetDb: string,
     onLog: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void,
-    onProgress?: (percentage: number) => void
+    onProgress?: (percentage: number, detail?: string) => void
 ): Promise<void> {
     const stats = await fs.stat(sourcePath);
     const totalSize = stats.size;
@@ -221,7 +222,19 @@ async function restoreSingleFileSSH(
 
         // 1. Upload SQL file to remote temp location via SFTP (guarantees data integrity)
         onLog(`Uploading dump to remote server via SFTP (${(totalSize / 1024 / 1024).toFixed(1)} MB)...`, 'info');
-        await ssh.uploadFile(sourcePath, remoteTempFile);
+        const uploadStart = Date.now();
+        await ssh.uploadFile(sourcePath, remoteTempFile, (transferred, total) => {
+            if (onProgress && total > 0) {
+                // Upload = 0-90% of total progress
+                const uploadPercent = Math.round((transferred / total) * 90);
+                const elapsed = (Date.now() - uploadStart) / 1000;
+                const speed = elapsed > 0 ? transferred / elapsed : 0;
+                onProgress(uploadPercent, `${formatBytes(transferred)} / ${formatBytes(total)} — ${formatBytes(speed)}/s`);
+            }
+        });
+
+        // Clear upload progress detail
+        onProgress?.(90);
 
         // Verify upload integrity
         try {
@@ -230,19 +243,18 @@ async function restoreSingleFileSSH(
             if (remoteSize !== totalSize) {
                 throw new Error(`Upload size mismatch! Local: ${totalSize}, Remote: ${remoteSize}`);
             }
-            onLog(`Upload verified: ${(remoteSize / 1024 / 1024).toFixed(1)} MB`);
+            onLog(`Upload verified: ${(remoteSize / 1024 / 1024).toFixed(1)} MB`, 'success');
         } catch (e) {
             if (e instanceof Error && e.message.includes('mismatch')) throw e;
             // stat command failed — non-critical
         }
-
-        if (onProgress) onProgress(90);
 
         // 2. Run mysql restore on the remote server from the uploaded file
         const restoreCmd = remoteEnv(env,
             `cat ${shellEscape(remoteTempFile)} | ${mysqlBin} ${args.join(" ")}`
         );
         onLog(`Restoring to database (SSH): ${targetDb}`, 'info', 'command', `${mysqlBin} ${args.join(" ")}`);
+        onProgress?.(95, 'Executing restore command...');
 
         await new Promise<void>((resolve, reject) => {
             const secrets = [config.password, config.privilegedAuth?.password].filter(Boolean) as string[];
@@ -306,7 +318,7 @@ async function restoreSingleFileSSH(
     }
 }
 
-export async function restore(config: MySQLRestoreConfig, sourcePath: string, onLog?: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void, onProgress?: (percentage: number) => void): Promise<BackupResult> {
+export async function restore(config: MySQLRestoreConfig, sourcePath: string, onLog?: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void, onProgress?: (percentage: number, detail?: string) => void): Promise<BackupResult> {
     const startedAt = new Date();
     const logs: string[] = [];
     const log = (msg: string, level: LogLevel = 'info', type: LogType = 'general', details?: string) => {

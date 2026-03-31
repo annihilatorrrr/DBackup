@@ -25,7 +25,8 @@ All notable changes to DBackup are documented here.
 - **storage**: Google Drive adapter now reports intermediate upload progress instead of only 100% at completion
 - **storage**: Download progress tracking added to S3, SFTP, Google Drive, OneDrive, WebDAV, and FTP adapters — all now report real-time bytes transferred and total size during restore downloads
 - **restore**: Decryption and decompression stages now show byte progress and speed (MB/s) during restore
-- **restore**: Database restore stage shows file-based progress with speed (e.g. "12 MB / 45 MB – 8.2 MB/s") for MySQL, MariaDB, SQLite, and multi-DB TAR restores
+- **restore**: MySQL/MariaDB SSH restore now shows SFTP upload progress (0-90%) with real-time byte tracking instead of jumping straight to 90%
+- **ssh**: `SshClient.uploadFile()` now accepts optional progress callback using SFTP `fastPut` step events
 
 ### 🐛 Bug Fixes
 
@@ -35,6 +36,11 @@ All notable changes to DBackup are documented here.
 - **storage**: Fixed local filesystem adapter logging "Preparing local destination" twice per upload
 - **ui**: Fixed stage duration not showing when it was 0ms — now always displays duration for completed stages
 - **storage**: Fixed FTP download progress reporting same value for processed and total bytes — now queries file size upfront for accurate progress
+- **restore**: Fixed "Cancelled" stage not appearing in LogViewer after restore cancellation — `setStage()` is now called before the log message so entries receive the correct stage
+- **restore**: Fixed "Failed" stage not appearing in LogViewer after restore failure — same root cause as Cancelled
+- **restore**: Fixed stale 50% progress bar persisting during Decrypting/Decompressing/Restoring stages — progress resets to 0 on each stage transition
+- **ui**: Fixed history dialog showing duplicate percentage text (e.g. "19% 50%") — raw progress number is now hidden when stage detail is already displayed
+- **restore**: Fixed MySQL/MariaDB SSH restore showing only percentage instead of byte progress during SFTP upload — now displays transferred/total bytes with speed
 
 ### 🔧 CI/CD
 
