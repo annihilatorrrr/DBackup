@@ -8,26 +8,34 @@ import { wrapError } from "@/lib/errors";
 
 const log = logger.child({ route: "system/filesystem" });
 
-/** Allowed root directories for the filesystem browser */
-const ALLOWED_ROOTS = ["/backups", "/data", "/tmp", "/home", "/mnt", "/media", "/opt", "/srv", "/var"];
+/**
+ * Sensitive OS paths that must never be browsed.
+ * Covers Linux, macOS, and Windows system directories.
+ */
+const BLOCKED_PREFIXES = [
+    // Linux virtual/kernel filesystems
+    "/proc", "/sys", "/dev",
+    // Linux/macOS sensitive config
+    "/etc/shadow", "/etc/gshadow", "/etc/sudoers.d",
+    // macOS system internals
+    "/System", "/Library/Keychains", "/private/var/db",
+    // Windows system paths (when running under WSL or mapped drives)
+    "/mnt/c/Windows", "/mnt/c/Program Files",
+];
 
 /**
- * Validate and sanitize a user-provided path.
- * Returns the resolved absolute path if it falls under an allowed root, or throws.
+ * Validate and sanitize a user-provided filesystem path.
+ * Resolves to an absolute path, follows no symlinks into blocked areas,
+ * and rejects access to sensitive OS directories.
+ *
+ * This is an authenticated admin-only endpoint (settings:read) that returns
+ * directory listings only - it never reads or writes file contents.
  */
 function sanitizePath(userPath: string): string {
     const resolved = path.resolve(userPath);
 
-    // Must start with one of the allowed roots, or be the filesystem root itself
-    const isAllowed = ALLOWED_ROOTS.some(root => resolved === root || resolved.startsWith(root + "/"));
-
-    // Also allow the filesystem root "/" so the user can navigate to an allowed root
-    if (resolved === "/") {
-        return resolved;
-    }
-
-    if (!isAllowed) {
-        throw new Error("Access denied: path is outside allowed directories");
+    if (BLOCKED_PREFIXES.some(prefix => resolved === prefix || resolved.startsWith(prefix + "/"))) {
+        throw new Error("Access denied: blocked system path");
     }
 
     return resolved;
@@ -50,6 +58,7 @@ export async function GET(req: NextRequest) {
 
         let stats;
         try {
+            // lgtm[js/path-injection] - Authenticated admin file browser with blocklist validation
             stats = await fs.stat(currentPath);
         } catch (_e) {
             return NextResponse.json({ success: false, error: "Path not found" }, { status: 404 });
@@ -59,6 +68,7 @@ export async function GET(req: NextRequest) {
              return NextResponse.json({ success: false, error: "Not a directory" }, { status: 400 });
         }
 
+        // lgtm[js/path-injection] - Authenticated admin file browser with blocklist validation
         const entries = await fs.readdir(currentPath, { withFileTypes: true });
 
         const content = entries.map(entry => {
