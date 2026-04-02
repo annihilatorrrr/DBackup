@@ -16,11 +16,14 @@ export async function GET(req: NextRequest) {
         const requestedPath = searchParams.get("path") || "/";
         const _type = searchParams.get("type") || "all"; // 'all', 'file', 'directory'
 
-        // Basic security check: prevent escaping usage if running in restricted mode (not implementing full jail for now as root access is assumed for self-hosted, but good practice)
-        // For now, we allow full system access as this is a system admin tool.
-
-        // Normalize path
+        // Normalize and validate path to prevent path traversal
         const currentPath = path.resolve(requestedPath);
+
+        // Block access to sensitive system paths
+        const blockedPrefixes = ["/proc", "/sys", "/dev", "/etc/shadow"];
+        if (blockedPrefixes.some(prefix => currentPath.startsWith(prefix))) {
+            return NextResponse.json({ success: false, error: "Access denied" }, { status: 403 });
+        }
 
         let stats;
         try {

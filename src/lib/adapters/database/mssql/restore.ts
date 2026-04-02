@@ -364,8 +364,13 @@ async function extractTarArchive(
                     return;
                 }
 
-                const outputPath = path.join(outputDir, header.name);
-                log(`Extracting: ${header.name}`);
+                const safeName = path.basename(header.name);
+                const outputPath = path.join(outputDir, safeName);
+                if (!outputPath.startsWith(outputDir)) {
+                    reject(new Error(`Zip Slip detected: ${header.name}`));
+                    return;
+                }
+                log(`Extracting: ${safeName}`);
 
                 const writeStream = createWriteStream(outputPath);
 

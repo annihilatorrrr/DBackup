@@ -99,8 +99,7 @@ function ensureCertificate() {
       } else {
         console.warn(
           "[TLS] WARNING: Custom certificate has expired! " +
-            "Upload a new certificate via Settings → Certificate or replace files in " +
-            certsDir
+            "Upload a new certificate via Settings - Certificate or replace files in the configured CERTS_DIR"
         );
       }
     } else {
