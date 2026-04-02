@@ -52,7 +52,7 @@ export const TwilioSmsAdapter: NotificationAdapter = {
             const body = new URLSearchParams({
                 From: config.from,
                 To: config.to,
-                Body: "🔔 DBackup Connection Test — This is a test SMS to verify your Twilio configuration.",
+                Body: "🔔 DBackup Connection Test - This is a test SMS to verify your Twilio configuration.",
             });
 
             const response = await fetch(url, {

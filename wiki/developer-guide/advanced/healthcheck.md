@@ -208,7 +208,7 @@ tests/unit/services/healthcheck-service.test.ts
 2. Find "Health Check & Connectivity"
 3. Click **Run Now**
 4. Check the terminal logs for output
-5. Navigate to **Sources** or **Destinations** — status badges should be updated
+5. Navigate to **Sources** or **Destinations** - status badges should be updated
 
 ## Configuration
 

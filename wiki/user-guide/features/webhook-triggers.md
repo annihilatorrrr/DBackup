@@ -18,8 +18,8 @@ All API calls require an [API Key](/user-guide/features/api-keys) with appropria
 
 Navigate to **Access Management → API Keys** and create a key with at least these permissions:
 
-- `jobs:execute` — Trigger backup jobs
-- `history:read` — Poll execution status
+- `jobs:execute` - Trigger backup jobs
+- `history:read` - Poll execution status
 
 ### 2. Trigger a Backup
 
@@ -72,7 +72,7 @@ curl "https://your-instance.com/api/executions/EXECUTION_ID" \
 | `Pending` | Job is queued, waiting for an execution slot |
 | `Running` | Job is actively running |
 | `Success` | Job completed successfully |
-| `Failed` | Job failed — check `error` field for details |
+| `Failed` | Job failed - check `error` field for details |
 
 ### Include Execution Logs
 
@@ -87,7 +87,7 @@ curl "https://your-instance.com/api/executions/EXECUTION_ID?includeLogs=true" \
 
 You can find a job's ID in two ways:
 
-1. **In the UI**: Go to **Jobs**, click the **API Trigger** button (webhook icon) on the job row — it shows pre-filled curl commands with the correct job ID
+1. **In the UI**: Go to **Jobs**, click the **API Trigger** button (webhook icon) on the job row - it shows pre-filled curl commands with the correct job ID
 2. **Via API**: List all jobs with a `GET /api/jobs` request:
 
 ```bash
@@ -252,16 +252,16 @@ for i in $(seq 1 30); do
     -H "Authorization: Bearer ${DBACKUP_API_KEY}" | jq -r '.data.status')
 
   if [ "$STATUS" = "Success" ]; then
-    echo "Backup complete — safe to deploy"
+    echo "Backup complete - safe to deploy"
     exit 0
   elif [ "$STATUS" = "Failed" ]; then
-    echo "Backup failed — aborting deploy!"
+    echo "Backup failed - aborting deploy!"
     exit 1
   fi
   sleep 10
 done
 
-echo "Backup timed out — aborting deploy!"
+echo "Backup timed out - aborting deploy!"
 exit 1
 ```
 

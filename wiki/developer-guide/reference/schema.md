@@ -371,7 +371,7 @@ model NotificationLog {
 **Notes:**
 - `renderedPayload` stores the adapter-specific payload (Discord embed, Slack blocks, Teams card) for preview rendering
 - `renderedHtml` stores the fully rendered email HTML for iframe preview
-- Logging is fire-and-forget — failures are caught and never block notification delivery
+- Logging is fire-and-forget - failures are caught and never block notification delivery
 - Records are cleaned up by the "Clean Old Data" system task based on `notification.logRetentionDays`
 
 ## Common Operations

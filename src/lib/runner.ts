@@ -274,7 +274,7 @@ export async function performExecution(executionId: string, jobId: string) {
         await stepRetention(ctx);
 
         setStage(PIPELINE_STAGES.COMPLETED);
-        // Upload step may have set status to "Partial" — preserve it
+        // Upload step may have set status to "Partial" - preserve it
         if (ctx.status === "Running") {
             ctx.status = "Success";
         }

@@ -44,7 +44,7 @@ When enabled (default), starting a backup or restore job will automatically:
 If you prefer to stay on the current page when starting jobs, you can disable this option.
 
 ::: info
-Preference toggles are saved immediately when changed—no save button required.
+Preference toggles are saved immediately when changed-no save button required.
 :::
 
 ### Security Tab
@@ -63,7 +63,7 @@ View and manage all your active login sessions:
 - **IP Address**: The IP address of each session is displayed. On localhost, the IPv6 loopback address is shown as "localhost"
 - **Timestamps**: "Created" shows when the session was started, "Last seen" shows the most recent activity
 - **Current Session Badge**: Your current session is marked with a "Current" badge and cannot be revoked
-- **Revoke Session**: Click the trash icon on any other session to revoke it — this forces an immediate sign-out on that device
+- **Revoke Session**: Click the trash icon on any other session to revoke it - this forces an immediate sign-out on that device
 - **Revoke All Others**: Use the "Revoke All Others" button to sign out all devices except your current one. A confirmation dialog prevents accidental logouts
 
 ::: tip

@@ -6,12 +6,12 @@ Store backups in AWS S3 with support for storage classes, lifecycle policies, an
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **Name** | Friendly name for this destination | — | ✅ |
+| **Name** | Friendly name for this destination | - | ✅ |
 | **Region** | AWS region (e.g. `us-east-1`, `eu-central-1`) | `us-east-1` | ✅ |
-| **Bucket** | S3 bucket name | — | ✅ |
-| **Access Key ID** | AWS access key | — | ✅ |
-| **Secret Access Key** | AWS secret key | — | ✅ |
-| **Path Prefix** | Folder path within the bucket | — | ❌ |
+| **Bucket** | S3 bucket name | - | ✅ |
+| **Access Key ID** | AWS access key | - | ✅ |
+| **Secret Access Key** | AWS secret key | - | ✅ |
+| **Path Prefix** | Folder path within the bucket | - | ❌ |
 | **Storage Class** | S3 storage class for uploaded objects | `STANDARD` | ❌ |
 
 ### Storage Classes
@@ -28,7 +28,7 @@ Store backups in AWS S3 with support for storage classes, lifecycle policies, an
 1. **Create an S3 bucket** in your preferred region via the [AWS Console](https://s3.console.aws.amazon.com/)
 2. **Create an IAM user** with programmatic access:
    - Go to [IAM Console](https://console.aws.amazon.com/iam/) → **Users** → **Create user**
-   - Attach the `AmazonS3FullAccess` policy (or a scoped policy — see below)
+   - Attach the `AmazonS3FullAccess` policy (or a scoped policy - see below)
    - Create an **Access Key** (use case: "Application outside AWS") and copy both keys
 3. Go to **Destinations** → **Add Destination** → **Amazon S3**
 4. Enter your Region, Bucket, Access Key ID, and Secret Access Key

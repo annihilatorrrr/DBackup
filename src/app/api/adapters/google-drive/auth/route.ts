@@ -17,7 +17,7 @@ const SCOPES = [
 /**
  * POST /api/adapters/google-drive/auth
  * Generates the Google OAuth authorization URL.
- * Body: { adapterId: string } — The saved adapter config ID to authorize.
+ * Body: { adapterId: string } - The saved adapter config ID to authorize.
  */
 export async function POST(req: NextRequest) {
     const ctx = await getAuthContext(await headers());

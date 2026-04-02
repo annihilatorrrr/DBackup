@@ -4,7 +4,7 @@ Configure how many requests clients can send to the application within a given t
 
 ## Overview
 
-DBackup enforces rate limits at the middleware level — every incoming request is checked before reaching any route handler. Limits are applied **per IP address** and are split into three categories:
+DBackup enforces rate limits at the middleware level - every incoming request is checked before reaching any route handler. Limits are applied **per IP address** and are split into three categories:
 
 | Category | Applies To | Default |
 | :--- | :--- | :--- |

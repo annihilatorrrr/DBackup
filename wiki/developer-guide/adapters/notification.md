@@ -46,7 +46,7 @@ interface NotificationAdapter {
   id: string;
   type: "notification";
   name: string;
-  configSchema: ZodSchema;  // Zod schema — UI form is auto-generated from this
+  configSchema: ZodSchema;  // Zod schema - UI form is auto-generated from this
 
   send(
     config: unknown,
@@ -183,10 +183,10 @@ All notification types (backup, login, restore, etc.) share this single template
 
 Sends Block Kit formatted messages to Slack Incoming Webhooks. Uses `attachments` with a color bar for status indication and structured `blocks` for content:
 
-- **Header block** — Notification title
-- **Section block** — Message body (Markdown)
-- **Fields section** — Structured key-value pairs from `context.fields`
-- **Context block** — Timestamp
+- **Header block** - Notification title
+- **Section block** - Message body (Markdown)
+- **Fields section** - Structured key-value pairs from `context.fields`
+- **Context block** - Timestamp
 - Optional channel, username, and icon emoji overrides
 
 ### Slack Schema
@@ -204,8 +204,8 @@ const SlackSchema = z.object({
 
 Sends Adaptive Cards v1.4 to Microsoft Teams via Power Automate Workflows webhooks. The payload follows the Teams message wrapper format with an `attachments` array containing the card:
 
-- **TextBlock** — Title and message body
-- **FactSet** — Structured key-value fields
+- **TextBlock** - Title and message body
+- **FactSet** - Structured key-value fields
 - Color mapping: hex → named Adaptive Card colors (`Good`, `Attention`, `Warning`, `Accent`, `Default`)
 
 ### Teams Schema
@@ -256,7 +256,7 @@ const NtfySchema = z.object({
 
 ## Generic Webhook Adapter
 
-Sends JSON payloads to any HTTP endpoint with customizable templates. The most flexible adapter — used for services without a dedicated adapter:
+Sends JSON payloads to any HTTP endpoint with customizable templates. The most flexible adapter - used for services without a dedicated adapter:
 
 - Configurable HTTP method (POST, PUT, PATCH)
 - `{{variable}}` placeholder system for custom payload templates
@@ -539,7 +539,7 @@ This uses the same `renderTemplate()` and `NotificationPayload` system as system
 
 ## Creating a New Notification Adapter
 
-Adding a new notification adapter requires changes across **multiple files** — the adapter code itself, schema definitions, UI constants, icon mapping, registry, and documentation. This section provides the complete step-by-step guide.
+Adding a new notification adapter requires changes across **multiple files** - the adapter code itself, schema definitions, UI constants, icon mapping, registry, and documentation. This section provides the complete step-by-step guide.
 
 ### Quick Reference Checklist
 
@@ -565,36 +565,36 @@ Every new notification adapter touches these files:
 | 16 | `wiki/developer-guide/adapters/notification.md` | Update "Available Adapters" table (this file) |
 | 17 | `tests/unit/adapters/notification/<id>.test.ts` | Write unit tests for `test()` and `send()` |
 
-### Step 1 — Define the Zod Schema
+### Step 1 - Define the Zod Schema
 
 Add the schema, inferred type, and definition entry in `src/lib/adapters/definitions.ts`:
 
 ```typescript
-// 1a. Schema — near the other notification schemas
+// 1a. Schema - near the other notification schemas
 export const MyServiceSchema = z.object({
   serverUrl: z.string().url("Valid URL is required"),
   apiToken: z.string().min(1, "API Token is required").describe("Your API token"),
   priority: z.coerce.number().min(1).max(10).default(5).describe("Default priority (1-10)"),
 });
 
-// 1b. Inferred type — in the "Notification Adapters" types section
+// 1b. Inferred type - in the "Notification Adapters" types section
 export type MyServiceConfig = z.infer<typeof MyServiceSchema>;
 
-// 1c. Union type — add to NotificationConfig
+// 1c. Union type - add to NotificationConfig
 export type NotificationConfig = DiscordConfig | SlackConfig | /* ... */ | MyServiceConfig | EmailConfig;
 
-// 1d. Definition entry — in the ADAPTER_DEFINITIONS array
+// 1d. Definition entry - in the ADAPTER_DEFINITIONS array
 { id: "my-service", type: "notification", name: "My Service", configSchema: MyServiceSchema },
 ```
 
 ::: tip Schema conventions
-- Use `.describe("...")` on optional/non-obvious fields — this text appears as a tooltip in the UI
-- Use `.default(value)` for sensible defaults — they auto-fill in the form
+- Use `.describe("...")` on optional/non-obvious fields - this text appears as a tooltip in the UI
+- Use `.default(value)` for sensible defaults - they auto-fill in the form
 - Use `.coerce.number()` for numeric fields to handle string input from forms
 - Use `.url()` for URL fields to get built-in validation
 :::
 
-### Step 2 — Implement the Adapter
+### Step 2 - Implement the Adapter
 
 Create `src/lib/adapters/notification/<id>.ts`:
 
@@ -665,17 +665,17 @@ export const MyServiceAdapter: NotificationAdapter = {
 ```
 
 **Key patterns to follow:**
-- Always use `logger.child()` — never `console.log`
+- Always use `logger.child()` - never `console.log`
 - Always use `wrapError()` in catch blocks
-- `test()` returns `{ success, message }` — never throws
-- `send()` returns `boolean` — `true` on success, `false` on failure (never throws)
+- `test()` returns `{ success, message }` - never throws
+- `send()` returns `boolean` - `true` on success, `false` on failure (never throws)
 - Handle `context` being `undefined` (plain text fallback)
 - Use `context.color` for status colors (`#00ff00` success, `#ff0000` failure)
 - Use `context.fields` for structured key-value data
 - Use `context.title` for the notification title
 - Use `context.success` to determine success/failure state
 
-### Step 3 — Register the Adapter
+### Step 3 - Register the Adapter
 
 In `src/lib/adapters/index.ts`:
 
@@ -690,12 +690,12 @@ export function registerAdapters() {
 
 Place the import and registration near the other notification adapters to keep the file organized.
 
-### Step 4 — Add an Icon
+### Step 4 - Add an Icon
 
 In `src/components/adapter/utils.ts`, import an Iconify icon and map it:
 
 ```typescript
-// Import — choose from available icon packages:
+// Import - choose from available icon packages:
 // @iconify-icons/logos       → Multi-colored brand SVGs (preferred for well-known brands)
 // @iconify-icons/simple-icons → Monochrome brand icons (add color via ADAPTER_COLOR_MAP)
 // @iconify-icons/mdi          → Material Design Icons (generic/protocol icons)
@@ -725,18 +725,18 @@ const ADAPTER_COLOR_MAP: Record<string, string> = {
 };
 ```
 
-### Step 5 — Configure Form Constants
+### Step 5 - Configure Form Constants
 
 In `src/components/adapter/form-constants.ts`, categorize your schema fields into connection vs. configuration tabs and add placeholders:
 
 ```typescript
-// Connection tab — fields needed to establish the connection
+// Connection tab - fields needed to establish the connection
 export const NOTIFICATION_CONNECTION_KEYS = [
   // ... existing keys
   'serverUrl', 'apiToken',  // Add your new keys here
 ];
 
-// Configuration tab — optional settings
+// Configuration tab - optional settings
 export const NOTIFICATION_CONFIG_KEYS = [
   // ... existing keys
   'priority',  // Add your new keys here
@@ -759,7 +759,7 @@ If your adapter has **multi-line text fields** (like `payloadTemplate` or `custo
 const isTextArea = /* existing checks */ || fieldKey === "myMultiLineField";
 ```
 
-### Step 6 — Add Details Summary
+### Step 6 - Add Details Summary
 
 In `src/components/adapter/adapter-manager.tsx`, add a `case` to the `getSummary()` switch so the **Details** column in the adapter table shows meaningful info instead of `-`:
 
@@ -775,7 +775,7 @@ const getSummary = (adapterId: string, configJson: string) => {
 };
 ```
 
-**What to show:** Pick the most identifying field(s) from the config — URL, topic, phone number, channel name, etc. Keep it short and scannable. Examples from existing adapters:
+**What to show:** Pick the most identifying field(s) from the config - URL, topic, phone number, channel name, etc. Keep it short and scannable. Examples from existing adapters:
 
 | Adapter | Details output |
 | :--- | :--- |
@@ -787,11 +787,11 @@ const getSummary = (adapterId: string, configJson: string) => {
 | Twilio SMS | `+1234... → +5678...` |
 | Email | `from@... → to@...` |
 
-### Step 7 — Documentation
+### Step 7 - Documentation
 
 Create the following documentation:
 
-**a) Wiki page** — `wiki/user-guide/notifications/<id>.md`
+**a) Wiki page** - `wiki/user-guide/notifications/<id>.md`
 
 Follow the structure of existing adapter pages:
 - Overview (bullet points with key features)
@@ -800,7 +800,7 @@ Follow the structure of existing adapter pages:
 - Message Format (example output)
 - Troubleshooting (common error messages)
 
-### Step 8 — Unit Tests
+### Step 8 - Unit Tests
 
 Create `tests/unit/adapters/notification/<id>.test.ts` following the existing pattern:
 
@@ -882,8 +882,8 @@ describe("My Service Adapter", () => {
 ```
 
 **What to test:**
-- `test()` — success, HTTP error, network error
-- `send()` — success, payload structure with context, HTTP error, network error
+- `test()` - success, HTTP error, network error
+- `send()` - success, payload structure with context, HTTP error, network error
 - Adapter-specific features (e.g., priority escalation, color mapping, auth headers, template rendering)
 - Edge cases (trailing slashes in URLs, optional fields omitted, etc.)
 
@@ -893,7 +893,7 @@ pnpm test -- tests/unit/adapters/notification/
 ```
 :::
 
-**b) VitePress sidebar** — `wiki/.vitepress/config.mts`
+**b) VitePress sidebar** - `wiki/.vitepress/config.mts`
 
 Add the entry under the "Notification Channels" section:
 

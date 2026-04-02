@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
                     serverEdition = testResult.edition;
                 }
             } catch {
-                // Non-critical — version info is optional
+                // Non-critical - version info is optional
             }
         }
 

@@ -332,7 +332,7 @@ export function RestoreClient() {
         router.push(`/dashboard/storage?destination=${encodeURIComponent(destinationId)}`);
     };
 
-    // Invalid state — redirect back
+    // Invalid state - redirect back
     if (!file || !destinationId) {
         return (
             <div className="space-y-6">
@@ -362,7 +362,7 @@ export function RestoreClient() {
                             </Button>
                             <div>
                                 <h2 className="text-3xl font-bold tracking-tight">Restore Backup</h2>
-                                <p className="text-muted-foreground">Redis restore requires manual steps — follow the wizard below.</p>
+                                <p className="text-muted-foreground">Redis restore requires manual steps - follow the wizard below.</p>
                             </div>
                         </div>
                     </div>
@@ -546,7 +546,7 @@ export function RestoreClient() {
                                     {targetSource && !isLoadingTargetDbs && targetServerVersion && compatibilityIssues.length === 0 && file?.engineVersion && (
                                         <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-green-500/30 bg-green-500/5 text-sm text-green-700 dark:text-green-400">
                                             <ShieldCheck className="h-4 w-4 shrink-0" />
-                                            <span>Version compatible — Backup {file.engineVersion} → Target {targetServerVersion}</span>
+                                            <span>Version compatible - Backup {file.engineVersion} → Target {targetServerVersion}</span>
                                         </div>
                                     )}
 
@@ -844,7 +844,7 @@ export function RestoreClient() {
                                                                         </span>
                                                                     </TableCell>
                                                                     <TableCell className="py-1.5 text-sm text-right text-muted-foreground">
-                                                                        {db.sizeInBytes != null ? formatBytes(db.sizeInBytes) : '—'}
+                                                                        {db.sizeInBytes != null ? formatBytes(db.sizeInBytes) : '-'}
                                                                     </TableCell>
                                                                 </TableRow>
                                                             );

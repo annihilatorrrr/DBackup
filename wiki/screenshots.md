@@ -4,7 +4,7 @@ A visual overview of all DBackup interfaces and features.
 
 ## Demo Video
 
-Watch DBackup in action — creating a backup job and restoring a database.
+Watch DBackup in action - creating a backup job and restoring a database.
 
 <video style="width: 100%; max-width: 960px; border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,0.15);" autoplay muted loop playsinline>
   <source src="/videos/dbackup-backup-restore.mp4" type="video/mp4">

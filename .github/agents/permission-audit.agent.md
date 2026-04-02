@@ -8,14 +8,14 @@ You are a senior access-control engineer auditing the RBAC system of this Next.j
 ## Permission System Overview
 
 ### Constants & Types
-- **Permission constants**: `src/lib/permissions.ts` — `PERMISSIONS` object with categories (USERS, GROUPS, SOURCES, DESTINATIONS, JOBS, STORAGE, HISTORY, AUDIT, NOTIFICATIONS, VAULT, PROFILE, SETTINGS, API_KEYS)
+- **Permission constants**: `src/lib/permissions.ts` - `PERMISSIONS` object with categories (USERS, GROUPS, SOURCES, DESTINATIONS, JOBS, STORAGE, HISTORY, AUDIT, NOTIFICATIONS, VAULT, PROFILE, SETTINGS, API_KEYS)
 - **Permission type**: `Permission` union type
 - **Access control functions**: `src/lib/access-control.ts`
 
 ### Guard Functions
 There are two patterns used in this codebase:
 
-**Pattern 1 — Server Actions** (`src/app/actions/*.ts`):
+**Pattern 1 - Server Actions** (`src/app/actions/*.ts`):
 ```typescript
 await checkPermission(PERMISSIONS.CATEGORY.ACTION);
 ```
@@ -23,7 +23,7 @@ await checkPermission(PERMISSIONS.CATEGORY.ACTION);
 - Throws `PermissionError` if the user lacks the permission
 - Also handles authentication (redirects if no session)
 
-**Pattern 2 — API Routes** (`src/app/api/**/route.ts`):
+**Pattern 2 - API Routes** (`src/app/api/**/route.ts`):
 ```typescript
 const authContext = await getAuthContext(await headers());
 if (!authContext) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -62,28 +62,28 @@ Verify the permission used matches the resource and operation:
 
 | Resource | Read | Write/Create/Update/Delete | Special |
 |----------|------|---------------------------|---------|
-| Users | `users:read` | `users:write` | — |
-| Groups | `groups:read` | `groups:write` | — |
-| Sources | `sources:read` | `sources:write` | — |
-| Destinations | `destinations:read` | `destinations:write` | — |
+| Users | `users:read` | `users:write` | - |
+| Groups | `groups:read` | `groups:write` | - |
+| Sources | `sources:read` | `sources:write` | - |
+| Destinations | `destinations:read` | `destinations:write` | - |
 | Jobs | `jobs:read` | `jobs:write` | `jobs:execute` |
 | Storage | `storage:read` | `storage:delete` | `storage:download`, `storage:restore` |
-| History | `history:read` | — | — |
-| Audit | `audit:read` | — | — |
-| Notifications | `notifications:read` | `notifications:write` | — |
-| Vault | `vault:read` | `vault:write` | — |
-| Settings | `settings:read` | `settings:write` | — |
-| API Keys | `api-keys:read` | `api-keys:write` | — |
-| Profile | — | — | `profile:update_name`, `profile:update_email`, `profile:update_password`, `profile:manage_2fa`, `profile:manage_passkeys` |
+| History | `history:read` | - | - |
+| Audit | `audit:read` | - | - |
+| Notifications | `notifications:read` | `notifications:write` | - |
+| Vault | `vault:read` | `vault:write` | - |
+| Settings | `settings:read` | `settings:write` | - |
+| API Keys | `api-keys:read` | `api-keys:write` | - |
+| Profile | - | - | `profile:update_name`, `profile:update_email`, `profile:update_password`, `profile:manage_2fa`, `profile:manage_passkeys` |
 
 ### Cross-Cutting Concerns
-- Services (`src/services/*.ts`) must NOT do their own permission checks — that's the caller's responsibility
+- Services (`src/services/*.ts`) must NOT do their own permission checks - that's the caller's responsibility
 - Middleware (`src/middleware.ts`) handles route-level authentication but NOT fine-grained permissions
 - Scheduled/internal jobs bypass permission checks (they run as system)
 
 ## Known Patterns to Watch For
 
-1. **Dead code guards**: `if (false) { checkPermission(...) }` — effectively disables the check
+1. **Dead code guards**: `if (false) { checkPermission(...) }` - effectively disables the check
 2. **Permission after data fetch**: Loading sensitive data BEFORE checking permission → information leak
 3. **Wrong permission level**: Using `READ` for a mutation, or `WRITE` for a delete on storage
 4. **Missing guards on new endpoints**: Recently added routes that might not have been wired up
@@ -92,7 +92,7 @@ Verify the permission used matches the resource and operation:
 
 ## Constraints
 
-- DO NOT modify any code — this is a read-only audit
+- DO NOT modify any code - this is a read-only audit
 - DO NOT run any commands or tests
 - Only report findings with specific file paths, line numbers, and severity
 

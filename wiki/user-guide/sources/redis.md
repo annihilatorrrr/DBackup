@@ -31,14 +31,14 @@ DBackup uses `redis-cli --rdb` to download RDB snapshots.
 | **Connection Mode** | Direct (TCP) or SSH | `Direct` | ✅ |
 | **Host** | Redis server hostname or IP | `localhost` | ✅ |
 | **Port** | Redis server port | `6379` | ✅ |
-| **Password** | Optional authentication password | — | ❌ |
+| **Password** | Optional authentication password | - | ❌ |
 | **Database** | Database index (0-15) for display purposes | `0` | ❌ |
-| **Username** | Redis 6+ ACL username | — | ❌ |
+| **Username** | Redis 6+ ACL username | - | ❌ |
 | **TLS** | Enable TLS/SSL connection | `false` | ❌ |
 | **Mode** | Connection mode: `standalone` or `sentinel` | `standalone` | ❌ |
-| **Sentinel Master Name** | Master name for Sentinel mode | — | ❌ |
-| **Sentinel Nodes** | Comma-separated Sentinel node addresses | — | ❌ |
-| **Additional Options** | Extra `redis-cli` flags | — | ❌ |
+| **Sentinel Master Name** | Master name for Sentinel mode | - | ❌ |
+| **Sentinel Nodes** | Comma-separated Sentinel node addresses | - | ❌ |
+| **Additional Options** | Extra `redis-cli` flags | - | ❌ |
 
 ### SSH Mode Fields
 
@@ -46,13 +46,13 @@ These fields appear when **Connection Mode** is set to **SSH**:
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **SSH Host** | SSH server hostname or IP | — | ✅ |
+| **SSH Host** | SSH server hostname or IP | - | ✅ |
 | **SSH Port** | SSH server port | `22` | ❌ |
-| **SSH Username** | SSH login username | — | ✅ |
+| **SSH Username** | SSH login username | - | ✅ |
 | **SSH Auth Type** | Password, Private Key, or Agent | `Password` | ✅ |
-| **SSH Password** | SSH password | — | ❌ |
-| **SSH Private Key** | PEM-formatted private key | — | ❌ |
-| **SSH Passphrase** | Passphrase for encrypted key | — | ❌ |
+| **SSH Password** | SSH password | - | ❌ |
+| **SSH Private Key** | PEM-formatted private key | - | ❌ |
+| **SSH Passphrase** | Passphrase for encrypted key | - | ❌ |
 
 ## Example Configuration
 

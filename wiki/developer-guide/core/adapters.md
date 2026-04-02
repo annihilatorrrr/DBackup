@@ -1,6 +1,6 @@
 # Adapter System
 
-DBackup uses a **Plugin/Adapter Architecture**. The core logic doesn't know about specific technologies—it only knows about interfaces.
+DBackup uses a **Plugin/Adapter Architecture**. The core logic doesn't know about specific technologies-it only knows about interfaces.
 
 ## Overview
 

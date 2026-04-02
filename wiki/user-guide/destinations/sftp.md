@@ -6,15 +6,15 @@ Store backups on a remote server via SSH File Transfer Protocol. Supports passwo
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **Name** | Friendly name for this destination | — | ✅ |
-| **Host** | Hostname or IP of the SFTP server | — | ✅ |
+| **Name** | Friendly name for this destination | - | ✅ |
+| **Host** | Hostname or IP of the SFTP server | - | ✅ |
 | **Port** | SSH port | `22` | ❌ |
-| **Username** | SSH username | — | ✅ |
+| **Username** | SSH username | - | ✅ |
 | **Auth Type** | Authentication method | `password` | ❌ |
-| **Password** | User password (when Auth Type = `password`) | — | ❌ |
-| **Private Key** | PEM-encoded private key (when Auth Type = `privateKey`) | — | ❌ |
-| **Passphrase** | Passphrase for encrypted private keys | — | ❌ |
-| **Path Prefix** | Remote directory for backups | — | ❌ |
+| **Password** | User password (when Auth Type = `password`) | - | ❌ |
+| **Private Key** | PEM-encoded private key (when Auth Type = `privateKey`) | - | ❌ |
+| **Passphrase** | Passphrase for encrypted private keys | - | ❌ |
+| **Path Prefix** | Remote directory for backups | - | ❌ |
 
 ### Authentication Methods
 
@@ -45,7 +45,7 @@ Paste the entire PEM key content including the `-----BEGIN` and `-----END` lines
 
 ## How It Works
 
-- Files are uploaded via SFTP (SSH subsystem) — all transfers are encrypted in transit
+- Files are uploaded via SFTP (SSH subsystem) - all transfers are encrypted in transit
 - DBackup creates subdirectories per job within the Path Prefix automatically
 - All credentials (passwords, private keys) are stored AES-256-GCM encrypted in the database
 

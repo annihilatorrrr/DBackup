@@ -67,7 +67,7 @@ export function ApiKeyTable({ data, canManage }: ApiKeyTableProps) {
             success: (result) => {
                 if (result.success && result.data) {
                     setRevealedKey(result.data.rawKey)
-                    return "API key rotated — save the new key now"
+                    return "API key rotated - save the new key now"
                 }
                 throw new Error(result.error)
             },

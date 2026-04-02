@@ -22,20 +22,20 @@ You need a Google Cloud project with the Drive API enabled (one-time setup):
    - Copy the **Client ID** and **Client Secret**
 
 ::: warning Testing Mode
-While your OAuth consent screen is in "Testing" mode, only users listed as test users can authorize. This is fine for self-hosted use — no need to publish the app.
+While your OAuth consent screen is in "Testing" mode, only users listed as test users can authorize. This is fine for self-hosted use - no need to publish the app.
 :::
 
 ## Configuration
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **Name** | Friendly name for this destination | — | ✅ |
-| **Client ID** | Google OAuth Client ID | — | ✅ |
-| **Client Secret** | Google OAuth Client Secret | — | ✅ |
+| **Name** | Friendly name for this destination | - | ✅ |
+| **Client ID** | Google OAuth Client ID | - | ✅ |
+| **Client Secret** | Google OAuth Client Secret | - | ✅ |
 | **Folder ID** | Google Drive folder ID for backups | Root | ❌ |
 
 ::: tip Finding the Folder ID
-Open the target folder in Google Drive — the Folder ID is the last part of the URL:
+Open the target folder in Google Drive - the Folder ID is the last part of the URL:
 `https://drive.google.com/drive/folders/`**`1AbCdEfGhIjKlMnOpQrStUv`**
 :::
 
@@ -43,7 +43,7 @@ Open the target folder in Google Drive — the Folder ID is the last part of the
 
 1. Go to **Destinations** → **Add Destination** → **Google Drive**
 2. Enter Client ID and Client Secret → **Save**
-3. Click **Authorize with Google** — you'll be redirected to Google
+3. Click **Authorize with Google** - you'll be redirected to Google
 4. Sign in and grant DBackup access to manage its files
 5. After redirect, the status changes to **green** ("Authorized")
 6. (Optional) Enter a **Folder ID** to store backups in a specific folder
@@ -51,8 +51,8 @@ Open the target folder in Google Drive — the Folder ID is the last part of the
 
 ## How It Works
 
-- **OAuth tokens** refresh automatically — no manual re-authorization needed
-- Uses the `drive.file` scope — DBackup can only access files it created (not your entire Drive)
+- **OAuth tokens** refresh automatically - no manual re-authorization needed
+- Uses the `drive.file` scope - DBackup can only access files it created (not your entire Drive)
 - Files ≤ 5 MB use simple upload; larger files use resumable upload
 - All credentials (Client ID, Client Secret, Refresh Token) are stored AES-256-GCM encrypted
 

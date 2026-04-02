@@ -29,7 +29,7 @@ interface RsyncConfig {
 
 /**
  * Strips sensitive data (passwords, keys, key paths) from command strings for safe logging.
- * IMPORTANT: Never log raw commands — always sanitize first.
+ * IMPORTANT: Never log raw commands - always sanitize first.
  */
 function sanitizeCommand(cmd: string): string {
     return cmd
@@ -47,7 +47,7 @@ function sanitizeCommand(cmd: string): string {
  */
 function sanitizeError(error: unknown): string {
     const message = error instanceof Error ? error.message : String(error);
-    // Node's exec includes "Command failed: <full command>\n<stderr>" — strip the command part
+    // Node's exec includes "Command failed: <full command>\n<stderr>" - strip the command part
     const stripped = message.replace(/Command failed:[^\n]*\n?/g, "").trim();
     // Remove SSH/sshpass warnings that leak connection details
     const cleaned = stripped

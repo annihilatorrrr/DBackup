@@ -63,7 +63,7 @@ DBackup supports two modes to access the `.bak` files that SQL Server creates on
 
 ### Local Mode (Shared Volume)
 
-Use this when DBackup and SQL Server share a filesystem — typically via Docker volume mounts or NFS shares.
+Use this when DBackup and SQL Server share a filesystem - typically via Docker volume mounts or NFS shares.
 
 ```yaml
 services:
@@ -245,7 +245,7 @@ This error occurs when the **SQL Server service account** (typically `mssql`) ca
    sudo chmod 770 /path/to/backup-dir
    ```
 2. **Docker**: Verify the volume mount exists and the container user has write permissions
-3. Verify the backup directory exists on the SQL Server — it is **not** created automatically
+3. Verify the backup directory exists on the SQL Server - it is **not** created automatically
 
 ### File Not Found After Backup (Local Mode)
 
@@ -272,7 +272,7 @@ SSH connection failed: Authentication failed
 4. For private key auth, verify the key is in PEM format
 5. Check firewall rules allow SSH connections (port 22)
 
-### SSH File Transfer Failed — Permission Denied (SSH Mode)
+### SSH File Transfer Failed - Permission Denied (SSH Mode)
 
 ```
 Failed to download /path/to/backup.bak: Permission denied
@@ -280,22 +280,22 @@ Failed to download /path/to/backup.bak: Permission denied
 
 This is the most common SSH mode issue. The backup **succeeds** (SQL Server writes the `.bak` file), but the SSH/SFTP download **fails** because the SSH user cannot read the file.
 
-**Why this happens:** SQL Server runs as the `mssql` service account and creates `.bak` files with restrictive permissions (typically `640`, owner `mssql:mssql`). Even if the backup directory has `777` permissions, the **file itself** is owned by `mssql` with limited access — your SSH user cannot read it.
+**Why this happens:** SQL Server runs as the `mssql` service account and creates `.bak` files with restrictive permissions (typically `640`, owner `mssql:mssql`). Even if the backup directory has `777` permissions, the **file itself** is owned by `mssql` with limited access - your SSH user cannot read it.
 
-**Solution 1 — Add SSH user to the `mssql` group** (recommended):
+**Solution 1 - Add SSH user to the `mssql` group** (recommended):
 ```bash
 sudo usermod -aG mssql your-ssh-user
 ```
 Log out and back in (or run `newgrp mssql`) for the change to take effect.
 
-**Solution 2 — Set default ACL on the backup directory:**
+**Solution 2 - Set default ACL on the backup directory:**
 ```bash
 sudo setfacl -d -m u:your-ssh-user:rwx /path/to/backup-dir
 sudo setfacl -m u:your-ssh-user:rwx /path/to/backup-dir
 ```
 This ensures every new file created in the directory is automatically readable by your SSH user.
 
-**Solution 3 — Change SQL Server's default file permissions:**
+**Solution 3 - Change SQL Server's default file permissions:**
 ```bash
 sudo systemctl edit mssql-server
 ```
@@ -383,4 +383,4 @@ The restore process depends on the configured **File Transfer Mode**:
 6. **Monitor backup duration** and adjust timeout
 7. **Use encrypted connections** in production
 8. **Separate backup user** from application user
-9. **Enable Trust Server Certificate** only in development — use valid certs in production
+9. **Enable Trust Server Certificate** only in development - use valid certs in production

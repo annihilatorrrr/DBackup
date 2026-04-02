@@ -94,7 +94,7 @@ export async function getDatabases(config: MongoDBConfig): Promise<string[]> {
             const mongoshBin = await remoteBinaryCheck(ssh, "mongosh", "mongo");
             const args = buildMongoArgs(config);
 
-            // Output JSON array of DB names — single print(), parsed in Node
+            // Output JSON array of DB names - single print(), parsed in Node
             const cmd = `${mongoshBin} ${args.join(" ")} --quiet --eval 'print(JSON.stringify(db.adminCommand({listDatabases:1}).databases.map(function(d){return d.name})))'`;
             log.debug("getDatabases SSH command", { cmd: cmd.replace(/--password\s+'[^']*'/, "--password '***'") });
             const result = await ssh.exec(cmd);
@@ -109,7 +109,7 @@ export async function getDatabases(config: MongoDBConfig): Promise<string[]> {
                 throw new Error(`Failed to list databases (code ${result.code}): ${result.stderr || result.stdout}`);
             }
 
-            // Parse JSON array from stdout — find the line that looks like a JSON array
+            // Parse JSON array from stdout - find the line that looks like a JSON array
             const lines = result.stdout.split('\n').map(s => s.trim()).filter(Boolean);
             const jsonLine = lines.find(l => l.startsWith('['));
 
@@ -165,7 +165,7 @@ export async function getDatabasesWithStats(config: MongoDBConfig): Promise<Data
             const mongoshBin = await remoteBinaryCheck(ssh, "mongosh", "mongo");
             const args = buildMongoArgs(config);
 
-            // Output JSON array with stats — single print(), parsed in Node
+            // Output JSON array with stats - single print(), parsed in Node
             // All filtering done in Node to avoid quoting issues in shell
             const script = `var r=db.adminCommand({listDatabases:1});var out=[];r.databases.forEach(function(d){var c=0;try{c=db.getSiblingDB(d.name).getCollectionNames().length}catch(e){}out.push({name:d.name,size:Number(d.sizeOnDisk)||0,tables:c})});print(JSON.stringify(out))`;
             const cmd = `${mongoshBin} ${args.join(" ")} --quiet --eval '${script}'`;

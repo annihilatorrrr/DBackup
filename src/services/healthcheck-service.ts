@@ -235,7 +235,7 @@ export class HealthCheckService {
         }
 
         if (newStatus === "OFFLINE") {
-            // Adapter just became or remains offline — check if we should notify
+            // Adapter just became or remains offline - check if we should notify
             if (shouldNotifyOffline(currentState, reminderCooldownMs)) {
                 try {
                     await notify({
@@ -259,7 +259,7 @@ export class HealthCheckService {
                 stateChanged = true;
             }
         } else if (currentState?.active) {
-            // Adapter recovered — send recovery notification and reset state
+            // Adapter recovered - send recovery notification and reset state
             let downtime: string | undefined;
             if (currentState.lastNotifiedAt) {
                 const ms = Date.now() - new Date(currentState.lastNotifiedAt).getTime();

@@ -103,7 +103,7 @@ async function _ensureFolderExists(dbx: Dropbox, folderPath: string): Promise<vo
     try {
         await dbx.filesCreateFolderV2({ path: dirPath, autorename: false });
     } catch (error: unknown) {
-        // Ignore "path/conflict/folder" errors — folder already exists
+        // Ignore "path/conflict/folder" errors - folder already exists
         const errStr = JSON.stringify(error);
         if (!errStr.includes("path/conflict") && !errStr.includes("already exists")) {
             throw error;
@@ -377,7 +377,7 @@ export const DropboxAdapter: StorageAdapter = {
 
             return {
                 success: true,
-                message: `Connection successful — Account: ${displayName} (Write/Delete verified)`,
+                message: `Connection successful - Account: ${displayName} (Write/Delete verified)`,
             };
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : String(error);

@@ -5,7 +5,6 @@ import { spawn } from "child_process";
 import fs from "fs/promises";
 import { createWriteStream } from "fs";
 import path from "path";
-import { getPostgresBinary } from "./version-utils";
 import {
     createMultiDbTar,
     createTempDir,
@@ -45,8 +44,6 @@ async function dumpSingleDatabase(
         return dumpSingleDatabaseSSH(dbName, outputPath, config, log);
     }
 
-    const pgDumpBinary = await getPostgresBinary('pg_dump', config.detectedVersion);
-
     const args = [
         '-h', config.host,
         '-p', String(config.port),
@@ -70,9 +67,9 @@ async function dumpSingleDatabase(
         }
     }
 
-    log(`Dumping database: ${dbName}`, 'info', 'command', `${pgDumpBinary} ${args.join(' ')}`);
+    log(`Dumping database: ${dbName}`, 'info', 'command', `pg_dump ${args.join(' ')}`);
 
-    const dumpProcess = spawn(pgDumpBinary, args, { env });
+    const dumpProcess = spawn('pg_dump', args, { env });
     const writeStream = createWriteStream(outputPath);
 
     dumpProcess.stdout.pipe(writeStream);
@@ -203,7 +200,7 @@ export async function dump(
 
         // Auto-discover all databases if none specified
         if (dbs.length === 0) {
-            log("No DB selected — auto-discovering all databases…", "info");
+            log("No DB selected - auto-discovering all databases…", "info");
             dbs = await getDatabases(config);
             log(`Discovered ${dbs.length} database(s): ${dbs.join(", ")}`, "info");
             if (dbs.length === 0) {
@@ -212,16 +209,14 @@ export async function dump(
         }
 
         const dialect = getDialect('postgres', config.detectedVersion);
-        const pgDumpBinary = await getPostgresBinary('pg_dump', config.detectedVersion);
-        log(`Using ${pgDumpBinary} for PostgreSQL ${config.detectedVersion}`, 'info');
 
         // Case 1: Single Database - Direct dump with custom format
         if (dbs.length <= 1) {
             const args = dialect.getDumpArgs(config, dbs);
 
-            log(`Starting single-database dump (custom format)`, 'info', 'command', `${pgDumpBinary} ${args.join(' ')}`);
+            log(`Starting single-database dump (custom format)`, 'info', 'command', `pg_dump ${args.join(' ')}`);
 
-            const dumpProcess = spawn(pgDumpBinary, args, { env });
+            const dumpProcess = spawn('pg_dump', args, { env });
             const writeStream = createWriteStream(destinationPath);
 
             dumpProcess.stdout.pipe(writeStream);

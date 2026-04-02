@@ -98,7 +98,7 @@ export function defaultAlertStates(): StorageAlertStates {
 function shouldNotify(state: AlertTypeState, cooldownMs?: number): boolean {
   if (!state.active) return true;
   if (!state.lastNotifiedAt) return true;
-  // cooldownMs === 0 means reminders are disabled — only notify on first occurrence
+  // cooldownMs === 0 means reminders are disabled - only notify on first occurrence
   if (cooldownMs === 0) return false;
   const effectiveCooldown = cooldownMs ?? ALERT_COOLDOWN_MS;
   return Date.now() - new Date(state.lastNotifiedAt).getTime() >= effectiveCooldown;
@@ -317,7 +317,7 @@ async function checkUsageSpike(
       states.usageSpike = { active: true, lastNotifiedAt: new Date().toISOString() };
     }
   } else {
-    // No spike — reset so next spike fires immediately
+    // No spike - reset so next spike fires immediately
     states.usageSpike = defaultAlertTypeState();
   }
 }
@@ -360,7 +360,7 @@ async function checkStorageLimit(
       states.storageLimit = { active: true, lastNotifiedAt: new Date().toISOString() };
     }
   } else {
-    // Condition resolved — reset for future re-notification
+    // Condition resolved - reset for future re-notification
     states.storageLimit = defaultAlertTypeState();
   }
 }
@@ -428,7 +428,7 @@ async function checkMissingBackup(
       states.missingBackup = { active: true, lastNotifiedAt: new Date().toISOString() };
     }
   } else {
-    // Condition resolved — reset for future re-notification
+    // Condition resolved - reset for future re-notification
     states.missingBackup = defaultAlertTypeState();
   }
 }

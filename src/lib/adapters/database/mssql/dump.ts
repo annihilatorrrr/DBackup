@@ -119,7 +119,7 @@ export async function dump(
                 log(`Executing backup`, "info", "command", backupQuery);
 
                 // Execute backup command on the server, capturing all SQL Server messages.
-                // Use requestTimeout=0 (no timeout) — large DB backups can run for hours.
+                // Use requestTimeout=0 (no timeout) - large DB backups can run for hours.
                 // Stream progress messages in real-time so the UI shows live updates.
                 await executeQueryWithMessages(config, backupQuery, undefined, 0, (msg) => {
                     if (msg.message) {

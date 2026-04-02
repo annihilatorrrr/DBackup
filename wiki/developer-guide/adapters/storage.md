@@ -476,7 +476,7 @@ registry.register(WebDAVAdapter);
 
 The adapter form renders fields dynamically from the Zod schema. Fields are split into two tabs based on these arrays:
 
-**Connection tab** — Add any new connection-related field keys your schema introduces:
+**Connection tab** - Add any new connection-related field keys your schema introduces:
 ```typescript
 export const STORAGE_CONNECTION_KEYS = [
     'host', 'port',
@@ -489,7 +489,7 @@ export const STORAGE_CONNECTION_KEYS = [
 ];
 ```
 
-**Configuration tab** — Add any new config-related field keys:
+**Configuration tab** - Add any new config-related field keys:
 ```typescript
 export const STORAGE_CONFIG_KEYS = [
     'pathPrefix', 'storageClass', 'forcePathStyle',
@@ -498,7 +498,7 @@ export const STORAGE_CONFIG_KEYS = [
 ];
 ```
 
-**Placeholders** — Add helpful placeholder values for your adapter's fields:
+**Placeholders** - Add helpful placeholder values for your adapter's fields:
 ```typescript
 export const PLACEHOLDERS: Record<string, string> = {
     // WebDAV
@@ -602,7 +602,7 @@ If the new adapter requires browser-based OAuth (e.g., Google Drive, Dropbox, On
 | # | File | What to do |
 | :--- | :--- | :--- |
 | 13 | `src/app/api/adapters/<name>/auth/route.ts` | OAuth authorization URL generation endpoint |
-| 14 | `src/app/api/adapters/<name>/callback/route.ts` | OAuth callback — exchange code for tokens, store refresh token encrypted |
+| 14 | `src/app/api/adapters/<name>/callback/route.ts` | OAuth callback - exchange code for tokens, store refresh token encrypted |
 | 15 | `src/components/adapter/<name>-oauth-button.tsx` | OAuth button component with authorized/unauthorized status |
 | 16 | `src/components/adapter/form-sections.tsx` | Special form layout: show OAuth button in connection tab, hide auto-managed fields (e.g., `refreshToken`) |
 | 17 | `src/lib/crypto.ts` | Add OAuth secret fields to `SENSITIVE_KEYS` (e.g., `clientSecret`, `refreshToken`) |

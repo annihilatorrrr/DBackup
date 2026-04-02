@@ -47,7 +47,7 @@ Per-job notifications alert you when a specific backup job completes or fails.
 
 ### Multiple Channels
 
-You can assign multiple notifications to one job — for example Discord for quick team awareness and Email for formal audit records.
+You can assign multiple notifications to one job - for example Discord for quick team awareness and Email for formal audit records.
 
 ### Notification Conditions
 
@@ -135,7 +135,7 @@ This feature only works with Email (SMTP) channels. At least one Email channel m
 4. A **"Notify user directly"** dropdown appears below the channel selector
 5. Choose the desired mode
 
-The user's email address is taken from their account profile — no additional configuration needed.
+The user's email address is taken from their account profile - no additional configuration needed.
 
 ### Test Notifications
 
@@ -161,8 +161,8 @@ For channel-specific troubleshooting, see the individual channel pages:
 
 ### Notification Strategy
 
-1. **Always notify on failure** — Critical for reliability
-2. **Consider noise** — Too many success notifications get ignored
+1. **Always notify on failure** - Critical for reliability
+2. **Consider noise** - Too many success notifications get ignored
 3. **Use channels appropriately**:
    - Discord / Slack: Team visibility
    - Teams: Enterprise communication
@@ -171,18 +171,18 @@ For channel-specific troubleshooting, see the individual channel pages:
    - SMS (Twilio): Critical failure alerts to mobile phones
    - Generic Webhook: Automation and monitoring tools
    - Email: Audit trail, per-user alerts
-4. **Test regularly** — Ensure notifications work
+4. **Test regularly** - Ensure notifications work
 
 ### Security
 
-1. **Don't log credentials** — Use environment variables
-2. **Secure webhooks** — Don't share webhook URLs publicly
-3. **Review recipients** — Only needed parties
-4. **SMTP over TLS** — Encrypt email transport
+1. **Don't log credentials** - Use environment variables
+2. **Secure webhooks** - Don't share webhook URLs publicly
+3. **Review recipients** - Only needed parties
+4. **SMTP over TLS** - Encrypt email transport
 
 ## Next Steps
 
-- [Notification Channels](/user-guide/notifications/) — Detailed setup per channel
-- [Creating Jobs](/user-guide/jobs/) — Assign per-job notifications
-- [Scheduling](/user-guide/jobs/scheduling) — Automate backups
-- [Storage Explorer](/user-guide/features/storage-explorer) — Review backups
+- [Notification Channels](/user-guide/notifications/) - Detailed setup per channel
+- [Creating Jobs](/user-guide/jobs/) - Assign per-job notifications
+- [Scheduling](/user-guide/jobs/scheduling) - Automate backups
+- [Storage Explorer](/user-guide/features/storage-explorer) - Review backups

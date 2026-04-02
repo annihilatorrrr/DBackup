@@ -10,6 +10,7 @@ Self-hosted web app for automating database backups (MySQL, PostgreSQL, MongoDB)
 ## Language & Commands
 - **Response**: German (Deutsch) | **Code/Comments**: English
 - **Package Manager**: Always use `pnpm` (e.g., `pnpm dev`, `pnpm add`, `pnpm test`)
+- **Typography**: Never use em dashes (`-`). Use a hyphen (`-`) instead where needed.
 
 ## Architecture (4 Layers)
 

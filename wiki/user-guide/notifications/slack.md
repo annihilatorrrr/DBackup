@@ -6,7 +6,7 @@ Send formatted notifications to Slack channels using Incoming Webhooks with Bloc
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **Webhook URL** | Slack Incoming Webhook URL | — | ✅ |
+| **Webhook URL** | Slack Incoming Webhook URL | - | ✅ |
 | **Channel** | Override channel (e.g., `#backups`) | Webhook default | ❌ |
 | **Username** | Bot display name | `DBackup` | ❌ |
 | **Icon Emoji** | Bot icon emoji (e.g., `:shield:`) | Default | ❌ |
@@ -42,14 +42,14 @@ Channel override only works if the Slack app has the `chat:write` scope. Standar
 
 ## Troubleshooting
 
-### 403 — invalid_token
+### 403 - invalid_token
 
 Verify the webhook URL is complete. Check the Slack app hasn't been uninstalled, or regenerate the webhook.
 
-### 404 — channel_not_found
+### 404 - channel_not_found
 
 The channel override target doesn't exist or is archived. Verify the name with `#` prefix. For private channels, invite the bot first.
 
-### 403 — team_disabled
+### 403 - team_disabled
 
 The Slack app was removed. Reinstall it in your workspace settings.

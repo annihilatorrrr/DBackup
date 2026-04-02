@@ -6,8 +6,8 @@ Send push notifications to your self-hosted [Gotify](https://gotify.net/) server
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **Server URL** | Gotify server URL (e.g., `https://gotify.example.com`) | — | ✅ |
-| **App Token** | Application token (from Gotify → Apps) | — | ✅ |
+| **Server URL** | Gotify server URL (e.g., `https://gotify.example.com`) | - | ✅ |
+| **App Token** | Application token (from Gotify → Apps) | - | ✅ |
 | **Priority** | Default message priority (0–10) | `5` | ❌ |
 
 ## Setup Guide
@@ -47,7 +47,7 @@ Priority range: 0 (silent) to 10 (highest). Priorities 8+ trigger high-urgency a
 
 ## Troubleshooting
 
-### 401 — Unauthorized
+### 401 - Unauthorized
 
 Verify the App Token is correct. Ensure it belongs to an **Application** (not a Client token).
 
@@ -57,4 +57,4 @@ Ensure the Gotify server is running and reachable from DBackup. Check firewall r
 
 ### Notifications Not Appearing on Mobile
 
-Check the Gotify Android app WebSocket connection is active. Some Android manufacturers kill background apps — add Gotify to battery optimization exceptions.
+Check the Gotify Android app WebSocket connection is active. Some Android manufacturers kill background apps - add Gotify to battery optimization exceptions.

@@ -1,12 +1,12 @@
 # Local Storage
 
-Store backups on the local filesystem of the server running DBackup. Simplest option — no external service required.
+Store backups on the local filesystem of the server running DBackup. Simplest option - no external service required.
 
 ## Configuration
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **Name** | Friendly name for this destination | — | ✅ |
+| **Name** | Friendly name for this destination | - | ✅ |
 | **Base Path** | Absolute directory path for backups | `/backups` | ❌ |
 
 ## Setup Guide
@@ -30,7 +30,7 @@ The default `/backups` path works with the default `docker-compose.yml` configur
 
 - Backups are written directly to the specified directory
 - DBackup creates subfolders per job automatically (e.g. `/backups/my-job/`)
-- No network transfer — fastest destination option
+- No network transfer - fastest destination option
 - File permissions inherit from the DBackup process user
 
 ## Troubleshooting

@@ -337,9 +337,9 @@ Periodic Integrity Check:
 ```
 
 **Key Components:**
-- `src/lib/checksum.ts` — SHA-256 utility (stream-based, memory-efficient)
-- `src/services/integrity-service.ts` — Periodic full verification
-- System task `system.integrity_check` — Weekly schedule (disabled by default)
+- `src/lib/checksum.ts` - SHA-256 utility (stream-based, memory-efficient)
+- `src/services/integrity-service.ts` - Periodic full verification
+- System task `system.integrity_check` - Weekly schedule (disabled by default)
 
 ## Logging & Error Handling
 

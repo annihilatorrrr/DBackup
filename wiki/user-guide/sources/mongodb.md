@@ -22,14 +22,14 @@ DBackup uses `mongodump` from MongoDB Database Tools.
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
 | **Connection Mode** | Direct (TCP) or SSH | `Direct` | ✅ |
-| **Connection URI** | Full MongoDB URI (overrides other settings) | — | ❌ |
+| **Connection URI** | Full MongoDB URI (overrides other settings) | - | ❌ |
 | **Host** | Database server hostname | `localhost` | ✅ |
 | **Port** | MongoDB port | `27017` | ✅ |
-| **User** | Database username | — | ❌ |
-| **Password** | Database password | — | ❌ |
+| **User** | Database username | - | ❌ |
+| **Password** | Database password | - | ❌ |
 | **Auth Database** | Authentication database | `admin` | ❌ |
 | **Database** | Database name(s) to backup | All databases | ❌ |
-| **Additional Options** | Extra `mongodump` flags | — | ❌ |
+| **Additional Options** | Extra `mongodump` flags | - | ❌ |
 
 ### SSH Mode Fields
 
@@ -37,13 +37,13 @@ These fields appear when **Connection Mode** is set to **SSH**:
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **SSH Host** | SSH server hostname or IP | — | ✅ |
+| **SSH Host** | SSH server hostname or IP | - | ✅ |
 | **SSH Port** | SSH server port | `22` | ❌ |
-| **SSH Username** | SSH login username | — | ✅ |
+| **SSH Username** | SSH login username | - | ✅ |
 | **SSH Auth Type** | Password, Private Key, or Agent | `Password` | ✅ |
-| **SSH Password** | SSH password | — | ❌ |
-| **SSH Private Key** | PEM-formatted private key | — | ❌ |
-| **SSH Passphrase** | Passphrase for encrypted key | — | ❌ |
+| **SSH Password** | SSH password | - | ❌ |
+| **SSH Private Key** | PEM-formatted private key | - | ❌ |
+| **SSH Passphrase** | Passphrase for encrypted key | - | ❌ |
 
 ## Prerequisites
 
@@ -71,7 +71,7 @@ mongosh
 **Install on the remote host:**
 
 <details>
-<summary>Debian/Ubuntu — MongoDB Database Tools + mongosh</summary>
+<summary>Debian/Ubuntu - MongoDB Database Tools + mongosh</summary>
 
 Add the official MongoDB repository first:
 ```bash

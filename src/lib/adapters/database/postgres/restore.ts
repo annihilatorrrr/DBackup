@@ -5,7 +5,6 @@ import { getDialect } from "./dialects";
 import { spawn } from "child_process";
 import fs from "fs/promises";
 import path from "path";
-import { getPostgresBinary } from "./version-utils";
 import {
     isMultiDbTar,
     extractSelectedDatabases,
@@ -155,8 +154,6 @@ async function restoreSingleDatabase(
         return restoreSingleDatabaseSSH(sourcePath, targetDb, config, log);
     }
 
-    const pgRestoreBinary = await getPostgresBinary('pg_restore', config.detectedVersion);
-
     const args = [
         '-h', config.host,
         '-p', String(config.port),
@@ -174,10 +171,10 @@ async function restoreSingleDatabase(
         sourcePath
     ];
 
-    log(`Restoring to database: ${targetDb}`, 'info', 'command', `${pgRestoreBinary} ${args.join(' ')}`);
+    log(`Restoring to database: ${targetDb}`, 'info', 'command', `pg_restore ${args.join(' ')}`);
 
     await new Promise<void>((resolve, reject) => {
-        const pgRestore = spawn(pgRestoreBinary, args, { env, stdio: ['ignore', 'pipe', 'pipe'] });
+        const pgRestore = spawn('pg_restore', args, { env, stdio: ['ignore', 'pipe', 'pipe'] });
 
         let stderrBuffer = "";
 
@@ -207,7 +204,11 @@ async function restoreSingleDatabase(
             if (code === 0) {
                 resolve();
             } else if (code === 1 && stderrBuffer.includes('warning') && stderrBuffer.includes('errors ignored')) {
-                log('Restore completed with warnings (non-fatal)', 'warning');
+                if (stderrBuffer.includes('transaction_timeout')) {
+                    log('Restore completed - pg_restore 18 sent SET transaction_timeout which is unsupported on PostgreSQL < 17. This is cosmetic and does not affect the restore.', 'warning');
+                } else {
+                    log('Restore completed with warnings (non-fatal)', 'warning');
+                }
                 resolve();
             } else {
                 let errorMsg = `pg_restore exited with code ${code}`;
@@ -279,7 +280,11 @@ async function restoreSingleDatabaseSSH(
         }
 
         if (result.code === 1 && result.stderr.includes('warning')) {
-            log('Restore completed with warnings (non-fatal)', 'warning');
+            if (result.stderr.includes('transaction_timeout')) {
+                log('Restore completed - pg_restore 18 sent SET transaction_timeout which is unsupported on PostgreSQL < 17. This is cosmetic and does not affect the restore.', 'warning');
+            } else {
+                log('Restore completed with warnings (non-fatal)', 'warning');
+            }
         }
 
         if (result.stderr) {
@@ -403,9 +408,6 @@ export async function restore(
             }
 
             log(`Restoring single database to: ${targetDb}`, 'info');
-
-            const pgRestoreBinary = await getPostgresBinary('pg_restore', config.detectedVersion);
-            log(`Using ${pgRestoreBinary} for PostgreSQL ${config.detectedVersion}`, 'info');
 
             await prepareRestore(usageConfig, [targetDb]);
             await restoreSingleDatabase(sourcePath, targetDb, usageConfig, env, log);

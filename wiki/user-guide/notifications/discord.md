@@ -6,7 +6,7 @@ Send rich embed notifications to Discord channels via webhooks.
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **Webhook URL** | Discord webhook URL | — | ✅ |
+| **Webhook URL** | Discord webhook URL | - | ✅ |
 | **Username** | Bot display name in Discord | `Backup Manager` | ❌ |
 | **Avatar URL** | Bot avatar image URL | Discord default | ❌ |
 
@@ -37,14 +37,14 @@ Each embed includes title, description, structured fields (job name, duration, s
 
 ## Troubleshooting
 
-### 401 — Invalid Webhook Token
+### 401 - Invalid Webhook Token
 
 Verify the webhook URL is complete. Check the webhook hasn't been deleted in Discord → Server Settings → Integrations.
 
-### 429 — Rate Limited
+### 429 - Rate Limited
 
-Too many messages in a short period. Reduce notification frequency — avoid "Always" on high-frequency jobs.
+Too many messages in a short period. Reduce notification frequency - avoid "Always" on high-frequency jobs.
 
-### 404 — Unknown Webhook
+### 404 - Unknown Webhook
 
 The webhook or channel was deleted. Create a new webhook and update the configuration.

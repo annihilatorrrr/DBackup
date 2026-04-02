@@ -228,7 +228,7 @@ export async function restore(
                 log(`Executing restore`, "info", "command", restoreQuery);
 
                 try {
-                    // Use requestTimeout=0 (no timeout) — large DB restores can run for hours.
+                    // Use requestTimeout=0 (no timeout) - large DB restores can run for hours.
                     // Stream progress messages in real-time so the UI shows live updates.
                     await executeQueryWithMessages(config, restoreQuery, undefined, 0, (msg) => {
                         if (msg.message) {

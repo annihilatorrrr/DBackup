@@ -98,7 +98,7 @@ export const WebDAVAdapter: StorageAdapter = {
                         return true;
                     }
                 } catch {
-                    // stat failed — proceed without progress
+                    // stat failed - proceed without progress
                 }
             }
 
@@ -137,7 +137,7 @@ export const WebDAVAdapter: StorageAdapter = {
             const files: FileInfo[] = [];
             const prefixPath = prefix ? path.posix.join("/", prefix) : "";
 
-            // Recursive walk — avoids Depth:infinity PROPFIND which many servers reject
+            // Recursive walk - avoids Depth:infinity PROPFIND which many servers reject
             const walk = async (currentDir: string) => {
                 const items = await client.getDirectoryContents(currentDir) as FileStat[];
 

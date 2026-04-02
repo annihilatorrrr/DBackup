@@ -51,7 +51,7 @@ Automate backups with cron expressions. See [Scheduling](/user-guide/jobs/schedu
 
 ### Retention
 
-Automatically clean up old backups. Retention is configured **per destination** — each destination can have its own retention policy. See [Retention Policies](/user-guide/jobs/retention).
+Automatically clean up old backups. Retention is configured **per destination** - each destination can have its own retention policy. See [Retention Policies](/user-guide/jobs/retention).
 
 ### Notifications
 
@@ -63,7 +63,7 @@ Get alerts when backups complete:
 
 ## Multi-Destination
 
-A job can upload to **multiple storage destinations** simultaneously — ideal for implementing the 3-2-1 backup rule.
+A job can upload to **multiple storage destinations** simultaneously - ideal for implementing the 3-2-1 backup rule.
 
 ### Adding Destinations
 
@@ -81,7 +81,7 @@ Each destination has its own retention configuration:
 
 ### Upload Behavior
 
-- The database dump runs **once** — the resulting file is uploaded to each destination sequentially
+- The database dump runs **once** - the resulting file is uploaded to each destination sequentially
 - Destinations are processed in priority order (top to bottom)
 - If one destination fails, the others still continue
 - The same storage adapter cannot be selected twice in one job

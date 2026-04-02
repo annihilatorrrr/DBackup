@@ -1,6 +1,6 @@
 # Icon System
 
-DBackup uses **[Iconify](https://iconify.design/)** for adapter icons — brand logos for databases, storage providers, and notifications. Icons are **bundled offline** (no API calls at runtime), which is critical for self-hosted deployments.
+DBackup uses **[Iconify](https://iconify.design/)** for adapter icons - brand logos for databases, storage providers, and notifications. Icons are **bundled offline** (no API calls at runtime), which is critical for self-hosted deployments.
 
 ## Architecture
 
@@ -16,8 +16,8 @@ src/components/adapter/
 
 | Pack | NPM Package | Usage | Coloring |
 |------|------------|-------|----------|
-| **SVG Logos** | `@iconify-icons/logos` | Primary — multi-colored brand icons | Colors embedded in SVG |
-| **Simple Icons** | `@iconify-icons/simple-icons` | Fallback — brands not in SVG Logos | Monochrome, brand color via `ADAPTER_COLOR_MAP` |
+| **SVG Logos** | `@iconify-icons/logos` | Primary - multi-colored brand icons | Colors embedded in SVG |
+| **Simple Icons** | `@iconify-icons/simple-icons` | Fallback - brands not in SVG Logos | Monochrome, brand color via `ADAPTER_COLOR_MAP` |
 | **Material Design Icons** | `@iconify-icons/mdi` | Protocol, storage & generic icons (SSH, FTP, SMB, email, fallback) | Inherits `currentColor` |
 
 > **Rule:** Always prefer **SVG Logos** first. Only use **Simple Icons** if the brand doesn't exist in SVG Logos (e.g. Hetzner, Minio). Use **MDI** for protocol/storage concepts and generic icons (SSH, FTP, email, fallback).
@@ -67,7 +67,7 @@ const ADAPTER_COLOR_MAP: Record<string, string> = {
 
 ### AdapterIcon Component
 
-The `<AdapterIcon>` component handles everything — it reads the icon data and optional color, then renders via Iconify's `<Icon>`:
+The `<AdapterIcon>` component handles everything - it reads the icon data and optional color, then renders via Iconify's `<Icon>`:
 
 ```tsx
 // Usage
@@ -90,13 +90,13 @@ Note the icon name from the URL (e.g. `logos:mysql-icon` → import path is `@ic
 In `src/components/adapter/utils.ts`, add the import at the top in the appropriate section:
 
 ```typescript
-// — SVG Logos (primary, multi-colored) —
+// - SVG Logos (primary, multi-colored) -
 import myBrandIcon from "@iconify-icons/logos/my-brand-icon";
 
-// — OR Simple Icons (if not in SVG Logos) —
+// - OR Simple Icons (if not in SVG Logos) -
 import myBrandIcon from "@iconify-icons/simple-icons/mybrand";
 
-// — OR MDI (generic) —
+// - OR MDI (generic) -
 import myGenericIcon from "@iconify-icons/mdi/some-icon";
 ```
 
@@ -121,7 +121,7 @@ const ADAPTER_COLOR_MAP: Record<string, string> = {
 ```
 
 ::: tip
-SVG Logos icons already contain their brand colors — do **not** add them to `ADAPTER_COLOR_MAP` or the colors will be overridden.
+SVG Logos icons already contain their brand colors - do **not** add them to `ADAPTER_COLOR_MAP` or the colors will be overridden.
 :::
 
 ### Step 5: Verify
@@ -164,6 +164,6 @@ pnpm build
 
 ## Key Decisions
 
-- **Why bundled, not API?** — DBackup is self-hosted. Users may not have internet access or may block external API calls via CSP. Bundled icons render instantly without network requests.
-- **Why Iconify over react-simple-icons?** — Iconify's SVG Logos pack provides multi-colored brand icons (MySQL dolphin in blue, PostgreSQL elephant in blue/white, etc.) rather than flat monochrome. It also covers more brands (OneDrive, AWS S3).
-- **Why three packs?** — SVG Logos has the best brand icons but doesn't cover everything. Simple Icons fills the gaps (Hetzner, Minio). MDI provides expressive protocol icons (SSH lock, folder-network for SMB, folder-sync for rsync) as well as generic icons (email, disc fallback), eliminating the need for a separate Lucide pack.
+- **Why bundled, not API?** - DBackup is self-hosted. Users may not have internet access or may block external API calls via CSP. Bundled icons render instantly without network requests.
+- **Why Iconify over react-simple-icons?** - Iconify's SVG Logos pack provides multi-colored brand icons (MySQL dolphin in blue, PostgreSQL elephant in blue/white, etc.) rather than flat monochrome. It also covers more brands (OneDrive, AWS S3).
+- **Why three packs?** - SVG Logos has the best brand icons but doesn't cover everything. Simple Icons fills the gaps (Hetzner, Minio). MDI provides expressive protocol icons (SSH lock, folder-network for SMB, folder-sync for rsync) as well as generic icons (email, disc fallback), eliminating the need for a separate Lucide pack.

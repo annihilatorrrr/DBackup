@@ -210,7 +210,7 @@ describe("Access Control", () => {
         },
       });
 
-      // Both session and API key present — session should win
+      // Both session and API key present - session should win
       const headers = new Headers({
         authorization: "Bearer dbackup_somekey",
       });

@@ -167,7 +167,7 @@ export async function dump(config: MySQLDumpConfig, destinationPath: string, onL
         else if (config.database) dbs = [config.database];
 
         if (dbs.length === 0) {
-            log("No databases selected — backing up all databases");
+            log("No databases selected - backing up all databases");
             dbs = await getDatabases(config);
             log(`Found ${dbs.length} database(s): ${dbs.join(', ')}`);
         }

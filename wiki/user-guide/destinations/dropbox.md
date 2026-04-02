@@ -23,16 +23,16 @@ Apps with "App folder" access can only read/write within their own folder (`/App
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **Name** | Friendly name for this destination | — | ✅ |
-| **App Key** | Dropbox App Key (Client ID) | — | ✅ |
-| **App Secret** | Dropbox App Secret (Client Secret) | — | ✅ |
+| **Name** | Friendly name for this destination | - | ✅ |
+| **App Key** | Dropbox App Key (Client ID) | - | ✅ |
+| **App Secret** | Dropbox App Secret (Client Secret) | - | ✅ |
 | **Folder Path** | Target folder within app folder | Root | ❌ |
 
 ## Setup Guide
 
 1. Go to **Destinations** → **Add Destination** → **Dropbox**
 2. Enter App Key and App Secret → **Save**
-3. Click **Authorize with Dropbox** — you'll be redirected to Dropbox
+3. Click **Authorize with Dropbox** - you'll be redirected to Dropbox
 4. Sign in and grant DBackup access
 5. After redirect, the status changes to **green** ("Authorized")
 6. (Optional) Use the **Folder Browser** (📂) to select a subfolder
@@ -40,10 +40,10 @@ Apps with "App folder" access can only read/write within their own folder (`/App
 
 ## How It Works
 
-- **OAuth tokens** refresh automatically — no manual re-authorization needed
+- **OAuth tokens** refresh automatically - no manual re-authorization needed
 - Files < 150 MB use simple upload; larger files use chunked upload (8 MB chunks)
 - All credentials (App Key, App Secret, Refresh Token) are stored AES-256-GCM encrypted
-- Access tokens are short-lived and never stored — refreshed on-the-fly
+- Access tokens are short-lived and never stored - refreshed on-the-fly
 
 ## Troubleshooting
 

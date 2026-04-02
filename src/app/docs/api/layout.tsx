@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "API Reference — DBackup",
+  title: "API Reference - DBackup",
   description: "Interactive REST API reference for DBackup.",
 };
 

@@ -58,9 +58,9 @@ src/app/dashboard/settings/page.tsx          → Settings page: Rate Limits tab
 
 ### Config Flow
 
-1. **Server startup** — `instrumentation.ts` calls `reloadRateLimits()` → reads DB → rebuilds limiters in server context
-2. **Settings change** — Server action calls `reloadRateLimits()` → updates server context limiters
-3. **Middleware request** — `syncRateLimitConfig()` fetches `/api/internal/rate-limit-config` (cached 30s) → calls `applyExternalConfig()` → rebuilds Edge limiter instances
+1. **Server startup** - `instrumentation.ts` calls `reloadRateLimits()` → reads DB → rebuilds limiters in server context
+2. **Settings change** - Server action calls `reloadRateLimits()` → updates server context limiters
+3. **Middleware request** - `syncRateLimitConfig()` fetches `/api/internal/rate-limit-config` (cached 30s) → calls `applyExternalConfig()` → rebuilds Edge limiter instances
 
 ## Middleware Integration
 

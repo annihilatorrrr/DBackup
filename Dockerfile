@@ -6,19 +6,11 @@ FROM node:24-alpine AS base
 # mongodb-tools -> mongodump
 # redis -> redis-cli (for Redis backups)
 # samba-client -> smbclient (for SMB/CIFS storage)
-# PostgreSQL Versions Strategy (all versioned explicitly):
-# - postgresql14-client (from Alpine 3.17 repo) -> handles PG 12, 13, 14
-# - postgresql16-client (from Alpine 3.23 repo) -> handles PG 15, 16
-# - postgresql17-client (from Alpine 3.23 repo) -> handles PG 17
-# - postgresql18-client (from Alpine 3.23 repo) -> handles PG 18+
+# postgresql18-client -> pg_dump, pg_restore, psql (backward compatible with PG 12-18)
 
-RUN echo 'http://dl-cdn.alpinelinux.org/alpine/v3.17/main' >> /etc/apk/repositories && \
-    apk update && \
+RUN apk update && \
     apk add --no-cache \
     mysql-client \
-    postgresql14-client \
-    postgresql16-client \
-    postgresql17-client \
     postgresql18-client \
     mongodb-tools \
     redis \
@@ -31,29 +23,15 @@ RUN echo 'http://dl-cdn.alpinelinux.org/alpine/v3.17/main' >> /etc/apk/repositor
     zip \
     su-exec
 
-# Enable corepack for pnpm support and create PostgreSQL symlinks
-# All versioned: postgresql14-client (v3.17), postgresql16/17/18-client (v3.23)
+# Enable corepack for pnpm support and symlink PostgreSQL 18 binaries
 RUN corepack enable && corepack prepare pnpm@10.29.3 --activate && \
-    mkdir -p /opt/pg14/bin /opt/pg16/bin /opt/pg17/bin /opt/pg18/bin && \
-    ln -sf /usr/libexec/postgresql14/pg_dump /opt/pg14/bin/pg_dump && \
-    ln -sf /usr/libexec/postgresql14/pg_restore /opt/pg14/bin/pg_restore && \
-    ln -sf /usr/libexec/postgresql14/psql /opt/pg14/bin/psql && \
-    ln -sf /usr/libexec/postgresql16/pg_dump /opt/pg16/bin/pg_dump && \
-    ln -sf /usr/libexec/postgresql16/pg_restore /opt/pg16/bin/pg_restore && \
-    ln -sf /usr/libexec/postgresql16/psql /opt/pg16/bin/psql && \
-    ln -sf /usr/libexec/postgresql17/pg_dump /opt/pg17/bin/pg_dump && \
-    ln -sf /usr/libexec/postgresql17/pg_restore /opt/pg17/bin/pg_restore && \
-    ln -sf /usr/libexec/postgresql17/psql /opt/pg17/bin/psql && \
-    ln -sf /usr/libexec/postgresql18/pg_dump /opt/pg18/bin/pg_dump && \
-    ln -sf /usr/libexec/postgresql18/pg_restore /opt/pg18/bin/pg_restore && \
-    ln -sf /usr/libexec/postgresql18/psql /opt/pg18/bin/psql
+    ln -sf /usr/libexec/postgresql18/pg_dump /usr/local/bin/pg_dump && \
+    ln -sf /usr/libexec/postgresql18/pg_restore /usr/local/bin/pg_restore && \
+    ln -sf /usr/libexec/postgresql18/psql /usr/local/bin/psql
 
-# Validate all pg_dump versions resolve correctly (fail-fast on broken symlinks/packages)
-RUN /opt/pg14/bin/pg_dump --version | grep -q 'PostgreSQL) 14\.' && \
-    /opt/pg16/bin/pg_dump --version | grep -q 'PostgreSQL) 16\.' && \
-    /opt/pg17/bin/pg_dump --version | grep -q 'PostgreSQL) 17\.' && \
-    /opt/pg18/bin/pg_dump --version | grep -q 'PostgreSQL) 18\.' || \
-    (echo "ERROR: pg_dump version validation failed! Check PostgreSQL client packages." && exit 1)
+# Validate pg_dump version resolves correctly (fail-fast on broken symlinks/packages)
+RUN pg_dump --version | grep -q 'PostgreSQL) 18\.' || \
+    (echo "ERROR: pg_dump version validation failed! Check PostgreSQL 18 client package." && exit 1)
 
 # 1. Install Dependencies
 FROM base AS deps

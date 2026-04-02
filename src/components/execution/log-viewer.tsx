@@ -65,7 +65,7 @@ export function LogViewer({ logs, className, autoScroll = true, status, executio
      });
   }, [logs]);
 
-  // Grouping Logic — group by stage, sort by stage order, fill pending stages
+  // Grouping Logic - group by stage, sort by stage order, fill pending stages
   const groupedLogs = useMemo(() => {
       // Detect execution type: explicit prop, or infer from stage names
       const stageOrder = executionType === "Restore"

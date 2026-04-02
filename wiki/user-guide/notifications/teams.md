@@ -6,13 +6,13 @@ Send Adaptive Card notifications to Microsoft Teams channels via Power Automate 
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **Webhook URL** | Teams Workflow webhook URL | — | ✅ |
+| **Webhook URL** | Teams Workflow webhook URL | - | ✅ |
 
 ## Setup Guide
 
 1. Open the target **Teams channel** → **⋯ (More options)** → **Workflows**
 2. Search for **"Post to a channel when a webhook request is received"**
-3. Follow the setup wizard — select team and channel → **Add workflow**
+3. Follow the setup wizard - select team and channel → **Add workflow**
 4. Copy the generated **Webhook URL**
 5. In DBackup: **Notifications** → **Add Notification** → **Microsoft Teams**
 6. Paste the Webhook URL → **Test** → **Save**
@@ -36,11 +36,11 @@ Each card includes title, summary, structured fields (FactSet), and timestamp.
 
 ## Troubleshooting
 
-### 400 — Bad Request
+### 400 - Bad Request
 
 Verify the URL is from a Power Automate Workflow (not a deprecated Office 365 Connector). Ensure the workflow is active and the channel still exists.
 
-### 401/403 — Unauthorized
+### 401/403 - Unauthorized
 
 The workflow may have expired or the creator lost channel access. Recreate the workflow in Power Automate.
 

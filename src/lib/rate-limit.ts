@@ -70,7 +70,7 @@ function rebuildLimiters(config: RateLimitConfig): void {
  * Apply an externally-fetched config to the module-local rate limiters.
  *
  * Called from middleware after fetching config via the internal API endpoint.
- * This is Edge Runtime safe — no Prisma, no Node.js APIs.
+ * This is Edge Runtime safe - no Prisma, no Node.js APIs.
  */
 export function applyExternalConfig(config: RateLimitConfig): void {
     rebuildLimiters(config);

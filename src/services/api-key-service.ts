@@ -53,7 +53,7 @@ export interface ValidatedApiKey {
 
 export class ApiKeyService {
   /**
-   * Create a new API key. Returns the raw key ONCE — it cannot be retrieved again.
+   * Create a new API key. Returns the raw key ONCE - it cannot be retrieved again.
    */
   async create(input: CreateApiKeyInput): Promise<{ apiKey: ApiKeyListItem; rawKey: string }> {
     const rawKey = generateRawKey();
@@ -200,7 +200,7 @@ export class ApiKeyService {
   }
 
   /**
-   * Rotate an API key — generates a new key, replaces the hash. Returns new raw key ONCE.
+   * Rotate an API key - generates a new key, replaces the hash. Returns new raw key ONCE.
    */
   async rotate(id: string): Promise<{ apiKey: ApiKeyListItem; rawKey: string }> {
     const existing = await prisma.apiKey.findUnique({ where: { id } });

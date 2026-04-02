@@ -41,7 +41,7 @@ async function initCommands(): Promise<void> {
 }
 
 export function getMysqlCommand(): string {
-    // Return cached value or fallback — initCommands() should be called before first use
+    // Return cached value or fallback - initCommands() should be called before first use
     return cachedMysqlCmd ?? 'mysql';
 }
 
