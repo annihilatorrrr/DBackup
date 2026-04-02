@@ -9,6 +9,11 @@ All notable changes to DBackup are documented here.
 
 - **database**: Upgraded Prisma ORM from v5 to v6 (v6.19.3) for continued security patches and bug fixes
 - **SSO**: Migrated SSO credential decryption from deprecated `$use` middleware to `$extends` query extension API
+- **auth**: Upgraded better-auth from v1.4.17 to v1.5.6 with SSO hardening, Prisma adapter fixes, and security improvements
+
+### 🗑️ Removed
+
+- **auth**: Removed deprecated `@better-auth/cli` package (replaced by `npx auth` CLI)
 
 ### 🐳 Docker
 
