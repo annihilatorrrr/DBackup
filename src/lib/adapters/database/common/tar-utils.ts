@@ -144,8 +144,12 @@ export async function extractMultiDbTar(
                         return;
                     }
                 } else {
-                    // Write database dump file
-                    const outputPath = path.join(extractDir, header.name);
+                    // Write database dump file (validate path to prevent Zip Slip)
+                    const outputPath = path.join(extractDir, path.basename(header.name));
+                    if (!outputPath.startsWith(extractDir)) {
+                        reject(new Error(`Zip Slip detected: ${header.name}`));
+                        return;
+                    }
                     await fs.writeFile(outputPath, content);
                     extractedFiles.push(outputPath);
                 }

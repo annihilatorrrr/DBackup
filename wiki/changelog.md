@@ -2,6 +2,32 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.4.2 - Security Fixes
+*Released: April 2, 2026*
+
+### 🔒 Security
+
+- **OneDrive**: Fixed polynomial ReDoS vulnerability (CWE-1333) in folder path sanitization by replacing regex with iterative string trimming
+- **CI/CD**: Added explicit `permissions: contents: read` to `sync-gitlab.yml` and `validate.yml` workflows to restrict default `GITHUB_TOKEN` privileges (CWE-275)
+- **Google Drive**: Fixed incomplete string escaping in query builder - backslashes are now escaped before single quotes to prevent query injection (CWE-20, CWE-116)
+- **API Keys**: Upgraded hash from SHA-256 to scrypt (N=16384, r=8, p=1) with automatic migration for existing keys (CWE-916)
+- **Filesystem API**: Added blocked-prefix list for sensitive system paths (`/proc`, `/sys`, `/dev`) to harden path traversal protection (CWE-22)
+- **TAR Extraction**: Added Zip Slip protection in multi-DB TAR extraction using `path.basename()` validation (CWE-22)
+- **MSSQL Restore**: Added Zip Slip protection in MSSQL TAR extraction using `path.basename()` validation (CWE-22)
+- **TLS Server**: Removed environment-derived path from log output to prevent clear-text logging of sensitive directory info (CWE-532)
+
+### 🧪 Tests
+
+- **Lint Guards**: Fixed incomplete regex escaping in glob-to-regex conversion for `no-console` and `no-config-any` test helpers (CWE-116)
+- **API Keys**: Added unit tests for scrypt hashing, deterministic hash output, SHA-256 legacy migration path, and scrypt-is-not-SHA-256 verification
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.4.2`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v1.4.1 - PostgreSQL Client Cleanup
 *Released: April 2, 2026*
 

@@ -60,8 +60,8 @@ async function resolveOrCreatePath(
     let currentParent = parentId;
 
     for (const segment of segments) {
-        // Search for existing folder
-        const query = `name='${segment.replace(/'/g, "\\'")}' and '${currentParent}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+        // Search for existing folder (escape \ before ' to prevent query injection)
+        const query = `name='${segment.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}' and '${currentParent}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
         const res = await drive.files.list({
             q: query,
             fields: "files(id, name)",
@@ -95,7 +95,7 @@ async function findFile(
     folderId: string,
     fileName: string
 ): Promise<drive_v3.Schema$File | null> {
-    const query = `name='${fileName.replace(/'/g, "\\'")}' and '${folderId}' in parents and trashed=false`;
+    const query = `name='${fileName.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}' and '${folderId}' in parents and trashed=false`;
     const res = await drive.files.list({
         q: query,
         fields: "files(id, name, size, modifiedTime, mimeType)",
