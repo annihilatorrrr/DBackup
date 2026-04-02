@@ -2,6 +2,20 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.4.3
+*Release: In Progress*
+
+### 🔄 Changed
+
+- **database**: Upgraded Prisma ORM from v5 to v6 (v6.19.3) for continued security patches and bug fixes
+- **SSO**: Migrated SSO credential decryption from deprecated `$use` middleware to `$extends` query extension API
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.4.3`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
 ## v1.4.2 - Security Fixes
 *Released: April 2, 2026*
 
