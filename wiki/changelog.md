@@ -2,10 +2,10 @@
 
 All notable changes to DBackup are documented here.
 
-## v1.4.2
-*Release: In Progress*
+## v1.4.2 - Security Fixes
+*Released: April 2, 2026*
 
-### � Security
+### 🔒 Security
 
 - **OneDrive**: Fixed polynomial ReDoS vulnerability (CWE-1333) in folder path sanitization by replacing regex with iterative string trimming
 - **CI/CD**: Added explicit `permissions: contents: read` to `sync-gitlab.yml` and `validate.yml` workflows to restrict default `GITHUB_TOKEN` privileges (CWE-275)
@@ -20,7 +20,7 @@ All notable changes to DBackup are documented here.
 
 - **Lint Guards**: Fixed incomplete regex escaping in glob-to-regex conversion for `no-console` and `no-config-any` test helpers (CWE-116)
 
-### �🐳 Docker
+### 🐳 Docker
 
 - **Image**: `skyfay/dbackup:v1.4.2`
 - **Also tagged as**: `latest`, `v1`

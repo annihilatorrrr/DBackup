@@ -103,7 +103,7 @@ function ensureCertificate() {
         );
       }
     } else {
-      console.log("[TLS] Using existing certificate from " + certsDir);
+      console.log("[TLS] Using existing certificate from configured CERTS_DIR");
     }
     return true;
   }
@@ -152,7 +152,7 @@ app.prepare().then(() => {
         key: fs.readFileSync(keyPath),
       };
       server = createHttpsServer(tlsOptions, requestHandler);
-      console.log("[Server] HTTPS enabled with certificate from " + certsDir);
+      console.log("[Server] HTTPS enabled with certificate from configured CERTS_DIR");
     } else {
       protocol = "http";
       server = createHttpServer(requestHandler);
