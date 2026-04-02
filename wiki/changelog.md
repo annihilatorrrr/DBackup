@@ -10,7 +10,7 @@ All notable changes to DBackup are documented here.
 - **OneDrive**: Fixed polynomial ReDoS vulnerability (CWE-1333) in folder path sanitization by replacing regex with iterative string trimming
 - **CI/CD**: Added explicit `permissions: contents: read` to `sync-gitlab.yml` and `validate.yml` workflows to restrict default `GITHUB_TOKEN` privileges (CWE-275)
 - **Google Drive**: Fixed incomplete string escaping in query builder - backslashes are now escaped before single quotes to prevent query injection (CWE-20, CWE-116)
-- **API Keys**: Upgraded hash from SHA-256 to HMAC-SHA256 with automatic migration for existing keys (CWE-916)
+- **API Keys**: Upgraded hash from SHA-256 to scrypt (N=16384, r=8, p=1) with automatic migration for existing keys (CWE-916)
 - **Filesystem API**: Added blocked-prefix list for sensitive system paths (`/proc`, `/sys`, `/dev`) to harden path traversal protection (CWE-22)
 - **TAR Extraction**: Added Zip Slip protection in multi-DB TAR extraction using `path.basename()` validation (CWE-22)
 - **MSSQL Restore**: Added Zip Slip protection in MSSQL TAR extraction using `path.basename()` validation (CWE-22)
@@ -19,6 +19,7 @@ All notable changes to DBackup are documented here.
 ### 🧪 Tests
 
 - **Lint Guards**: Fixed incomplete regex escaping in glob-to-regex conversion for `no-console` and `no-config-any` test helpers (CWE-116)
+- **API Keys**: Added unit tests for scrypt hashing, deterministic hash output, SHA-256 legacy migration path, and scrypt-is-not-SHA-256 verification
 
 ### 🐳 Docker
 

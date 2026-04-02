@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createHash, scryptSync } from "crypto";
 import { prismaMock } from "@/lib/testing/prisma-mock";
 import { ApiKeyService, CreateApiKeyInput } from "@/services/api-key-service";
 import { ApiKeyError, NotFoundError } from "@/lib/errors";
@@ -66,7 +67,7 @@ describe("ApiKeyService", () => {
       const createCall = prismaMock.apiKey.create.mock.calls[0][0];
       expect(createCall.data.name).toBe("CI Pipeline");
       expect(createCall.data.hashedKey).not.toContain("dbackup_");
-      expect(createCall.data.hashedKey).toHaveLength(64); // SHA-256 hex
+      expect(createCall.data.hashedKey).toHaveLength(64); // scrypt 32-byte hex
       expect(createCall.data.prefix).toMatch(/^dbackup_/);
       expect(createCall.data.permissions).toBe('["jobs:execute","history:read"]');
     });
@@ -332,7 +333,7 @@ describe("ApiKeyService", () => {
       // Prisma update was called with new hash
       const updateCall = prismaMock.apiKey.update.mock.calls[0][0];
       expect(updateCall.data.hashedKey).not.toBe("old-hash");
-      expect(updateCall.data.hashedKey).toHaveLength(64);
+      expect(updateCall.data.hashedKey).toHaveLength(64); // scrypt 32-byte hex
       expect(updateCall.data.prefix).toMatch(/^dbackup_/);
     });
 
@@ -471,7 +472,7 @@ describe("ApiKeyService", () => {
       await expect(service.validate("dbackup_" + "e".repeat(40))).rejects.toThrow(ApiKeyError);
     });
 
-    it("should look up by SHA-256 hash of the raw key", async () => {
+    it("should look up by scrypt hash of the raw key", async () => {
       const rawKey = "dbackup_" + "f".repeat(40);
       prismaMock.apiKey.findUnique.mockResolvedValue(null);
 
@@ -481,7 +482,74 @@ describe("ApiKeyService", () => {
       const findCall = prismaMock.apiKey.findUnique.mock.calls[0][0];
       expect(findCall.where.hashedKey).toBeDefined();
       expect(findCall.where.hashedKey).not.toContain("dbackup_");
-      expect(findCall.where.hashedKey).toHaveLength(64); // SHA-256 hex
+      expect(findCall.where.hashedKey).toHaveLength(64); // scrypt 32-byte hex
+    });
+
+    it("should use scrypt hash, not plain SHA-256", async () => {
+      const rawKey = "dbackup_" + "a".repeat(60);
+      const sha256Hash = createHash("sha256").update(rawKey).digest("hex");
+
+      prismaMock.apiKey.findUnique.mockResolvedValue(null);
+
+      await service.validate(rawKey);
+
+      // First lookup uses scrypt, which must differ from plain SHA-256
+      const findCall = prismaMock.apiKey.findUnique.mock.calls[0][0];
+      expect(findCall.where.hashedKey).not.toBe(sha256Hash);
+    });
+
+    it("should produce deterministic scrypt hashes for the same key", async () => {
+      const rawKey = "dbackup_" + "b".repeat(60);
+
+      prismaMock.apiKey.findUnique.mockResolvedValue(null);
+      await service.validate(rawKey);
+      const hash1 = prismaMock.apiKey.findUnique.mock.calls[0][0].where.hashedKey;
+
+      prismaMock.apiKey.findUnique.mockClear();
+      prismaMock.apiKey.findUnique.mockResolvedValue(null);
+      await service.validate(rawKey);
+      const hash2 = prismaMock.apiKey.findUnique.mock.calls[0][0].where.hashedKey;
+
+      expect(hash1).toBe(hash2);
+    });
+
+    it("should migrate legacy SHA-256 key to scrypt on validation", async () => {
+      const rawKey = "dbackup_" + "c".repeat(60);
+      const legacySha256 = createHash("sha256").update(rawKey).digest("hex");
+      const expectedScrypt = scryptSync(
+        rawKey,
+        "dbackup-api-key-scrypt-v1",
+        32,
+        { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 },
+      ).toString("hex");
+
+      // First call (scrypt lookup) returns null, second call (legacy SHA-256) finds the key
+      prismaMock.apiKey.findUnique
+        .mockResolvedValueOnce(null) // scrypt lookup miss
+        .mockResolvedValueOnce({
+          id: "key-legacy",
+          userId: "user-1",
+          permissions: '["jobs:read"]',
+          enabled: true,
+          expiresAt: null,
+        } as any);
+
+      prismaMock.apiKey.update.mockResolvedValue({} as any);
+
+      const result = await service.validate(rawKey);
+
+      expect(result).not.toBeNull();
+      expect(result!.id).toBe("key-legacy");
+
+      // Second findUnique call should use legacy SHA-256 hash
+      const legacyLookup = prismaMock.apiKey.findUnique.mock.calls[1][0];
+      expect(legacyLookup.where.hashedKey).toBe(legacySha256);
+
+      // Update call should migrate to scrypt
+      const updateCall = prismaMock.apiKey.update.mock.calls[0][0];
+      expect(updateCall.where.id).toBe("key-legacy");
+      expect(updateCall.data.hashedKey).toBe(expectedScrypt);
+      expect(updateCall.data.hashedKey).not.toBe(legacySha256);
     });
 
     it("should fire-and-forget update lastUsedAt on success", async () => {
@@ -504,6 +572,28 @@ describe("ApiKeyService", () => {
           data: expect.objectContaining({ lastUsedAt: expect.any(Date) }),
         })
       );
+    });
+
+    it("should not migrate when scrypt hash is already found", async () => {
+      prismaMock.apiKey.findUnique.mockResolvedValue({
+        id: "key-1",
+        userId: "user-1",
+        permissions: '["jobs:read"]',
+        enabled: true,
+        expiresAt: null,
+      } as any);
+
+      prismaMock.apiKey.update.mockResolvedValue({} as any);
+
+      await service.validate("dbackup_" + "d".repeat(60));
+
+      // Only one findUnique call (scrypt hit), no migration update for hashedKey
+      expect(prismaMock.apiKey.findUnique).toHaveBeenCalledTimes(1);
+      // The only update should be for lastUsedAt, not hashedKey
+      if (prismaMock.apiKey.update.mock.calls.length > 0) {
+        const updateData = prismaMock.apiKey.update.mock.calls[0][0].data;
+        expect(updateData).not.toHaveProperty("hashedKey");
+      }
     });
   });
 });
