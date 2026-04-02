@@ -178,7 +178,7 @@ export async function getDatabasesWithStats(config: MSSQLConfig): Promise<Databa
                 );
                 tableCount = tableResult.recordset[0]?.cnt ?? 0;
             } catch {
-                // Database may be inaccessible (permission, offline) — default to 0
+                // Database may be inaccessible (permission, offline) - default to 0
             }
 
             databases.push({
@@ -310,7 +310,7 @@ export async function executeQueryWithMessages(
         if (serverMessages.length > 0 && error instanceof Error) {
             // Prepend detail messages so the actual cause is visible
             const details = serverMessages.join(" | ");
-            error.message = `${error.message} — Details: ${details}`;
+            error.message = `${error.message} - Details: ${details}`;
         }
 
         throw error;

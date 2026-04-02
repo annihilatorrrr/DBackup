@@ -1,17 +1,17 @@
 # Hetzner Object Storage
 
-Store backups in Hetzner Object Storage — affordable S3-compatible storage in European and US data centers.
+Store backups in Hetzner Object Storage - affordable S3-compatible storage in European and US data centers.
 
 ## Configuration
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **Name** | Friendly name for this destination | — | ✅ |
+| **Name** | Friendly name for this destination | - | ✅ |
 | **Region** | Hetzner data center region | `fsn1` | ✅ |
-| **Bucket** | Bucket name | — | ✅ |
-| **Access Key ID** | S3 credential Access Key | — | ✅ |
-| **Secret Access Key** | S3 credential Secret Key | — | ✅ |
-| **Path Prefix** | Folder path within the bucket | — | ✅ |
+| **Bucket** | Bucket name | - | ✅ |
+| **Access Key ID** | S3 credential Access Key | - | ✅ |
+| **Secret Access Key** | S3 credential Secret Key | - | ✅ |
+| **Path Prefix** | Folder path within the bucket | - | ✅ |
 
 ### Regions
 
@@ -29,7 +29,7 @@ Store backups in Hetzner Object Storage — affordable S3-compatible storage in 
    - Copy the **Access Key** and **Secret Key** immediately (shown only once)
 3. Go to **Destinations** → **Add Destination** → **Hetzner Object Storage**
 4. Select your **Region**, enter Bucket name, Access Key, and Secret Key
-5. Enter a **Path Prefix** (required — e.g. `backups` or `dbackup/prod`)
+5. Enter a **Path Prefix** (required - e.g. `backups` or `dbackup/prod`)
 6. Click **Test** to verify the connection
 
 ::: warning Path Prefix Required
@@ -39,7 +39,7 @@ Unlike other S3 adapters, Hetzner Object Storage **requires** a Path Prefix. Set
 ## How It Works
 
 - DBackup connects to `https://<bucket>.<region>.your-objectstorage.com` automatically
-- Uses S3-compatible API — uploads via multipart for large files
+- Uses S3-compatible API - uploads via multipart for large files
 - All credentials are stored AES-256-GCM encrypted in the database
 
 ## Troubleshooting
@@ -66,7 +66,7 @@ NoSuchBucket
 Validation error: path prefix is required
 ```
 
-**Solution:** Enter a Path Prefix — this field is mandatory for Hetzner Object Storage.
+**Solution:** Enter a Path Prefix - this field is mandatory for Hetzner Object Storage.
 
 ## Next Steps
 

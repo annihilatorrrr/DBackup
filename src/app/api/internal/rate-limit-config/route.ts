@@ -6,7 +6,7 @@ import { getRateLimitConfig } from "@/lib/rate-limit-server";
  * configuration. This route runs in the Node.js runtime and can read
  * from the database via Prisma.
  *
- * No auth required — this endpoint is excluded from middleware matching
+ * No auth required - this endpoint is excluded from middleware matching
  * and only consumed by the middleware itself.
  */
 export const dynamic = "force-dynamic";

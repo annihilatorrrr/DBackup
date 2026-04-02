@@ -106,9 +106,9 @@ async function ensureFolderExists(client: Client, folderPath: string): Promise<v
                 .api(`/me/drive/root:/${targetPath}:`)
                 .select("id,folder")
                 .get();
-            // Folder exists — continue to next segment
+            // Folder exists - continue to next segment
         } catch {
-            // Folder doesn't exist — create it
+            // Folder doesn't exist - create it
             const parentApiPath = currentPath
                 ? `/me/drive/root:/${currentPath}:/children`
                 : "/me/drive/root/children";
@@ -206,7 +206,7 @@ export const OneDriveAdapter: StorageAdapter = {
             try {
                 await client.api(driveItemPath(drivePath)).delete();
             } catch {
-                // File doesn't exist yet — that's fine
+                // File doesn't exist yet - that's fine
             }
 
             const stats = await fs.stat(localPath);
@@ -282,7 +282,7 @@ export const OneDriveAdapter: StorageAdapter = {
             await fs.mkdir(path.dirname(localPath), { recursive: true });
 
             // Get the download URL from the drive item.
-            // Do NOT use .select() — @microsoft.graph.downloadUrl is a computed
+            // Do NOT use .select() - @microsoft.graph.downloadUrl is a computed
             // property that is only returned when the full item is requested.
             const item = await client
                 .api(driveItemPath(drivePath))
@@ -332,7 +332,7 @@ export const OneDriveAdapter: StorageAdapter = {
             const drivePath = buildDrivePath(config.folderPath, remotePath);
 
             // Get the download URL.
-            // Do NOT use .select() — @microsoft.graph.downloadUrl is a computed
+            // Do NOT use .select() - @microsoft.graph.downloadUrl is a computed
             // property that is only returned when the full item is requested.
             const item = await client
                 .api(driveItemPath(drivePath))
@@ -427,7 +427,7 @@ export const OneDriveAdapter: StorageAdapter = {
 
             return {
                 success: true,
-                message: `Connection successful — Owner: ${ownerName} (Write/Delete verified)`,
+                message: `Connection successful - Owner: ${ownerName} (Write/Delete verified)`,
             };
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : String(error);

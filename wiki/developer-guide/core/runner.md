@@ -177,7 +177,7 @@ export async function stepDump(ctx: RunnerContext): Promise<void> {
 
 ### Step 3: Upload (`03-upload.ts`)
 
-Uploads the backup to **all destinations** sequentially (sorted by priority). The dump file is produced once—each destination receives the same file.
+Uploads the backup to **all destinations** sequentially (sorted by priority). The dump file is produced once-each destination receives the same file.
 
 ```typescript
 export async function stepUpload(ctx: RunnerContext): Promise<void> {
@@ -321,7 +321,7 @@ export async function stepRetention(ctx: RunnerContext): Promise<void> {
 }
 ```
 
-> Each destination can have a completely different retention strategy—e.g., keep 30 daily backups locally but only 12 monthly backups in cloud storage.
+> Each destination can have a completely different retention strategy-e.g., keep 30 daily backups locally but only 12 monthly backups in cloud storage.
 
 ## Queue Manager
 

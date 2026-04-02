@@ -175,7 +175,7 @@ export const StorageSettingsTab = forwardRef<StorageSettingsTabRef, StorageSetti
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">{adapterName} — Alerts</h3>
+          <h3 className="text-lg font-semibold">{adapterName} - Alerts</h3>
           <p className="text-sm text-muted-foreground">
             Configure monitoring alerts for this storage destination. Notifications are sent through the channels configured in Settings &gt; Notifications.
           </p>

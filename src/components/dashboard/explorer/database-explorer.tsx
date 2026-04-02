@@ -116,7 +116,7 @@ export function DatabaseExplorer({ sources }: DatabaseExplorerProps) {
             <div>
                 <h2 className="text-3xl font-bold tracking-tight">Database Explorer</h2>
                 <p className="text-muted-foreground">
-                    Inspect databases on your configured sources — view sizes, table counts, and server details.
+                    Inspect databases on your configured sources - view sizes, table counts, and server details.
                 </p>
             </div>
 
@@ -192,7 +192,7 @@ export function DatabaseExplorer({ sources }: DatabaseExplorerProps) {
                                         <Skeleton className="h-5 w-24 mt-1" />
                                     ) : (
                                         <p className="text-lg font-semibold">
-                                            {selectedAdapter?.adapterId ?? "—"}
+                                            {selectedAdapter?.adapterId ?? "-"}
                                             {serverVersion && (
                                                 <span className="text-sm font-normal text-muted-foreground ml-2">v{serverVersion}</span>
                                             )}
@@ -231,7 +231,7 @@ export function DatabaseExplorer({ sources }: DatabaseExplorerProps) {
                                         <Skeleton className="h-5 w-20 mt-1" />
                                     ) : (
                                         <p className="text-lg font-semibold">
-                                            {hasStats ? formatBytes(totalSize) : "—"}
+                                            {hasStats ? formatBytes(totalSize) : "-"}
                                         </p>
                                     )}
                                 </div>
@@ -308,7 +308,7 @@ export function DatabaseExplorer({ sources }: DatabaseExplorerProps) {
                                                             </span>
                                                         </TableCell>
                                                         <TableCell className="text-right text-muted-foreground">
-                                                            {db.sizeInBytes != null ? formatBytes(db.sizeInBytes) : "—"}
+                                                            {db.sizeInBytes != null ? formatBytes(db.sizeInBytes) : "-"}
                                                         </TableCell>
                                                         <TableCell className="text-right">
                                                             {db.tableCount != null ? (
@@ -317,7 +317,7 @@ export function DatabaseExplorer({ sources }: DatabaseExplorerProps) {
                                                                     {db.tableCount}
                                                                 </span>
                                                             ) : (
-                                                                "—"
+                                                                "-"
                                                             )}
                                                         </TableCell>
                                                         {hasStats && (

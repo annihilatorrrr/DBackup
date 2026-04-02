@@ -293,7 +293,7 @@ function HistoryContent() {
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                     <span className="font-medium">{selectedLog?.status === "Pending" ? "Waiting in queue..." : stage}</span>
-                                    {detail && <span className="opacity-70">— {detail}</span>}
+                                    {detail && <span className="opacity-70">- {detail}</span>}
                                     {selectedLog?.status === "Running" && progress > 0 && !detail && <span>{progress}%</span>}
                                 </div>
                                 <Button

@@ -20,7 +20,7 @@ export default async function SetupPage() {
     const canCreateVault = permissions.includes(PERMISSIONS.VAULT.WRITE);
     const canCreateNotification = permissions.includes(PERMISSIONS.NOTIFICATIONS.WRITE);
 
-    // Only pass serializable props — Zod schemas cannot cross the Server→Client boundary
+    // Only pass serializable props - Zod schemas cannot cross the Server→Client boundary
     return (
         <SetupWizard
             canCreateVault={canCreateVault}

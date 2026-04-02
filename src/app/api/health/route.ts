@@ -5,7 +5,7 @@ import prisma from "@/lib/prisma";
  * Health check endpoint for Docker HEALTHCHECK and monitoring.
  * Returns 200 if the app and database are reachable, 503 otherwise.
  *
- * No authentication required — this is a public endpoint.
+ * No authentication required - this is a public endpoint.
  */
 export async function GET() {
     const start = Date.now();

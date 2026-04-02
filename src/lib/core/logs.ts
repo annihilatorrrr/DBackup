@@ -6,7 +6,7 @@ export interface LogEntry {
   level: LogLevel;
   type: LogType;
   message: string;
-  stage?: string; // High-level stage grouping — should be a PipelineStage value
+  stage?: string; // High-level stage grouping - should be a PipelineStage value
   details?: string; // For long output like stdout/stderr
   context?: Record<string, any>; // For metadata
   durationMs?: number;

@@ -149,7 +149,7 @@ See [SSO Integration](./sso.md) for detailed OIDC implementation.
 Session lifetime is configurable by administrators via Settings → Authentication & Security. The value is stored in the `SystemSetting` table under the key `auth.sessionDuration` (in seconds).
 
 ```typescript
-// src/lib/auth.ts — Dynamic session expiry via database hook
+// src/lib/auth.ts - Dynamic session expiry via database hook
 databaseHooks: {
   session: {
     create: {
@@ -234,10 +234,10 @@ All API routes support both authentication methods through the unified `getAuthC
 
 ## Security Best Practices
 
-1. **Never trust client-side checks alone** — Always verify on server
-2. **Use `getAuthContext()` + `checkPermissionWithContext()` in API routes** — Supports both session and API key auth
-3. **Use `checkPermission()` in Server Actions** — Session-only, defense in depth
-4. **Log authentication events** — Use the Audit System
-5. **Implement rate limiting** — Prevent brute force attacks
-6. **Secure session cookies** — HttpOnly, Secure, SameSite
-7. **API keys: hash-only storage** — Never persist raw keys
+1. **Never trust client-side checks alone** - Always verify on server
+2. **Use `getAuthContext()` + `checkPermissionWithContext()` in API routes** - Supports both session and API key auth
+3. **Use `checkPermission()` in Server Actions** - Session-only, defense in depth
+4. **Log authentication events** - Use the Audit System
+5. **Implement rate limiting** - Prevent brute force attacks
+6. **Secure session cookies** - HttpOnly, Secure, SameSite
+7. **API keys: hash-only storage** - Never persist raw keys

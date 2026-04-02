@@ -12,7 +12,7 @@ API keys provide a secure alternative to session-based authentication for progra
 - Can be **enabled/disabled** without deletion
 - Supports **rotation** for key cycling
 
-> **Security**: API keys are stored as SHA-256 hashes. The raw key is only shown once — immediately after creation or rotation.
+> **Security**: API keys are stored as SHA-256 hashes. The raw key is only shown once - immediately after creation or rotation.
 
 ## Creating an API Key
 
@@ -27,7 +27,7 @@ API keys provide a secure alternative to session-based authentication for progra
 | **Permissions** | Yes | Select at least one permission the key should have. |
 
 4. Click **Create Key**
-5. **Copy the key immediately** — it won't be shown again
+5. **Copy the key immediately** - it won't be shown again
 
 ### Recommended Permission Sets
 
@@ -121,6 +121,6 @@ The audit log records which API key was used for each request, enabling full tra
 1. **Least privilege**: Only assign permissions the key actually needs
 2. **Set expiration dates** for temporary or CI/CD keys
 3. **Use descriptive names** to identify the key's purpose
-4. **Rotate keys regularly** — especially after team changes
+4. **Rotate keys regularly** - especially after team changes
 5. **Monitor the audit log** for unexpected API key usage
 6. **Disable before deleting** if you want to test the impact first

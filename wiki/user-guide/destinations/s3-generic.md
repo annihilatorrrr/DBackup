@@ -1,19 +1,19 @@
 # S3-Compatible Storage
 
-Store backups in any S3-compatible storage provider — MinIO, Wasabi, DigitalOcean Spaces, Backblaze B2, and more.
+Store backups in any S3-compatible storage provider - MinIO, Wasabi, DigitalOcean Spaces, Backblaze B2, and more.
 
 ## Configuration
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **Name** | Friendly name for this destination | — | ✅ |
-| **Endpoint** | S3-compatible API endpoint URL | — | ✅ |
+| **Name** | Friendly name for this destination | - | ✅ |
+| **Endpoint** | S3-compatible API endpoint URL | - | ✅ |
 | **Region** | Storage region | `us-east-1` | ❌ |
-| **Bucket** | Bucket name | — | ✅ |
-| **Access Key ID** | S3 access key | — | ✅ |
-| **Secret Access Key** | S3 secret key | — | ✅ |
+| **Bucket** | Bucket name | - | ✅ |
+| **Access Key ID** | S3 access key | - | ✅ |
+| **Secret Access Key** | S3 secret key | - | ✅ |
 | **Force Path Style** | Use path-style URLs (`endpoint/bucket`) instead of virtual-hosted | `false` | ❌ |
-| **Path Prefix** | Folder path within the bucket | — | ❌ |
+| **Path Prefix** | Folder path within the bucket | - | ❌ |
 
 ::: tip Force Path Style
 Enable this for providers that don't support virtual-hosted-style URLs (e.g. MinIO, Ceph). When enabled, requests go to `endpoint/bucket/key` instead of `bucket.endpoint/key`.

@@ -1,16 +1,16 @@
 # WebDAV
 
-Store backups on any WebDAV-compatible server — Nextcloud, ownCloud, Synology, Apache, and more.
+Store backups on any WebDAV-compatible server - Nextcloud, ownCloud, Synology, Apache, and more.
 
 ## Configuration
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **Name** | Friendly name for this destination | — | ✅ |
-| **URL** | WebDAV endpoint URL | — | ✅ |
-| **Username** | WebDAV username | — | ✅ |
-| **Password** | WebDAV password or app password | — | ❌ |
-| **Path Prefix** | Subfolder path on the server | — | ❌ |
+| **Name** | Friendly name for this destination | - | ✅ |
+| **URL** | WebDAV endpoint URL | - | ✅ |
+| **Username** | WebDAV username | - | ✅ |
+| **Password** | WebDAV password or app password | - | ❌ |
+| **Path Prefix** | Subfolder path on the server | - | ❌ |
 
 ## Setup Guide
 

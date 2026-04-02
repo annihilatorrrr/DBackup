@@ -11,7 +11,7 @@ export function shellEscape(value: string): string {
 /**
  * Build a remote command string with environment variables exported before execution.
  * Uses `export` statements separated by `;` so that if the main process is killed,
- * bash's kill report only shows the command — not the secrets.
+ * bash's kill report only shows the command - not the secrets.
  *
  * Example: remoteEnv({ MYSQL_PWD: "secret" }, "mysqldump -h 127.0.0.1 mydb")
  *   → "export MYSQL_PWD='secret'; mysqldump -h 127.0.0.1 mydb"

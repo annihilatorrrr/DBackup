@@ -1,14 +1,14 @@
 # ntfy
 
-Send push notifications via [ntfy](https://ntfy.sh/) — a simple, topic-based notification service. Use the public `ntfy.sh` instance or self-host your own server.
+Send push notifications via [ntfy](https://ntfy.sh/) - a simple, topic-based notification service. Use the public `ntfy.sh` instance or self-host your own server.
 
 ## Configuration
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
 | **Server URL** | ntfy server URL | `https://ntfy.sh` | ❌ |
-| **Topic** | Notification topic name | — | ✅ |
-| **Access Token** | Bearer token (for protected topics) | — | ❌ |
+| **Topic** | Notification topic name | - | ✅ |
+| **Access Token** | Bearer token (for protected topics) | - | ❌ |
 | **Priority** | Default message priority (1–5) | `3` | ❌ |
 
 ## Setup Guide
@@ -54,7 +54,7 @@ DBackup maps events to ntfy priorities automatically:
 
 ## Troubleshooting
 
-### 401/403 — Unauthorized
+### 401/403 - Unauthorized
 
 Verify the access token is correct and has **write** permission to the topic. Topic names are case-sensitive.
 

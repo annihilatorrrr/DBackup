@@ -139,7 +139,7 @@ If `getDatabasesWithStats()` is not implemented, falls back to `getDatabases()` 
 
 ## SSH Mode Architecture
 
-Most database adapters support an SSH remote execution mode. Instead of running CLI tools locally and connecting to the database over TCP, DBackup connects via SSH to the target server and runs database tools **remotely**. This is **not** an SSH tunnel — the dump/restore commands execute on the remote host.
+Most database adapters support an SSH remote execution mode. Instead of running CLI tools locally and connecting to the database over TCP, DBackup connects via SSH to the target server and runs database tools **remotely**. This is **not** an SSH tunnel - the dump/restore commands execute on the remote host.
 
 ### Shared SSH Infrastructure (`src/lib/ssh/`)
 
@@ -164,7 +164,7 @@ await client.connect(sshConfig);
 const result = await client.exec("mysqldump --version");
 // { stdout: "...", stderr: "...", code: 0 }
 
-// Streaming execution (for dumps — pipes stdout to a writable stream)
+// Streaming execution (for dumps - pipes stdout to a writable stream)
 const stream = await client.execStream("pg_dump -F c mydb");
 stream.pipe(outputFile);
 
@@ -178,7 +178,7 @@ Configuration: `readyTimeout: 20000ms`, `keepaliveInterval: 10000ms`, `keepalive
 | Function | Purpose |
 | :--- | :--- |
 | `shellEscape(value)` | Wraps value in single quotes, escapes embedded quotes |
-| `remoteEnv(vars, cmd)` | Exports env vars before a command (e.g., `export MYSQL_PWD='...'; mysqldump`) — uses `export` to prevent password leaking in OOM kill reports |
+| `remoteEnv(vars, cmd)` | Exports env vars before a command (e.g., `export MYSQL_PWD='...'; mysqldump`) - uses `export` to prevent password leaking in OOM kill reports |
 | `remoteBinaryCheck(client, ...candidates)` | Checks if binary exists on remote host, returns resolved path |
 | `isSSHMode(config)` | Returns `true` if `config.connectionMode === "ssh"` |
 | `extractSshConfig(config)` | Extracts `SshConnectionConfig` from adapter config with `sshHost` prefix |
@@ -488,7 +488,7 @@ async dump(config, destinationPath) {
 
 ## SQLite Adapter
 
-SQLite is unique—it's just a file copy:
+SQLite is unique-it's just a file copy:
 
 ```typescript
 async dump(config, destinationPath) {
@@ -604,7 +604,7 @@ The restore function provides instructions but cannot perform the actual restore
 
 ## MSSQL Adapter
 
-MSSQL is unique among database adapters — it uses the **TDS protocol** (via the `mssql` npm package) instead of CLI tools, and writes native `.bak` files to the server filesystem. A separate file transfer mechanism is needed to access these files.
+MSSQL is unique among database adapters - it uses the **TDS protocol** (via the `mssql` npm package) instead of CLI tools, and writes native `.bak` files to the server filesystem. A separate file transfer mechanism is needed to access these files.
 
 ### Configuration Schema
 

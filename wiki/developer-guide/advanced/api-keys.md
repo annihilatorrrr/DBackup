@@ -18,7 +18,7 @@ This document covers the API key authentication system and the webhook trigger m
 
 **Key Principles:**
 - API keys provide stateless, token-based authentication for programmatic access
-- API keys **never** inherit SuperAdmin privileges — only explicitly assigned permissions apply
+- API keys **never** inherit SuperAdmin privileges - only explicitly assigned permissions apply
 - The raw key is shown exactly once at creation; only a SHA-256 hash is stored
 - All API routes support both session (cookie) and API key (Bearer token) authentication via the unified `getAuthContext()` function
 
@@ -199,7 +199,7 @@ export function checkPermissionWithContext(
   ctx: AuthContext,
   permission: Permission
 ): void {
-  // SuperAdmin bypass (session-only — API keys never have this)
+  // SuperAdmin bypass (session-only - API keys never have this)
   if (ctx.isSuperAdmin) return;
 
   if (!ctx.permissions.includes(permission)) {
@@ -375,7 +375,7 @@ export class ApiKeyError extends DBackupError {
 ## Security Considerations
 
 1. **No SuperAdmin for API Keys**: Even if the key owner is a SuperAdmin, the API key only has its explicitly assigned permissions
-2. **Hash-Only Storage**: Raw keys are never persisted — only SHA-256 hashes
+2. **Hash-Only Storage**: Raw keys are never persisted - only SHA-256 hashes
 3. **One-Time Reveal**: The full key is displayed exactly once during creation
 4. **Expiration**: Optional expiry dates provide time-limited access
 5. **Rate Limiting**: API key requests go through the same IP-based rate limiter as browser requests
@@ -422,7 +422,7 @@ Use `getAuthContext()` + `checkPermissionWithContext()` for all new routes. The 
 
 ## Related Documentation
 
-- [Authentication System](./auth.md) — Session-based auth, 2FA, Passkeys
-- [Permission System (RBAC)](./permissions.md) — Group permissions, available permissions list
-- [Audit Logging](./audit.md) — Audit event tracking
-- [API Reference](/user-guide/features/api-reference) — Full endpoint documentation (user-facing)
+- [Authentication System](./auth.md) - Session-based auth, 2FA, Passkeys
+- [Permission System (RBAC)](./permissions.md) - Group permissions, available permissions list
+- [Audit Logging](./audit.md) - Audit event tracking
+- [API Reference](/user-guide/features/api-reference) - Full endpoint documentation (user-facing)

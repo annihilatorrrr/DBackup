@@ -10,7 +10,7 @@ const log = logger.child({ module: "Queue" });
 export async function processQueue() {
     // Skip queue processing during shutdown
     if (isShutdownRequested()) {
-        log.info("Shutdown in progress — skipping queue processing");
+        log.info("Shutdown in progress - skipping queue processing");
         return;
     }
 

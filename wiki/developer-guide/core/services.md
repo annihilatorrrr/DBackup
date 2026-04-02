@@ -1,6 +1,6 @@
 # Service Layer
 
-The Service Layer contains all business logic in DBackup. Server Actions and API routes delegate to services—they never contain business logic themselves.
+The Service Layer contains all business logic in DBackup. Server Actions and API routes delegate to services-they never contain business logic themselves.
 
 ## Overview
 
@@ -303,7 +303,7 @@ export async function getNotificationLogById(id: string): Promise<NotificationLo
 ```
 
 **Key Design Decisions:**
-- `recordNotificationLog()` is fire-and-forget — it catches and swallows errors to never block notification delivery
+- `recordNotificationLog()` is fire-and-forget - it catches and swallows errors to never block notification delivery
 - Called from two dispatch points: `04-completion.ts` (per-job) and `system-notification-service.ts` (system events)
 - Stores adapter-specific rendered payloads (Discord embed, Slack blocks, email HTML) for preview rendering on the History page
 - Records are cleaned up by the "Clean Old Data" system task based on `notification.logRetentionDays` SystemSetting

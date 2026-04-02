@@ -172,13 +172,13 @@ export function uploadCertificate(certPem: string, keyPem: string): void {
         throw new Error("Certificate and private key do not match.");
       }
     } catch (e) {
-      // For EC keys, modulus check doesn't apply — skip
+      // For EC keys, modulus check doesn't apply - skip
       if (e instanceof Error && e.message.includes("do not match")) {
         throw e;
       }
     }
 
-    // All validations passed — replace existing files
+    // All validations passed - replace existing files
     renameSync(tmpCert, CERT_PATH);
     renameSync(tmpKey, KEY_PATH);
 

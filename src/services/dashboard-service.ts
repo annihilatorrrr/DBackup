@@ -234,7 +234,7 @@ export async function getStorageVolume(): Promise<StorageVolumeEntry[]> {
     }
   }
 
-  // No cache yet — do a live refresh to populate it (first load only)
+  // No cache yet - do a live refresh to populate it (first load only)
   // This ensures accurate data from the start instead of inaccurate DB estimation
   try {
     return await refreshStorageStatsCache();

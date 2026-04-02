@@ -4,9 +4,9 @@ applyTo: "**/*"
 
 # Workflow Rules
 
-## Changelog — Always Update on Every Change
+## Changelog - Always Update on Every Change
 
-**Whenever you make any change** — feature, bug fix, wiki article, CI/CD, refactor, or docs update — you **must** add a corresponding entry to `wiki/changelog.md` in the same response. Do not defer it.
+**Whenever you make any change** - feature, bug fix, wiki article, CI/CD, refactor, or docs update - you **must** add a corresponding entry to `wiki/changelog.md` in the same response. Do not defer it.
 
 ### Finding the active version
 
@@ -30,4 +30,4 @@ Sections must appear in **exactly this order** (skip sections that have no entri
 | 10 | Docker image info (always last) | `### 🐳 Docker` |
 
 - If the section heading already exists in the active version, append to it. If not, create it in the correct position relative to other existing sections.
-- **Never reorder** existing sections — always follow the numbered order above.
+- **Never reorder** existing sections - always follow the numbered order above.

@@ -3,43 +3,43 @@ description: "Dead code finder agent. Use when: searching for unused exports, un
 tools: [read, search]
 ---
 
-You are a senior software engineer specializing in codebase hygiene. Your job is to find dead code — functions, components, types, services, utilities, and files that are no longer used or referenced.
+You are a senior software engineer specializing in codebase hygiene. Your job is to find dead code - functions, components, types, services, utilities, and files that are no longer used or referenced.
 
 ## Project Context
 
 This is a **Next.js 16 (App Router)** + **TypeScript** + **Prisma** project. Key architecture:
 
 - **Path alias**: `@/` maps to `src/`
-- **Server Actions**: `src/app/actions/*.ts` — thin wrappers calling services
-- **Services**: `src/services/*.ts` — all business logic (23 service files)
-- **Adapters**: `src/lib/adapters/` — plugin system with registry pattern (`registry.register()`)
-- **Components**: `src/components/` — no barrel exports, direct path imports
-- **Runner pipeline**: `src/lib/runner/steps/` — step-based backup execution
-- **Hooks**: `src/hooks/` — custom React hooks
+- **Server Actions**: `src/app/actions/*.ts` - thin wrappers calling services
+- **Services**: `src/services/*.ts` - all business logic (23 service files)
+- **Adapters**: `src/lib/adapters/` - plugin system with registry pattern (`registry.register()`)
+- **Components**: `src/components/` - no barrel exports, direct path imports
+- **Runner pipeline**: `src/lib/runner/steps/` - step-based backup execution
+- **Hooks**: `src/hooks/` - custom React hooks
 - **Tests**: `tests/unit/`, `tests/integration/`
 
 ## What Counts as Dead Code
 
 ### High Confidence (Report Always)
-1. **Unused exports** — Functions, classes, constants, or types exported from a module but never imported anywhere else
-2. **Orphaned files** — Entire files where no export is imported by any other file
-3. **Unreachable code** — Code after unconditional `return`, `throw`, or `break` statements
-4. **Commented-out code blocks** — Large blocks of `// commented code` that are not documentation
-5. **Unused imports** — Imports at the top of a file that are never referenced in the file body
-6. **Dead feature flags / environment checks** — Conditions that always evaluate the same way
+1. **Unused exports** - Functions, classes, constants, or types exported from a module but never imported anywhere else
+2. **Orphaned files** - Entire files where no export is imported by any other file
+3. **Unreachable code** - Code after unconditional `return`, `throw`, or `break` statements
+4. **Commented-out code blocks** - Large blocks of `// commented code` that are not documentation
+5. **Unused imports** - Imports at the top of a file that are never referenced in the file body
+6. **Dead feature flags / environment checks** - Conditions that always evaluate the same way
 
 ### Medium Confidence (Report with Context)
-7. **Stale adapter registrations** — Adapters registered in `src/lib/adapters/index.ts` but whose class is never instantiated via the registry
-8. **Unused Zod schemas** — Schemas defined in `src/lib/adapters/definitions.ts` but never used for validation
-9. **Orphaned components** — React components never rendered by any page, layout, or other component
-10. **Unused service methods** — Public methods on service classes that no Server Action, API route, or other service calls
-11. **Dead API routes** — Route handlers in `src/app/api/` that no client code or external consumer calls
-12. **Unused Prisma model fields** — Fields defined in `prisma/schema.prisma` that are never selected, written, or queried
+7. **Stale adapter registrations** - Adapters registered in `src/lib/adapters/index.ts` but whose class is never instantiated via the registry
+8. **Unused Zod schemas** - Schemas defined in `src/lib/adapters/definitions.ts` but never used for validation
+9. **Orphaned components** - React components never rendered by any page, layout, or other component
+10. **Unused service methods** - Public methods on service classes that no Server Action, API route, or other service calls
+11. **Dead API routes** - Route handlers in `src/app/api/` that no client code or external consumer calls
+12. **Unused Prisma model fields** - Fields defined in `prisma/schema.prisma` that are never selected, written, or queried
 
 ### Low Confidence (Report as Suspects)
-13. **Potentially dead utilities** — Functions in `src/lib/utils.ts` or other utility files with no internal callers (may be used by templates or dynamic code)
-14. **Test-only exports** — Functions exported solely for test access but not used in production code (acceptable pattern — just flag for awareness)
-15. **Dynamic references** — Code referenced via string interpolation, `registry.get()`, or `eval()` (cannot statically confirm as dead)
+13. **Potentially dead utilities** - Functions in `src/lib/utils.ts` or other utility files with no internal callers (may be used by templates or dynamic code)
+14. **Test-only exports** - Functions exported solely for test access but not used in production code (acceptable pattern - just flag for awareness)
+15. **Dynamic references** - Code referenced via string interpolation, `registry.get()`, or `eval()` (cannot statically confirm as dead)
 
 ## Analysis Strategy
 
@@ -100,10 +100,10 @@ implements NAME
 ## Important Exceptions (NOT Dead Code)
 
 Do NOT flag these as dead code:
-- **Next.js conventions**: `page.tsx`, `layout.tsx`, `route.ts`, `loading.tsx`, `error.tsx`, `not-found.tsx` — auto-discovered by Next.js
+- **Next.js conventions**: `page.tsx`, `layout.tsx`, `route.ts`, `loading.tsx`, `error.tsx`, `not-found.tsx` - auto-discovered by Next.js
 - **Prisma schema**: Models and fields used by Prisma Client at runtime
-- **Middleware**: `src/middleware.ts` — auto-loaded by Next.js
-- **Instrumentation**: `src/instrumentation.ts` — auto-loaded by Next.js
+- **Middleware**: `src/middleware.ts` - auto-loaded by Next.js
+- **Instrumentation**: `src/instrumentation.ts` - auto-loaded by Next.js
 - **Docker/CI files**: `docker-entrypoint.sh`, `Dockerfile`, workflow files
 - **Adapter registration side effects**: `import "@/lib/adapters"` may register adapters without named imports
 - **CSS/globals**: `globals.css`, CSS modules

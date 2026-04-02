@@ -24,10 +24,10 @@ DBackup uses `pg_dump` from PostgreSQL 18 client, which is backward compatible w
 | **Connection Mode** | Direct (TCP) or SSH | `Direct` | ✅ |
 | **Host** | Database server hostname | `localhost` | ✅ |
 | **Port** | PostgreSQL port | `5432` | ✅ |
-| **User** | Database username | — | ✅ |
-| **Password** | Database password | — | ❌ |
+| **User** | Database username | - | ✅ |
+| **Password** | Database password | - | ❌ |
 | **Database** | Database name(s) to backup | All databases | ❌ |
-| **Additional Options** | Extra `pg_dump` flags | — | ❌ |
+| **Additional Options** | Extra `pg_dump` flags | - | ❌ |
 
 ### SSH Mode Fields
 
@@ -35,13 +35,13 @@ These fields appear when **Connection Mode** is set to **SSH**:
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **SSH Host** | SSH server hostname or IP | — | ✅ |
+| **SSH Host** | SSH server hostname or IP | - | ✅ |
 | **SSH Port** | SSH server port | `22` | ❌ |
-| **SSH Username** | SSH login username | — | ✅ |
+| **SSH Username** | SSH login username | - | ✅ |
 | **SSH Auth Type** | Password, Private Key, or Agent | `Password` | ✅ |
-| **SSH Password** | SSH password | — | ❌ |
-| **SSH Private Key** | PEM-formatted private key | — | ❌ |
-| **SSH Passphrase** | Passphrase for encrypted key | — | ❌ |
+| **SSH Password** | SSH password | - | ❌ |
+| **SSH Private Key** | PEM-formatted private key | - | ❌ |
+| **SSH Passphrase** | Passphrase for encrypted key | - | ❌ |
 
 ## Prerequisites
 

@@ -639,7 +639,7 @@ export function StorageFormContent({
 export function NotificationFormContent({ adapter }: { adapter: AdapterDefinition }) {
     const hasConfigKeys = hasFields(adapter, NOTIFICATION_CONFIG_KEYS);
     const isEmail = adapter.id === "email";
-    // Filter out 'to' from config keys for email — rendered separately as TagInput
+    // Filter out 'to' from config keys for email - rendered separately as TagInput
     const configKeys = isEmail
         ? NOTIFICATION_CONFIG_KEYS.filter((k) => k !== "to")
         : NOTIFICATION_CONFIG_KEYS;

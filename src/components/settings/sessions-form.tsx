@@ -94,7 +94,7 @@ function parseUserAgent(ua: string | null): { browser: BrowserName; os: OsName; 
     else if (ua.includes("iPhone") || ua.includes("iPad")) os = "iOS"
     else if (ua.includes("Linux")) os = "Linux"
 
-    // Detect Browser — order matters: specific browsers before generic Chrome/Safari
+    // Detect Browser - order matters: specific browsers before generic Chrome/Safari
     let browser: BrowserName = "Unknown"
     if (ua.includes("Firefox/")) browser = "Firefox"
     else if (ua.includes("Edg/")) browser = "Edge"

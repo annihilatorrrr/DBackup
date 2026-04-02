@@ -161,7 +161,7 @@ export const StorageHistoryTab = forwardRef<StorageHistoryTabRef, StorageHistory
       {/* Header with time range selector */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">{adapterName} — Storage History</h3>
+          <h3 className="text-lg font-semibold">{adapterName} - Storage History</h3>
           <p className="text-sm text-muted-foreground">
             Storage usage and backup count over time.
           </p>

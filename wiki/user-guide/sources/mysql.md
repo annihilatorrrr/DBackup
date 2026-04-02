@@ -23,10 +23,10 @@ Configure MySQL or MariaDB databases for backup using `mysqldump` / `mariadb-dum
 | **Connection Mode** | Direct (TCP) or SSH | `Direct` | ✅ |
 | **Host** | Database server hostname | `localhost` | ✅ |
 | **Port** | MySQL port | `3306` | ✅ |
-| **User** | Database username | — | ✅ |
-| **Password** | Database password | — | ❌ |
+| **User** | Database username | - | ✅ |
+| **Password** | Database password | - | ❌ |
 | **Database** | Database name(s) to backup | All databases | ❌ |
-| **Additional Options** | Extra `mysqldump` flags | — | ❌ |
+| **Additional Options** | Extra `mysqldump` flags | - | ❌ |
 | **Disable SSL** | Disable SSL for self-signed certificates | `false` | ❌ |
 
 ### SSH Mode Fields
@@ -35,13 +35,13 @@ These fields appear when **Connection Mode** is set to **SSH**:
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **SSH Host** | SSH server hostname or IP | — | ✅ |
+| **SSH Host** | SSH server hostname or IP | - | ✅ |
 | **SSH Port** | SSH server port | `22` | ❌ |
-| **SSH Username** | SSH login username | — | ✅ |
+| **SSH Username** | SSH login username | - | ✅ |
 | **SSH Auth Type** | Password, Private Key, or Agent | `Password` | ✅ |
-| **SSH Password** | SSH password | — | ❌ |
-| **SSH Private Key** | PEM-formatted private key | — | ❌ |
-| **SSH Passphrase** | Passphrase for encrypted key | — | ❌ |
+| **SSH Password** | SSH password | - | ❌ |
+| **SSH Private Key** | PEM-formatted private key | - | ❌ |
+| **SSH Passphrase** | Passphrase for encrypted key | - | ❌ |
 
 ## Prerequisites
 
@@ -70,7 +70,7 @@ DBackup auto-detects which binary is available (`mysqldump` vs `mariadb-dump`, `
 # Debian/Ubuntu (MySQL client)
 apt-get install default-mysql-client
 
-# Debian/Ubuntu (MariaDB client — also provides mysqldump)
+# Debian/Ubuntu (MariaDB client - also provides mysqldump)
 apt-get install mariadb-client
 
 # RHEL/CentOS/Fedora
@@ -127,7 +127,7 @@ For backup-only operations, `SELECT`, `SHOW VIEW`, `TRIGGER`, and `LOCK TABLES` 
 3. Set Connection Mode to **SSH**
 4. In the **SSH Connection** tab: enter SSH host, username, and authentication details
 5. Click **Test SSH** to verify SSH connectivity
-6. In the **Database** tab: enter MySQL host (usually `127.0.0.1` or `localhost` — relative to the SSH server), port, user, and password
+6. In the **Database** tab: enter MySQL host (usually `127.0.0.1` or `localhost` - relative to the SSH server), port, user, and password
 7. Click **Test Connection** to verify database connectivity via SSH
 8. Click **Fetch Databases** and select databases
 9. Save
@@ -172,10 +172,10 @@ Use `mysql` as the hostname in DBackup.
 
 DBackup uses `mysqldump` (or `mariadb-dump` for MariaDB) with these default flags:
 
-- `--single-transaction` — Consistent backup without locking (InnoDB)
-- `--routines` — Includes stored procedures and functions
-- `--triggers` — Includes triggers
-- `--events` — Includes scheduled events
+- `--single-transaction` - Consistent backup without locking (InnoDB)
+- `--routines` - Includes stored procedures and functions
+- `--triggers` - Includes triggers
+- `--events` - Includes scheduled events
 
 Output: `.sql` file with `CREATE` and `INSERT` statements.
 
@@ -190,7 +190,7 @@ In SSH mode, DBackup:
 5. Applies compression and encryption locally on the DBackup server
 6. Uploads the processed backup to the configured storage destination
 
-The database password is passed securely via the `MYSQL_PWD` environment variable in the remote session — it does not appear in the process arguments or shell history.
+The database password is passed securely via the `MYSQL_PWD` environment variable in the remote session - it does not appear in the process arguments or shell history.
 
 ### Multi-Database Backups
 

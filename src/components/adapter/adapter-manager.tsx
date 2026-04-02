@@ -64,7 +64,7 @@ export function AdapterManager({ type, title, description, canManage = true, per
                 setConfigs(data);
             }
         } catch {
-            // Silent — don't disturb the user on background poll failures
+            // Silent - don't disturb the user on background poll failures
         }
     }, [type]);
 

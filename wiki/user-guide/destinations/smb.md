@@ -6,21 +6,21 @@ Store backups on a Windows share, NAS, or any SMB/CIFS-compatible network storag
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **Name** | Friendly name for this destination | — | ✅ |
-| **Address** | UNC share path (e.g. `//server/share`) | — | ✅ |
+| **Name** | Friendly name for this destination | - | ✅ |
+| **Address** | UNC share path (e.g. `//server/share`) | - | ✅ |
 | **Username** | SMB username | `guest` | ❌ |
-| **Password** | SMB password | — | ❌ |
-| **Domain** | Windows domain / workgroup | — | ❌ |
+| **Password** | SMB password | - | ❌ |
+| **Domain** | Windows domain / workgroup | - | ❌ |
 | **Max Protocol** | Highest SMB protocol version to use | `SMB3` | ❌ |
-| **Path Prefix** | Subfolder within the share | — | ❌ |
+| **Path Prefix** | Subfolder within the share | - | ❌ |
 
 ### Protocol Versions
 
 | Protocol | Notes |
 | :--- | :--- |
-| `SMB3` | Default, recommended — encrypted transport |
+| `SMB3` | Default, recommended - encrypted transport |
 | `SMB2` | Fallback for older NAS devices |
-| `NT1` | SMB1 legacy — use only if required |
+| `NT1` | SMB1 legacy - use only if required |
 
 ## Setup Guide
 
@@ -40,7 +40,7 @@ Synology, QNAP, TrueNAS, and OpenMediaVault all support SMB shares. Create a ded
 ## How It Works
 
 - DBackup mounts the SMB share temporarily for each operation, then unmounts
-- Files are written directly to the share — same behavior as local storage
+- Files are written directly to the share - same behavior as local storage
 - All credentials are stored AES-256-GCM encrypted in the database
 - `smbclient` must be available in the DBackup container (included in the default Docker image)
 

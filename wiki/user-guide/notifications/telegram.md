@@ -6,8 +6,8 @@ Send notifications to Telegram chats, groups, or channels using a Telegram Bot.
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **Bot Token** | Telegram Bot API token from [@BotFather](https://t.me/BotFather) | — | ✅ |
-| **Chat ID** | Target chat, group, or channel ID | — | ✅ |
+| **Bot Token** | Telegram Bot API token from [@BotFather](https://t.me/BotFather) | - | ✅ |
+| **Chat ID** | Target chat, group, or channel ID | - | ✅ |
 | **Parse Mode** | Message format: `HTML`, `MarkdownV2`, `Markdown` | `HTML` | ❌ |
 | **Disable Notification** | Send silently (no notification sound) | `false` | ❌ |
 
@@ -25,7 +25,7 @@ Send notifications to Telegram chats, groups, or channels using a Telegram Bot.
 
 | Error | Solution |
 | :--- | :--- |
-| `401: Unauthorized` | Bot Token is invalid — regenerate via @BotFather |
+| `401: Unauthorized` | Bot Token is invalid - regenerate via @BotFather |
 | `400: chat not found` | Chat ID is wrong, or bot hasn't been messaged yet |
-| `403: bot was blocked` | User blocked the bot — unblock it in Telegram |
+| `403: bot was blocked` | User blocked the bot - unblock it in Telegram |
 | `403: bot is not a member` | Add the bot to the group/channel first |

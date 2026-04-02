@@ -48,7 +48,7 @@ After selecting a target source, DBackup automatically queries the server and di
 | **Size** | Total size (data + indexes) |
 | **Tables** | Number of tables or collections |
 
-**Conflict Detection**: If a database from the backup has the same target name as an existing database on the server, the row is highlighted in red with a ⚠️ warning icon — indicating that database will be overwritten during restore.
+**Conflict Detection**: If a database from the backup has the same target name as an existing database on the server, the row is highlighted in red with a ⚠️ warning icon - indicating that database will be overwritten during restore.
 
 A summary footer shows the total number of databases and their combined size.
 

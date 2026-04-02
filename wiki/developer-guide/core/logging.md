@@ -509,7 +509,7 @@ await recordNotificationLog({
 });
 ```
 
-**Key design:** `recordNotificationLog()` is fire-and-forget — it catches and swallows all errors to never block notification delivery.
+**Key design:** `recordNotificationLog()` is fire-and-forget - it catches and swallows all errors to never block notification delivery.
 
 ### Dispatch Points
 
@@ -524,12 +524,12 @@ Each log entry stores adapter-specific rendered content for History page preview
 
 | Adapter | `renderedPayload` Content | `renderedHtml` |
 | :--- | :--- | :--- |
-| Discord | Embed object (title, description, fields, color) | — |
-| Slack | Block Kit blocks array | — |
-| Teams | Adaptive Card body | — |
-| Telegram | Parsed HTML message | — |
-| Email | — | Full rendered React email HTML |
-| Others | — | — |
+| Discord | Embed object (title, description, fields, color) | - |
+| Slack | Block Kit blocks array | - |
+| Teams | Adaptive Card body | - |
+| Telegram | Parsed HTML message | - |
+| Email | - | Full rendered React email HTML |
+| Others | - | - |
 
 ### Data Retention
 

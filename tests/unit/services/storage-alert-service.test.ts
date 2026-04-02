@@ -174,7 +174,7 @@ describe("StorageAlertService", () => {
     });
 
     it("should merge partial config with defaults", async () => {
-      // Stored config only has some fields — rest should come from defaults
+      // Stored config only has some fields - rest should come from defaults
       prismaMock.systemSetting.findUnique.mockResolvedValue({
         key: "storage.alerts.cfg-1",
         value: JSON.stringify({ usageSpikeEnabled: true }),
@@ -347,7 +347,7 @@ describe("StorageAlertService", () => {
     });
 
     it("should process multiple destinations independently", async () => {
-      // Both have spike enabled — use mockImplementation to handle both configIds
+      // Both have spike enabled - use mockImplementation to handle both configIds
       prismaMock.systemSetting.findUnique.mockImplementation((async (args: any) => {
         const key: string = args.where.key;
         if (key === "storage.alerts.cfg-1" || key === "storage.alerts.cfg-2") {
@@ -361,7 +361,7 @@ describe("StorageAlertService", () => {
         return null; // state keys → default
       }) as any);
 
-      // Both need 2+ snapshots for spike check — return <2 so no notify
+      // Both need 2+ snapshots for spike check - return <2 so no notify
       prismaMock.storageSnapshot.findMany.mockResolvedValue([]);
 
       await checkStorageAlerts([
@@ -741,7 +741,7 @@ describe("StorageAlertService", () => {
         missingBackupHours: 10,
       });
 
-      // Count didn't change — oldest snapshot is 25h ago
+      // Count didn't change - oldest snapshot is 25h ago
       prismaMock.storageSnapshot.findMany.mockResolvedValue([
         { count: 3, createdAt: new Date("2026-02-22T12:00:00Z") } as any,
         { count: 3, createdAt: new Date("2026-02-21T11:00:00Z") } as any, // 25h ago

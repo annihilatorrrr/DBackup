@@ -17,7 +17,7 @@ const SCOPES = [
 /**
  * POST /api/adapters/onedrive/auth
  * Generates the Microsoft OAuth authorization URL.
- * Body: { adapterId: string } — The saved adapter config ID to authorize.
+ * Body: { adapterId: string } - The saved adapter config ID to authorize.
  */
 export async function POST(req: NextRequest) {
     const ctx = await getAuthContext(await headers());

@@ -8,7 +8,7 @@ After installation, open [http://localhost:3000](http://localhost:3000) in your 
 
 On first launch, you'll see a login page with a "Sign Up" option. This self-registration is **only available for the first user** and creates the administrator account.
 
-Once logged in, you can use the **Quick Setup Wizard** (available in the sidebar under **Quick Setup**) to configure your first backup in a guided, step-by-step flow — this is the recommended approach for new users. It walks you through creating a database source, storage destination, optional encryption and notifications, and a backup job all in one place.
+Once logged in, you can use the **Quick Setup Wizard** (available in the sidebar under **Quick Setup**) to configure your first backup in a guided, step-by-step flow - this is the recommended approach for new users. It walks you through creating a database source, storage destination, optional encryption and notifications, and a backup job all in one place.
 
 If you prefer to configure everything manually, follow the steps below.
 
@@ -72,7 +72,7 @@ Now connect source and destination in a job.
 3. In the **General** tab, configure:
    - **Name**: `Daily MySQL Backup`
    - **Source**: Select "Production MySQL"
-   - **Databases**: Click **Load** to fetch available databases, then select which ones to back up — leave empty to back up all databases
+   - **Databases**: Click **Load** to fetch available databases, then select which ones to back up - leave empty to back up all databases
 4. In the **Destinations** tab, click **Add Destination** and select "Local Backups"
    - Each destination can have its own independent retention policy
    - You can add multiple destinations (e.g., local + S3) for redundancy

@@ -3,14 +3,14 @@ info:
   title: DBackup API
   version: 1.4.1
   description: |
-    REST API for DBackup — a self-hosted database backup automation platform with encryption, compression, and smart retention.
+    REST API for DBackup - a self-hosted database backup automation platform with encryption, compression, and smart retention.
 
     ## Authentication
 
     DBackup supports two authentication methods:
 
-    - **Session Authentication** — Used automatically when logged in via the web UI. Session cookies are sent with each request.
-    - **API Key Authentication** — For scripts, CI/CD pipelines, and external integrations. Create an API key under **Access Management → API Keys**.
+    - **Session Authentication** - Used automatically when logged in via the web UI. Session cookies are sent with each request.
+    - **API Key Authentication** - For scripts, CI/CD pipelines, and external integrations. Create an API key under **Access Management → API Keys**.
 
     > API keys do not inherit SuperAdmin privileges. Only explicitly assigned permissions are available.
 
@@ -46,7 +46,7 @@ security:
 
 tags:
   - name: Jobs
-    description: Manage backup jobs — CRUD operations and manual triggers
+    description: Manage backup jobs - CRUD operations and manual triggers
   - name: Executions
     description: Poll execution status for running or completed backups/restores
   - name: History
@@ -1049,11 +1049,11 @@ paths:
         Download a ZIP file containing the master encryption key and helper scripts for offline decryption.
 
         The ZIP contains:
-        - `master.key` — Hex-encoded encryption key
-        - `decrypt_backup.js` — Node.js decryption script
-        - `decrypt_drag_drop_windows.bat` — Windows drag & drop helper
-        - `decrypt_linux_mac.sh` — Linux/macOS helper script
-        - `README.txt` — Usage instructions
+        - `master.key` - Hex-encoded encryption key
+        - `decrypt_backup.js` - Node.js decryption script
+        - `decrypt_drag_drop_windows.bat` - Windows drag & drop helper
+        - `decrypt_linux_mac.sh` - Linux/macOS helper script
+        - `README.txt` - Usage instructions
 
         > This is a sensitive operation. An audit log entry is created.
       operationId: downloadRecoveryKit
@@ -1486,11 +1486,11 @@ components:
       type: string
       enum: [Pending, Running, Success, Failed, Partial]
       description: |
-        - `Pending` — Queued, waiting for an execution slot
-        - `Running` — Currently executing
-        - `Success` — Completed successfully
-        - `Failed` — Execution failed
-        - `Partial` — Some destinations succeeded, others failed
+        - `Pending` - Queued, waiting for an execution slot
+        - `Running` - Currently executing
+        - `Success` - Completed successfully
+        - `Failed` - Execution failed
+        - `Partial` - Some destinations succeeded, others failed
 
     # ─── Adapters ────────────────────────────────────────────────
     AdapterConfig:

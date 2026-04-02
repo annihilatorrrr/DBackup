@@ -155,7 +155,7 @@ export function CertificateSettings() {
           <AlertTitle>HTTPS Enabled</AlertTitle>
           <AlertDescription>
             All connections to DBackup are encrypted with TLS.
-            {certInfo.isSelfSigned && " Using a self-signed certificate — browsers will show a security warning on first visit."}
+            {certInfo.isSelfSigned && " Using a self-signed certificate - browsers will show a security warning on first visit."}
           </AlertDescription>
         </Alert>
       )}
@@ -405,7 +405,7 @@ function CertField({
           highlight ? "text-amber-600 dark:text-amber-400 font-medium" : ""
         }`}
       >
-        {value || "—"}
+        {value || "-"}
       </p>
     </div>
   );

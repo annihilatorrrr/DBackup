@@ -9,7 +9,7 @@ import { wrapError } from "@/lib/errors";
 
 const log = logger.child({ action: "audit-log" });
 
-/** @no-permission-required — Self-service: any authenticated user can log their own login. */
+/** @no-permission-required - Self-service: any authenticated user can log their own login. */
 export async function logLoginSuccess() {
     try {
         const session = await auth.api.getSession({
@@ -17,7 +17,7 @@ export async function logLoginSuccess() {
         });
 
         if (!session?.user) {
-            return; // Not authenticated — nothing to log
+            return; // Not authenticated - nothing to log
         }
 
         const reqHeaders = await headers();

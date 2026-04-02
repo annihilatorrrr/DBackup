@@ -229,7 +229,7 @@ async function restoreSingleFileSSH(
                 const uploadPercent = Math.round((transferred / total) * 90);
                 const elapsed = (Date.now() - uploadStart) / 1000;
                 const speed = elapsed > 0 ? transferred / elapsed : 0;
-                onProgress(uploadPercent, `${formatBytes(transferred)} / ${formatBytes(total)} — ${formatBytes(speed)}/s`);
+                onProgress(uploadPercent, `${formatBytes(transferred)} / ${formatBytes(total)} - ${formatBytes(speed)}/s`);
             }
         });
 
@@ -246,7 +246,7 @@ async function restoreSingleFileSSH(
             onLog(`Upload verified: ${(remoteSize / 1024 / 1024).toFixed(1)} MB`, 'success');
         } catch (e) {
             if (e instanceof Error && e.message.includes('mismatch')) throw e;
-            // stat command failed — non-critical
+            // stat command failed - non-critical
         }
 
         // 2. Run mysql restore on the remote server from the uploaded file
@@ -294,7 +294,7 @@ async function restoreSingleFileSSH(
             if (aliveCheck.stdout.includes('alive')) {
                 onLog(`Post-failure check: MySQL server is still running`, 'warning');
             } else {
-                onLog(`Post-failure check: MySQL server NOT responding — ${aliveCheck.stderr.trim() || aliveCheck.stdout.trim()}`, 'error');
+                onLog(`Post-failure check: MySQL server NOT responding - ${aliveCheck.stderr.trim() || aliveCheck.stdout.trim()}`, 'error');
             }
         } catch {
             onLog(`Post-failure check: Could not reach MySQL server (likely crashed/OOM-killed)`, 'error');

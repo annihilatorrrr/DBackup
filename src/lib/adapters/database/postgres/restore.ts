@@ -205,7 +205,7 @@ async function restoreSingleDatabase(
                 resolve();
             } else if (code === 1 && stderrBuffer.includes('warning') && stderrBuffer.includes('errors ignored')) {
                 if (stderrBuffer.includes('transaction_timeout')) {
-                    log('Restore completed — pg_restore 18 sent SET transaction_timeout which is unsupported on PostgreSQL < 17. This is cosmetic and does not affect the restore.', 'warning');
+                    log('Restore completed - pg_restore 18 sent SET transaction_timeout which is unsupported on PostgreSQL < 17. This is cosmetic and does not affect the restore.', 'warning');
                 } else {
                     log('Restore completed with warnings (non-fatal)', 'warning');
                 }
@@ -281,7 +281,7 @@ async function restoreSingleDatabaseSSH(
 
         if (result.code === 1 && result.stderr.includes('warning')) {
             if (result.stderr.includes('transaction_timeout')) {
-                log('Restore completed — pg_restore 18 sent SET transaction_timeout which is unsupported on PostgreSQL < 17. This is cosmetic and does not affect the restore.', 'warning');
+                log('Restore completed - pg_restore 18 sent SET transaction_timeout which is unsupported on PostgreSQL < 17. This is cosmetic and does not affect the restore.', 'warning');
             } else {
                 log('Restore completed with warnings (non-fatal)', 'warning');
             }

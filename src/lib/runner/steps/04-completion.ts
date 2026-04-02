@@ -20,7 +20,7 @@ export async function stepCleanup(ctx: RunnerContext) {
             await fs.unlink(ctx.tempFile);
             ctx.log("Temporary file cleaned up");
         } catch (_e) {
-            // File doesn't exist or cleanup failed — ignore
+            // File doesn't exist or cleanup failed - ignore
         }
     }
 }
@@ -74,7 +74,7 @@ export async function stepFinalize(ctx: RunnerContext) {
             condition === "ALWAYS" ||
             (condition === "SUCCESS_ONLY" && isSuccess) ||
             (condition === "FAILURE_ONLY" && !isSuccess && !isPartial) ||
-            // Partial counts as notable — notify on both ALWAYS and FAILURE_ONLY
+            // Partial counts as notable - notify on both ALWAYS and FAILURE_ONLY
             (condition === "FAILURE_ONLY" && isPartial);
 
         if (!shouldNotify) {

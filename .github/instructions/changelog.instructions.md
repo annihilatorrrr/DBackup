@@ -17,7 +17,7 @@ Every changelog entry uses a **bold component prefix** followed by a description
 
 ## Section Headings
 
-Entries are grouped under emoji-prefixed `###` headings within each version. Only include sections that have entries. Sections must appear in **exactly this order** — never rearrange:
+Entries are grouped under emoji-prefixed `###` headings within each version. Only include sections that have entries. Sections must appear in **exactly this order** - never rearrange:
 
 | Order | Section | Use for |
 |---|---|---|
@@ -70,14 +70,14 @@ Tag rules:
 
 ## Rules
 
-1. **Grouped sections** — Entries are organized under `###` section headings, not a flat list.
-2. **Bold component prefix** — Every entry starts with `**component**:` to identify the affected area.
-3. **One line per entry** — Each entry is a single bullet point. Max 1-2 sentences.
-4. **No implementation details** — No file paths, function names, or technical internals. Those belong in git commits.
-5. **Chronological order** — Newest version at the top.
-6. **No separators** — Do not add `---` between versions. VitePress renders them automatically.
-7. **Docker section last** — `### 🐳 Docker` is always the final section in a version block.
-8. **Omit empty sections** — Only include section headings that have at least one entry.
+1. **Grouped sections** - Entries are organized under `###` section headings, not a flat list.
+2. **Bold component prefix** - Every entry starts with `**component**:` to identify the affected area.
+3. **One line per entry** - Each entry is a single bullet point. Max 1-2 sentences.
+4. **No implementation details** - No file paths, function names, or technical internals. Those belong in git commits.
+5. **Chronological order** - Newest version at the top.
+6. **No separators** - Do not add `---` between versions. VitePress renders them automatically.
+7. **Docker section last** - `### 🐳 Docker` is always the final section in a version block.
+8. **Omit empty sections** - Only include section headings that have at least one entry.
 
 ## Example
 

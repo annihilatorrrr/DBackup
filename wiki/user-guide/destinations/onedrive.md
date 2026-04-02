@@ -19,7 +19,7 @@ You need an Azure App Registration to enable the Microsoft Graph API (one-time s
 7. Copy the **Application (client) ID** from the Overview page
 
 ::: danger Don't Confuse the IDs
-The Overview page shows three IDs — use **Application (client) ID** only. Do not use Directory (tenant) ID or Object ID. For secrets, copy the **Value** column, not the Secret ID.
+The Overview page shows three IDs - use **Application (client) ID** only. Do not use Directory (tenant) ID or Object ID. For secrets, copy the **Value** column, not the Secret ID.
 :::
 
 <details>
@@ -45,16 +45,16 @@ Or recreate the App Registration with the correct setting (third option).
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **Name** | Friendly name for this destination | — | ✅ |
-| **Client ID** | Application (client) ID from Azure Portal | — | ✅ |
-| **Client Secret** | Client secret **Value** from Azure Portal | — | ✅ |
+| **Name** | Friendly name for this destination | - | ✅ |
+| **Client ID** | Application (client) ID from Azure Portal | - | ✅ |
+| **Client Secret** | Client secret **Value** from Azure Portal | - | ✅ |
 | **Folder Path** | Target folder path (e.g. `/Backups/DBackup`) | Root | ❌ |
 
 ## Setup Guide
 
 1. Go to **Destinations** → **Add Destination** → **Microsoft OneDrive**
 2. Enter Client ID and Client Secret → **Save**
-3. Click **Authorize with Microsoft** — you'll be redirected to Microsoft
+3. Click **Authorize with Microsoft** - you'll be redirected to Microsoft
 4. Sign in and accept the requested permissions
 5. After redirect, the status changes to **green** ("Authorized")
 6. (Optional) Use the **Folder Browser** (📂) to select a subfolder
@@ -62,13 +62,13 @@ Or recreate the App Registration with the correct setting (third option).
 
 ## How It Works
 
-- **OAuth tokens** refresh automatically — no manual re-authorization needed
+- **OAuth tokens** refresh automatically - no manual re-authorization needed
 - Files ≤ 4 MB use simple PUT upload; larger files use upload sessions (10 MB chunks)
 - All credentials (Client ID, Client Secret, Refresh Token) are stored AES-256-GCM encrypted
-- Access tokens are short-lived (~1 hour) and never stored — refreshed on-the-fly
+- Access tokens are short-lived (~1 hour) and never stored - refreshed on-the-fly
 
 ::: warning Client Secret Expiration
-Azure client secrets expire (max 24 months). Set a calendar reminder — Azure does not send expiration notifications for personal accounts. When expired, create a new secret in Azure Portal and update DBackup.
+Azure client secrets expire (max 24 months). Set a calendar reminder - Azure does not send expiration notifications for personal accounts. When expired, create a new secret in Azure Portal and update DBackup.
 :::
 
 ## Troubleshooting
@@ -80,9 +80,9 @@ The redirect URI in Azure doesn't match your DBackup URL exactly. Check in App R
 ### AADSTS7000215 / invalid_client
 
 Common causes:
-- Copied the **Secret ID** instead of the **Value** — recreate the secret and copy the correct column
-- Secret expired — check expiration date in Azure Portal
-- Wrong Client ID — ensure you're using Application (client) ID
+- Copied the **Secret ID** instead of the **Value** - recreate the secret and copy the correct column
+- Secret expired - check expiration date in Azure Portal
+- Wrong Client ID - ensure you're using Application (client) ID
 
 ### Token Expired / Invalid
 

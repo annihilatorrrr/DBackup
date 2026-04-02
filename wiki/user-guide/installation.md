@@ -148,7 +148,7 @@ The health check runs every 30 seconds with a 30-second start period. Docker wil
 
 ## Graceful Shutdown
 
-When stopping the container, DBackup **waits for all running backup/restore jobs to finish** before shutting down — no data is lost, regardless of how long the backup takes:
+When stopping the container, DBackup **waits for all running backup/restore jobs to finish** before shutting down - no data is lost, regardless of how long the backup takes:
 
 ```bash
 docker stop dbackup          # Sends SIGTERM → waits for running backups to finish
@@ -161,9 +161,9 @@ docker compose down           # Same graceful behavior
 - A second `Ctrl+C` / `docker kill` forces immediate exit for emergencies
 
 ::: warning Docker Stop Timeout
-By default, Docker sends a `SIGKILL` **10 seconds** after `docker stop` — this forcefully kills the process regardless of what it's doing. Since `SIGKILL` cannot be caught by any application, you **must** increase the timeout if your backups take longer than 10 seconds.
+By default, Docker sends a `SIGKILL` **10 seconds** after `docker stop` - this forcefully kills the process regardless of what it's doing. Since `SIGKILL` cannot be caught by any application, you **must** increase the timeout if your backups take longer than 10 seconds.
 
-**Docker Compose** (recommended — add to your `docker-compose.yml`):
+**Docker Compose** (recommended - add to your `docker-compose.yml`):
 ```yaml
 services:
   dbackup:

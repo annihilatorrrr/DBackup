@@ -196,11 +196,11 @@ Open [https://localhost:3000](https://localhost:3000) and create your admin acco
 
 Full documentation is available at **[dbackup.app](https://dbackup.app)**:
 
-- [User Guide](https://dbackup.app/user-guide/getting-started) — Installation, configuration, usage
-- [API Reference](https://api.dbackup.app) — Interactive REST API documentation
-- [Developer Guide](https://dbackup.app/developer-guide/) — Architecture, adapters, contributing
-- [Changelog](https://dbackup.app/changelog) — Release history
-- [Roadmap](https://dbackup.app/roadmap) — Planned features
+- [User Guide](https://dbackup.app/user-guide/getting-started) - Installation, configuration, usage
+- [API Reference](https://api.dbackup.app) - Interactive REST API documentation
+- [Developer Guide](https://dbackup.app/developer-guide/) - Architecture, adapters, contributing
+- [Changelog](https://dbackup.app/changelog) - Release history
+- [Roadmap](https://dbackup.app/roadmap) - Planned features
 
 ## 🛠️ Development
 

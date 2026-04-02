@@ -412,12 +412,12 @@ async function importKey(name: string, hexKey: string) {
 
 ## Checksum & Encryption Interaction
 
-The SHA-256 checksum is always calculated on the **final** backup file — after both compression and encryption have been applied. This means:
+The SHA-256 checksum is always calculated on the **final** backup file - after both compression and encryption have been applied. This means:
 
 - The checksum verifies the encrypted file, not the raw dump
 - Integrity can be verified without decryption (no encryption key needed for checksum verification)
 - The checksum is stored alongside encryption metadata (`iv`, `authTag`) in the `.meta.json` sidecar file
-- During restore, the checksum is verified **before** decryption begins — preventing wasted processing on corrupted files
+- During restore, the checksum is verified **before** decryption begins - preventing wasted processing on corrupted files
 
 ## Related Documentation
 

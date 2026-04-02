@@ -34,12 +34,12 @@ export function isShutdownRequested(): boolean {
 export function registerShutdownHandlers(): void {
     const handler = (signal: string) => {
         if (isShuttingDown) {
-            log.warn("Forced shutdown — second signal received", { signal });
+            log.warn("Forced shutdown - second signal received", { signal });
             process.exit(1);
         }
 
         isShuttingDown = true;
-        log.info(`Received ${signal} — starting graceful shutdown...`);
+        log.info(`Received ${signal} - starting graceful shutdown...`);
 
         performShutdown(signal).then(() => {
             log.info("Graceful shutdown complete");
@@ -66,7 +66,7 @@ async function performShutdown(signal: string): Promise<void> {
         log.warn("Failed to stop scheduler", { error: String(error) });
     }
 
-    // 2. Wait for all running executions to complete (no timeout — the app
+    // 2. Wait for all running executions to complete (no timeout - the app
     //    stays alive until every backup/restore finishes or a second signal
     //    forces immediate exit)
     let lastLoggedCount = -1;
@@ -98,7 +98,7 @@ async function performShutdown(signal: string): Promise<void> {
         }
     }
 
-    // 3. Cancel pending jobs — they won't be picked up after shutdown
+    // 3. Cancel pending jobs - they won't be picked up after shutdown
     try {
         const pendingCount = await prisma.execution.count({
             where: { status: "Pending" },

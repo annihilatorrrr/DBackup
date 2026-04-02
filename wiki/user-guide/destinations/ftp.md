@@ -6,13 +6,13 @@ Store backups on a remote FTP server. Supports plain FTP and explicit FTPS (FTP 
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **Name** | Friendly name for this destination | — | ✅ |
-| **Host** | Hostname or IP of the FTP server | — | ✅ |
+| **Name** | Friendly name for this destination | - | ✅ |
+| **Host** | Hostname or IP of the FTP server | - | ✅ |
 | **Port** | FTP port | `21` | ❌ |
 | **Username** | FTP username | `anonymous` | ❌ |
-| **Password** | FTP password | — | ❌ |
+| **Password** | FTP password | - | ❌ |
 | **TLS** | Enable explicit FTPS (FTP over TLS) | `false` | ❌ |
-| **Path Prefix** | Remote directory for backups | — | ❌ |
+| **Path Prefix** | Remote directory for backups | - | ❌ |
 
 ## Setup Guide
 
@@ -30,7 +30,7 @@ Plain FTP transfers credentials and data unencrypted. **Always enable TLS** when
 
 ## How It Works
 
-- When TLS is enabled, DBackup uses explicit FTPS (AUTH TLS) — the connection upgrades from plain to encrypted
+- When TLS is enabled, DBackup uses explicit FTPS (AUTH TLS) - the connection upgrades from plain to encrypted
 - DBackup creates subdirectories per job within the Path Prefix automatically
 - All credentials are stored AES-256-GCM encrypted in the database
 
@@ -58,7 +58,7 @@ connect ECONNREFUSED
 SSL routines / handshake failure
 ```
 
-**Solution:** Ensure the server supports explicit FTPS (AUTH TLS). Implicit FTPS (port 990) is not supported — use explicit mode on port 21.
+**Solution:** Ensure the server supports explicit FTPS (AUTH TLS). Implicit FTPS (port 990) is not supported - use explicit mode on port 21.
 
 ### Passive Mode Issues
 

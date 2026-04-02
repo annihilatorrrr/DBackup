@@ -166,7 +166,7 @@ export const config = {
          * - favicon.ico (favicon file)
          * - public assets if any
          *
-         * NOTE: api/auth is intentionally NOT excluded — the middleware must
+         * NOTE: api/auth is intentionally NOT excluded - the middleware must
          * run on auth endpoints so the auth rate limiter (5 req/min) can
          * protect /api/auth/sign-in against brute-force attacks.
          */

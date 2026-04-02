@@ -7,7 +7,7 @@ applyTo: "wiki/**/*.md"
 ## Language
 
 - **Content language**: English
-- **Tone**: Clear, concise, practical — write for self-hosters and sysadmins
+- **Tone**: Clear, concise, practical - write for self-hosters and sysadmins
 - **Avoid filler**: No marketing fluff, no restating the obvious
 
 ## Unified Adapter Guide Structure
@@ -65,10 +65,10 @@ Error message or symptom
 
 ### Rules
 
-1. **One config table** — Do NOT split into "Basic Settings" and "Advanced Settings". One table, all fields.
-2. **Required column** — Every config table must have a "Required" column (✅ / ❌).
-3. **Consistent field names** — Use the exact label shown in the DBackup UI.
-4. **Provider examples as collapsible** — External service setup (Gmail, MinIO, Synology, etc.) goes in `<details>` blocks:
+1. **One config table** - Do NOT split into "Basic Settings" and "Advanced Settings". One table, all fields.
+2. **Required column** - Every config table must have a "Required" column (✅ / ❌).
+3. **Consistent field names** - Use the exact label shown in the DBackup UI.
+4. **Provider examples as collapsible** - External service setup (Gmail, MinIO, Synology, etc.) goes in `<details>` blocks:
    ```markdown
    <details>
    <summary>Gmail SMTP Setup</summary>
@@ -77,16 +77,16 @@ Error message or symptom
 
    </details>
    ```
-5. **No comparison tables in individual guides** — Comparisons belong in the category index page only.
-6. **No "Best Practices" laundry lists** — Integrate tips as `::: tip` callouts where relevant, or omit.
-7. **Troubleshooting limit** — Max 5 entries per guide. Focus on errors users actually hit.
-8. **Line budget** — Aim for 100–200 lines per adapter guide. Exceeding 250 is a warning sign.
+5. **No comparison tables in individual guides** - Comparisons belong in the category index page only.
+6. **No "Best Practices" laundry lists** - Integrate tips as `::: tip` callouts where relevant, or omit.
+7. **Troubleshooting limit** - Max 5 entries per guide. Focus on errors users actually hit.
+8. **Line budget** - Aim for 100–200 lines per adapter guide. Exceeding 250 is a warning sign.
 
 ## Index Pages (Overview)
 
 Each category (sources, destinations, notifications) has an index page with:
 1. A table of all adapters with links
-2. A "Choosing" section (brief prose or bullet comparison — not full paragraphs per adapter)
+2. A "Choosing" section (brief prose or bullet comparison - not full paragraphs per adapter)
 3. Common setup steps (if shared across adapters)
 4. Links to individual adapter guides
 
@@ -118,7 +118,7 @@ Use `<details>/<summary>` for optional/collapsible content (provider examples, a
 
 ## Content Principles
 
-- **Verify claims against code** — Every config field, default value, and feature claim must match `src/lib/adapters/definitions.ts` and the adapter implementation.
-- **Don't document external products** — Link to official docs instead of explaining how Gmail, AWS IAM, or Nginx work.
-- **One source of truth** — Don't repeat information across pages. Link instead.
-- **Screenshots are optional** — Only include if the UI flow is genuinely confusing.
+- **Verify claims against code** - Every config field, default value, and feature claim must match `src/lib/adapters/definitions.ts` and the adapter implementation.
+- **Don't document external products** - Link to official docs instead of explaining how Gmail, AWS IAM, or Nginx work.
+- **One source of truth** - Don't repeat information across pages. Link instead.
+- **Screenshots are optional** - Only include if the UI flow is genuinely confusing.

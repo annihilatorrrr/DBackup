@@ -129,7 +129,7 @@ async function testMssqlSsh(config: MSSQLConfig, sshHost: string, sshPort: numbe
 
         return NextResponse.json({
             success: true,
-            message: `SSH connection to ${sshHost}:${sshPort} successful — backup path ${backupPath} is readable and writable`,
+            message: `SSH connection to ${sshHost}:${sshPort} successful - backup path ${backupPath} is readable and writable`,
         });
     } catch (connectError: unknown) {
         sshTransfer.end();

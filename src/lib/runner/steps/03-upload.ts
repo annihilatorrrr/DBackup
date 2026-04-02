@@ -167,7 +167,7 @@ export async function stepUpload(ctx: RunnerContext) {
                 const uploadedBytes = Math.round((percent / 100) * ctx.dumpSize);
                 const elapsed = (Date.now() - uploadStart) / 1000;
                 const speed = elapsed > 0 ? Math.round(uploadedBytes / elapsed) : 0;
-                ctx.updateDetail(`${dest.configName} — ${formatBytes(uploadedBytes)} / ${formatBytes(ctx.dumpSize)} – ${formatBytes(speed)}/s`);
+                ctx.updateDetail(`${dest.configName} - ${formatBytes(uploadedBytes)} / ${formatBytes(ctx.dumpSize)} – ${formatBytes(speed)}/s`);
             } else {
                 ctx.updateDetail(`${dest.configName} (${percent}%)`);
             }
@@ -242,7 +242,7 @@ export async function stepUpload(ctx: RunnerContext) {
             }
         }
     } else {
-        ctx.log("No local destinations — skipping integrity verification");
+        ctx.log("No local destinations - skipping integrity verification");
     }
 
     // --- EVALUATE RESULTS ---

@@ -185,7 +185,7 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
 
 <div className="flex w-full gap-4 items-start">
                         {adapters.length === 1 ? (
-                            // Single adapter pre-selected (from picker) — show as read-only badge
+                            // Single adapter pre-selected (from picker) - show as read-only badge
                             <FormField
                                 control={form.control}
                                 name="adapterId"

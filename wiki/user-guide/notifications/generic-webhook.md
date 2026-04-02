@@ -6,12 +6,12 @@ Send JSON payloads to any HTTP endpoint. Use for custom integrations with PagerD
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **Webhook URL** | Target HTTP endpoint URL | — | ✅ |
+| **Webhook URL** | Target HTTP endpoint URL | - | ✅ |
 | **HTTP Method** | `POST`, `PUT`, or `PATCH` | `POST` | ❌ |
 | **Content-Type** | Content-Type header value | `application/json` | ❌ |
-| **Authorization** | Authorization header value (e.g., `Bearer token`) | — | ❌ |
-| **Custom Headers** | Additional headers (one per line, `Key: Value`) | — | ❌ |
-| **Payload Template** | Custom JSON with `{{variable}}` placeholders | — | ❌ |
+| **Authorization** | Authorization header value (e.g., `Bearer token`) | - | ❌ |
+| **Custom Headers** | Additional headers (one per line, `Key: Value`) | - | ❌ |
+| **Payload Template** | Custom JSON with `{{variable}}` placeholders | - | ❌ |
 
 ## Setup Guide
 
@@ -53,7 +53,7 @@ Use `{{variable}}` placeholders to create your own payload structure:
 | `{{fields}}` | JSON array of fields | `[{"name":"Job","value":"Prod"}]` |
 
 ::: info
-Variable names must match the pattern `[a-zA-Z0-9_]+` — no hyphens or special characters.
+Variable names must match the pattern `[a-zA-Z0-9_]+` - no hyphens or special characters.
 :::
 
 <details>
@@ -72,7 +72,7 @@ Variable names must match the pattern `[a-zA-Z0-9_]+` — no hyphens or special 
 }
 ```
 
-**Uptime Kuma (Push):** No template needed — use the push URL directly:
+**Uptime Kuma (Push):** No template needed - use the push URL directly:
 ```
 https://uptime.example.com/api/push/TOKEN?status=up&msg={{message}}
 ```
@@ -92,14 +92,14 @@ https://uptime.example.com/api/push/TOKEN?status=up&msg={{message}}
 
 ## Troubleshooting
 
-### 401 — Unauthorized
+### 401 - Unauthorized
 
 Verify the Authorization header value. Check that the token hasn't expired and has the required permissions.
 
-### 400 — Bad Request
+### 400 - Bad Request
 
 Verify your custom template is valid JSON. Check the target service's expected payload format. Ensure Content-Type matches what the service expects.
 
 ### Template Variables Not Replaced
 
-Check for typos — variable names are case-sensitive. Only the documented variables above are supported.
+Check for typos - variable names are case-sensitive. Only the documented variables above are supported.

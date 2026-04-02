@@ -33,10 +33,10 @@ const prismaClientSingleton = () => {
       if (!record) return record;
       try {
         if (record.clientId) record.clientId = decrypt(record.clientId);
-      } catch { /* Not encrypted or wrong key — return as-is */ }
+      } catch { /* Not encrypted or wrong key - return as-is */ }
       try {
         if (record.clientSecret) record.clientSecret = decrypt(record.clientSecret);
-      } catch { /* Not encrypted or wrong key — return as-is */ }
+      } catch { /* Not encrypted or wrong key - return as-is */ }
       try {
         if (record.oidcConfig) {
           const parsed = JSON.parse(record.oidcConfig);
@@ -45,7 +45,7 @@ const prismaClientSingleton = () => {
           if (parsed.clientSecret) { try { parsed.clientSecret = decrypt(parsed.clientSecret); changed = true; } catch {} }
           if (changed) record.oidcConfig = JSON.stringify(parsed);
         }
-      } catch { /* Parse error or not encrypted — return as-is */ }
+      } catch { /* Parse error or not encrypted - return as-is */ }
       return record;
     };
 

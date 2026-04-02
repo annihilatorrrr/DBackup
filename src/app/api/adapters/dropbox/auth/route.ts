@@ -12,7 +12,7 @@ const log = logger.child({ route: "adapters/dropbox/auth" });
 /**
  * POST /api/adapters/dropbox/auth
  * Generates the Dropbox OAuth authorization URL.
- * Body: { adapterId: string } — The saved adapter config ID to authorize.
+ * Body: { adapterId: string } - The saved adapter config ID to authorize.
  */
 export async function POST(req: NextRequest) {
     const ctx = await getAuthContext(await headers());
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
             adapterId, // state parameter for callback
             "code",
             "offline", // Request offline access to get refresh_token
-            undefined, // scopes — use app-configured scopes
+            undefined, // scopes - use app-configured scopes
             "none",
             false
         );

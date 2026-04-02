@@ -44,7 +44,7 @@ export async function getApiKeys() {
 }
 
 /**
- * Create a new API key. Returns the raw key ONCE — it will not be shown again.
+ * Create a new API key. Returns the raw key ONCE - it will not be shown again.
  */
 export async function createApiKey(data: CreateApiKeyFormValues) {
   await checkPermission(PERMISSIONS.API_KEYS.WRITE);
@@ -152,7 +152,7 @@ export async function toggleApiKey(id: string, enabled: boolean) {
 }
 
 /**
- * Rotate an API key — generates a new secret. Returns the new raw key ONCE.
+ * Rotate an API key - generates a new secret. Returns the new raw key ONCE.
  */
 export async function rotateApiKey(id: string) {
   await checkPermission(PERMISSIONS.API_KEYS.WRITE);

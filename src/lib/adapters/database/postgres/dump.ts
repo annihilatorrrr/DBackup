@@ -200,7 +200,7 @@ export async function dump(
 
         // Auto-discover all databases if none specified
         if (dbs.length === 0) {
-            log("No DB selected — auto-discovering all databases…", "info");
+            log("No DB selected - auto-discovering all databases…", "info");
             dbs = await getDatabases(config);
             log(`Discovered ${dbs.length} database(s): ${dbs.join(", ")}`, "info");
             if (dbs.length === 0) {

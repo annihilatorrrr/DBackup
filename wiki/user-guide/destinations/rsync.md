@@ -15,16 +15,16 @@ The default DBackup Docker image includes rsync. If you're running DBackup outsi
 
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
-| **Name** | Friendly name for this destination | — | ✅ |
-| **Host** | Hostname or IP of the remote server | — | ✅ |
+| **Name** | Friendly name for this destination | - | ✅ |
+| **Host** | Hostname or IP of the remote server | - | ✅ |
 | **Port** | SSH port | `22` | ❌ |
-| **Username** | SSH username | — | ✅ |
+| **Username** | SSH username | - | ✅ |
 | **Auth Type** | Authentication method | `password` | ❌ |
-| **Password** | User password (when Auth Type = `password`) | — | ❌ |
-| **Private Key** | PEM-encoded private key (when Auth Type = `privateKey`) | — | ❌ |
-| **Passphrase** | Passphrase for encrypted private keys | — | ❌ |
-| **Path Prefix** | Remote directory for backups | — | ✅ |
-| **Options** | Additional rsync flags (e.g. `--bwlimit=1000`) | — | ❌ |
+| **Password** | User password (when Auth Type = `password`) | - | ❌ |
+| **Private Key** | PEM-encoded private key (when Auth Type = `privateKey`) | - | ❌ |
+| **Passphrase** | Passphrase for encrypted private keys | - | ❌ |
+| **Path Prefix** | Remote directory for backups | - | ✅ |
+| **Options** | Additional rsync flags (e.g. `--bwlimit=1000`) | - | ❌ |
 
 ### Authentication Methods
 

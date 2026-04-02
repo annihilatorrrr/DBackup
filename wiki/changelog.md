@@ -8,10 +8,11 @@ All notable changes to DBackup are documented here.
 ### 🎨 Improvements
 
 - **PostgreSQL**: Restore warning for PostgreSQL ≤ 16 now explains that `SET transaction_timeout` is a cosmetic pg_restore 18 issue and does not affect the restore
+- **codebase**: Replaced all em dashes with hyphens across source code, docs, and config files for typographic consistency
 
 ### 🗑️ Removed
 
-- **PostgreSQL**: Removed multi-version pg_dump/pg_restore strategy (PG 14, 16, 17, 18) — only PostgreSQL 18 client is now installed, which is backward compatible with all supported server versions (12–18)
+- **PostgreSQL**: Removed multi-version pg_dump/pg_restore strategy (PG 14, 16, 17, 18) - only PostgreSQL 18 client is now installed, which is backward compatible with all supported server versions (12–18)
 
 ### 🔧 CI/CD
 
@@ -31,7 +32,7 @@ All notable changes to DBackup are documented here.
 
 - **logging**: Pipeline stage system for backups (Queued → Initializing → Dumping → Processing → Uploading → Verifying → Retention → Notifications → Completed) and restores (Downloading → Decrypting → Decompressing → Restoring Database → Completed) with automatic progress calculation and duration tracking per stage
 - **ui**: LogViewer redesign with pipeline stage grouping, duration badges, pending stage placeholders, and auto-expanding latest stage during execution
-- **ui**: Real-time speed (MB/s) and byte progress display for all backup and restore operations — dump, compress, encrypt, upload, download, decrypt, decompress, and SFTP transfer
+- **ui**: Real-time speed (MB/s) and byte progress display for all backup and restore operations - dump, compress, encrypt, upload, download, decrypt, decompress, and SFTP transfer
 
 ### 🎨 Improvements
 
