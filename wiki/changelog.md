@@ -2,8 +2,8 @@
 
 All notable changes to DBackup are documented here.
 
-## v1.4.1
-*Release: In Progress*
+## v1.4.1 - PostgreSQL Client Cleanup
+*Released: April 2, 2026*
 
 ### 🎨 Improvements
 
