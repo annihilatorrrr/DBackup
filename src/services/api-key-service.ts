@@ -1,4 +1,4 @@
-import { randomBytes, createHash } from "crypto";
+import { randomBytes, createHmac, createHash } from "crypto";
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { ApiKeyError, NotFoundError, wrapError } from "@/lib/errors";
@@ -8,11 +8,19 @@ const log = logger.child({ service: "ApiKeyService" });
 
 const API_KEY_PREFIX = "dbackup_";
 const KEY_BYTE_LENGTH = 30; // 30 bytes = 40 hex chars
+const HMAC_KEY = "dbackup-api-key-hmac-v1";
 
 /**
- * Hash a raw API key using SHA-256
+ * Hash a raw API key using HMAC-SHA256
  */
 function hashKey(rawKey: string): string {
+  return createHmac("sha256", HMAC_KEY).update(rawKey).digest("hex");
+}
+
+/**
+ * Legacy hash for migrating existing keys (plain SHA-256)
+ */
+function hashKeyLegacy(rawKey: string): string {
   return createHash("sha256").update(rawKey).digest("hex");
 }
 
@@ -285,9 +293,26 @@ export class ApiKeyService {
 
     const hashed = hashKey(rawKey);
 
-    const record = await prisma.apiKey.findUnique({
+    let record = await prisma.apiKey.findUnique({
       where: { hashedKey: hashed },
     });
+
+    // Fallback: try legacy SHA-256 hash for keys created before HMAC migration
+    if (!record) {
+      const legacyHashed = hashKeyLegacy(rawKey);
+      record = await prisma.apiKey.findUnique({
+        where: { hashedKey: legacyHashed },
+      });
+
+      if (record) {
+        // Migrate to HMAC hash
+        await prisma.apiKey.update({
+          where: { id: record.id },
+          data: { hashedKey: hashed },
+        });
+        log.info("Migrated API key hash to HMAC-SHA256", { apiKeyId: record.id });
+      }
+    }
 
     if (!record) {
       log.warn("API key validation failed: key not found", { prefix: rawKey.substring(0, 12) });
