@@ -2,6 +2,16 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.4.2
+*Release: In Progress*
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.4.2`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v1.4.1 - PostgreSQL Client Cleanup
 *Released: April 2, 2026*
 
