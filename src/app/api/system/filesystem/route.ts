@@ -8,6 +8,31 @@ import { wrapError } from "@/lib/errors";
 
 const log = logger.child({ route: "system/filesystem" });
 
+/** Allowed root directories for the filesystem browser */
+const ALLOWED_ROOTS = ["/backups", "/data", "/tmp", "/home", "/mnt", "/media", "/opt", "/srv", "/var"];
+
+/**
+ * Validate and sanitize a user-provided path.
+ * Returns the resolved absolute path if it falls under an allowed root, or throws.
+ */
+function sanitizePath(userPath: string): string {
+    const resolved = path.resolve(userPath);
+
+    // Must start with one of the allowed roots, or be the filesystem root itself
+    const isAllowed = ALLOWED_ROOTS.some(root => resolved === root || resolved.startsWith(root + "/"));
+
+    // Also allow the filesystem root "/" so the user can navigate to an allowed root
+    if (resolved === "/") {
+        return resolved;
+    }
+
+    if (!isAllowed) {
+        throw new Error("Access denied: path is outside allowed directories");
+    }
+
+    return resolved;
+}
+
 export async function GET(req: NextRequest) {
     try {
         await checkPermission(PERMISSIONS.SETTINGS.READ);
@@ -16,12 +41,10 @@ export async function GET(req: NextRequest) {
         const requestedPath = searchParams.get("path") || "/";
         const _type = searchParams.get("type") || "all"; // 'all', 'file', 'directory'
 
-        // Normalize and validate path to prevent path traversal
-        const currentPath = path.resolve(requestedPath);
-
-        // Block access to sensitive system paths
-        const blockedPrefixes = ["/proc", "/sys", "/dev", "/etc/shadow"];
-        if (blockedPrefixes.some(prefix => currentPath.startsWith(prefix))) {
+        let currentPath: string;
+        try {
+            currentPath = sanitizePath(requestedPath);
+        } catch {
             return NextResponse.json({ success: false, error: "Access denied" }, { status: 403 });
         }
 
