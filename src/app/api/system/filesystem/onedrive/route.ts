@@ -64,8 +64,10 @@ export async function POST(req: NextRequest) {
             },
         });
 
-        // Build the API path based on the folder path
-        const currentPath = folderPath?.replace(/^\/+|\/+$/g, "") || "";
+        // Build the API path based on the folder path (avoid regex for user input - ReDoS safe)
+        let currentPath = typeof folderPath === "string" ? folderPath : "";
+        while (currentPath.startsWith("/")) currentPath = currentPath.slice(1);
+        while (currentPath.endsWith("/")) currentPath = currentPath.slice(0, -1);
         const apiPath = currentPath
             ? `/me/drive/root:/${currentPath}:/children`
             : "/me/drive/root/children";
