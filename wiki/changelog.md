@@ -5,6 +5,18 @@ All notable changes to DBackup are documented here.
 ## v1.4.1
 *Release: In Progress*
 
+### 🎨 Improvements
+
+- **PostgreSQL**: Restore warning for PostgreSQL ≤ 16 now explains that `SET transaction_timeout` is a cosmetic pg_restore 18 issue and does not affect the restore
+
+### 🗑️ Removed
+
+- **PostgreSQL**: Removed multi-version pg_dump/pg_restore strategy (PG 14, 16, 17, 18) — only PostgreSQL 18 client is now installed, which is backward compatible with all supported server versions (12–18)
+
+### 🔧 CI/CD
+
+- **Docker**: Simplified Dockerfile by removing postgresql14/16/17-client packages and multi-version symlink setup, reducing image size
+
 ### 🐳 Docker
 
 - **Image**: `skyfay/dbackup:v1.4.1`
