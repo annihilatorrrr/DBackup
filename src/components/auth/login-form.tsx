@@ -113,7 +113,7 @@ export function LoginForm({ allowSignUp = true, ssoProviders = [], errorCode, di
                 }
             })
              if (result?.error) {
-                toast.error(result.error.message || "Failed to sign in with passkey")
+                toast.error(String(result.error.message) || "Failed to sign in with passkey")
             }
         } catch {
             toast.error("Failed to sign in with passkey")

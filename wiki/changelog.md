@@ -2,8 +2,12 @@
 
 All notable changes to DBackup are documented here.
 
-## v1.4.3
-*Release: In Progress*
+## v1.4.3 - TypeScript Migration, Prisma Upgrade & Security Fixes
+*Released: April 5, 2026*
+
+### 🎨 Improvements
+
+- **server**: Converted `custom-server.js` to TypeScript (`custom-server.ts`) for consistent type safety across the codebase - compiled to JS during Docker build via dedicated `tsconfig.server.json`
 
 ### 🔄 Changed
 

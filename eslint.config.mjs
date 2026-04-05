@@ -32,8 +32,6 @@ const eslintConfig = defineConfig([
     "wiki/.vitepress/theme/**",
     // API docs build artifacts - bundled third-party code
     "api-docs/dist/**",
-    // Custom Node.js server (plain JS, uses require())
-    "custom-server.js",
   ]),
 ]);
 

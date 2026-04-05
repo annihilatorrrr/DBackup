@@ -1,25 +1,28 @@
 /**
- * DBackup Custom Server — HTTPS by default, HTTP optional.
+ * DBackup Custom Server - HTTPS by default, HTTP optional.
  *
  * This file replaces the Next.js standalone server.js as the Docker entry point.
  * It creates an HTTPS server (with auto-generated self-signed cert if needed)
  * and delegates request handling to the Next.js application.
  *
  * Environment variables:
- *   DISABLE_HTTPS  - "true" to use plain HTTP (default: false → HTTPS)
+ *   DISABLE_HTTPS  - "true" to use plain HTTP (default: false - HTTPS)
  *   PORT           - Listen port (default: 3000)
  *   HOSTNAME       - Bind address (default: "0.0.0.0")
  *   CERTS_DIR      - Directory for tls.crt/tls.key (default: "/data/certs")
  */
 
-const { createServer: createHttpsServer } = require("node:https");
-const { createServer: createHttpServer } = require("node:http");
-const { execSync } = require("node:child_process");
-const path = require("node:path");
-const fs = require("node:fs");
+import { createServer as createHttpsServer } from "node:https";
+import { createServer as createHttpServer, type Server } from "node:http";
+import { execSync } from "node:child_process";
+import path from "node:path";
+import fs from "node:fs";
+import type { IncomingMessage, ServerResponse } from "node:http";
+
+import next from "next";
 
 // ── Configuration ──────────────────────────────────────────────
-process.env.NODE_ENV = "production";
+(process.env as Record<string, string | undefined>).NODE_ENV = "production";
 process.chdir(__dirname);
 
 const port = parseInt(process.env.PORT || "3000", 10);
@@ -30,17 +33,18 @@ const certPath = path.join(certsDir, "tls.crt");
 const keyPath = path.join(certsDir, "tls.key");
 
 // ── Next.js Setup ────────────────────────────────────────────
-// Set standalone config env BEFORE requiring next (matches generated server.js)
-const nextConfig = require("./.next/required-server-files.json").config;
+// Set standalone config env BEFORE importing next (matches generated server.js)
+const nextConfig = JSON.parse(
+  fs.readFileSync(path.join(__dirname, ".next/required-server-files.json"), "utf8")
+).config;
 process.env.__NEXT_PRIVATE_STANDALONE_CONFIG = JSON.stringify(nextConfig);
 
-const next = require("next");
 const app = next({ dev: false, hostname, port, dir: __dirname, conf: nextConfig });
 const handler = app.getRequestHandler();
 
 // ── TLS Certificate Management ────────────────────────────────
 
-function isSelfSigned() {
+function isSelfSigned(): boolean {
   try {
     const info = execSync(`openssl x509 -in "${certPath}" -noout -issuer -subject`, {
       encoding: "utf8",
@@ -55,7 +59,7 @@ function isSelfSigned() {
   }
 }
 
-function isExpired() {
+function isExpired(): boolean {
   try {
     execSync(`openssl x509 -in "${certPath}" -noout -checkend 0`, {
       stdio: "pipe",
@@ -67,7 +71,7 @@ function isExpired() {
   }
 }
 
-function generateSelfSignedCert() {
+function generateSelfSignedCert(): void {
   execSync(
     `openssl req -x509 -newkey rsa:2048 -keyout "${keyPath}" -out "${certPath}" ` +
       `-days 365 -nodes -subj "/CN=DBackup/O=DBackup Self-Signed" ` +
@@ -78,7 +82,7 @@ function generateSelfSignedCert() {
   execSync(`chmod 644 "${certPath}"`, { stdio: "pipe" });
 }
 
-function ensureCertificate() {
+function ensureCertificate(): boolean {
   if (!fs.existsSync(certsDir)) {
     fs.mkdirSync(certsDir, { recursive: true, mode: 0o700 });
   }
@@ -87,13 +91,14 @@ function ensureCertificate() {
     // Check if existing cert is expired
     if (isExpired()) {
       if (isSelfSigned()) {
-        console.log("[TLS] Self-signed certificate expired — regenerating...");
+        console.log("[TLS] Self-signed certificate expired - regenerating...");
         try {
           generateSelfSignedCert();
           console.log("[TLS] Self-signed certificate renewed successfully");
           return true;
-        } catch (err) {
-          console.error("[TLS] Failed to renew certificate:", err.message);
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.error("[TLS] Failed to renew certificate:", message);
           return false;
         }
       } else {
@@ -113,8 +118,9 @@ function ensureCertificate() {
     generateSelfSignedCert();
     console.log("[TLS] Self-signed certificate generated successfully");
     return true;
-  } catch (err) {
-    console.error("[TLS] Failed to generate certificate:", err.message);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[TLS] Failed to generate certificate:", message);
     console.error(
       "[TLS] Falling back to HTTP. Install openssl or provide custom certificates."
     );
@@ -125,10 +131,10 @@ function ensureCertificate() {
 // ── Server Start ──────────────────────────────────────────────
 
 app.prepare().then(() => {
-  let server;
-  let protocol;
+  let server: Server;
+  let protocol: string;
 
-  const requestHandler = async (req, res) => {
+  const requestHandler = async (req: IncomingMessage, res: ServerResponse) => {
     try {
       await handler(req, res);
     } catch (err) {
@@ -141,7 +147,7 @@ app.prepare().then(() => {
   if (disableHttps) {
     protocol = "http";
     server = createHttpServer(requestHandler);
-    console.log("[Server] HTTPS disabled via DISABLE_HTTPS=true — using HTTP");
+    console.log("[Server] HTTPS disabled via DISABLE_HTTPS=true - using HTTP");
   } else {
     const certReady = ensureCertificate();
 
@@ -157,7 +163,7 @@ app.prepare().then(() => {
       protocol = "http";
       server = createHttpServer(requestHandler);
       console.warn(
-        "[Server] WARNING: Falling back to HTTP — certificate generation failed"
+        "[Server] WARNING: Falling back to HTTP - certificate generation failed"
       );
     }
   }
@@ -169,8 +175,8 @@ app.prepare().then(() => {
   });
 
   // Graceful shutdown
-  const shutdown = (signal) => {
-    console.log(`[Server] ${signal} received — shutting down...`);
+  const shutdown = (signal: string) => {
+    console.log(`[Server] ${signal} received - shutting down...`);
     server.close(() => {
       console.log("[Server] Closed");
       process.exit(0);
