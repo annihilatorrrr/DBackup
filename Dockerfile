@@ -70,8 +70,7 @@ ENV PUID=1001
 ENV PGID=1001
 
 RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs && \
-    chmod 1777 /tmp
+    adduser --system --uid 1001 nextjs
 
 # Copy built files (--link for better layer caching)
 COPY --from=builder --link --chown=1001:1001 /app/public ./public

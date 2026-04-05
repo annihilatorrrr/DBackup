@@ -41,6 +41,11 @@ if [ "$(stat -c '%u' /pnpm 2>/dev/null)" != "$PUID" ]; then
   chown -R "$PUID:$PGID" /pnpm
 fi
 
+# ─── Ensure /tmp is writable ─────────────────────────────────
+# Prisma engine needs /tmp for binary extraction at runtime.
+# Some Docker layer combinations (COPY --link) may reset /tmp permissions.
+chmod 1777 /tmp
+
 # ─── Start application ───────────────────────────────────────
 # Run database migrations first, then exec node as PID 1 for proper signal handling
 su-exec "$PUID:$PGID" prisma migrate deploy
