@@ -50,8 +50,8 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
-# Generate Prisma Client and build Next.js app
-RUN pnpm prisma generate && pnpm run build
+# Generate Prisma Client, build Next.js app, and compile custom server
+RUN pnpm prisma generate && pnpm run build && npx tsc -p tsconfig.server.json
 
 # 3. Runner Phase (The actual image)
 FROM base AS runner
@@ -81,13 +81,17 @@ COPY --from=builder --link --chown=1001:1001 /app/prisma ./prisma
 # Create runtime data directory + install Prisma CLI for migrations
 # Note: pnpm add -g runs as root, so we must chown /pnpm to the runtime user
 # to avoid "Can't write to @prisma/engines" errors at container startup
+# Prisma version is read from package.json to stay in sync automatically
+COPY --from=builder --link /app/package.json /tmp/package.json
 RUN mkdir -p /data/storage/avatars /data/db /data/certs && \
     chown -R 1001:1001 /data && \
-    pnpm add -g prisma@5.22.0 && \
+    PRISMA_VERSION=$(node -e "console.log(require('/tmp/package.json').devDependencies.prisma.replace(/[\^~>=<]/g,''))") && \
+    pnpm add -g prisma@${PRISMA_VERSION} && \
+    rm /tmp/package.json && \
     chown -R 1001:1001 /pnpm
 
-# Copy custom HTTPS server (replaces default Next.js server entry point)
-COPY --chown=1001:1001 custom-server.js ./custom-server.js
+# Copy compiled custom HTTPS server (replaces default Next.js server entry point)
+COPY --from=builder --link --chown=1001:1001 /app/custom-server.js ./custom-server.js
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/

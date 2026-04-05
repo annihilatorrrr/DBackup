@@ -164,7 +164,7 @@ export function SecurityForm({ canUpdatePassword, canManage2FA, canManagePasskey
             })
 
             if (result?.error) {
-                toast.error(result.error.message || "Failed to add passkey")
+                toast.error(String(result.error.message) || "Failed to add passkey")
             } else {
                 toast.success("Passkey added successfully")
                 setPasskeyName("")

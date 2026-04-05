@@ -2,6 +2,34 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.4.3 - TypeScript Migration, Prisma Upgrade & Security Fixes
+*Released: April 5, 2026*
+
+### 🎨 Improvements
+
+- **server**: Converted `custom-server.js` to TypeScript (`custom-server.ts`) for consistent type safety across the codebase - compiled to JS during Docker build via dedicated `tsconfig.server.json`
+
+### 🔄 Changed
+
+- **database**: Upgraded Prisma ORM from v5 to v6 (v6.19.3) for continued security patches and bug fixes
+- **SSO**: Migrated SSO credential decryption from deprecated `$use` middleware to `$extends` query extension API
+- **auth**: Upgraded better-auth from v1.4.17 to v1.5.6 with SSO hardening, Prisma adapter fixes, and security improvements
+- **dependencies**: Updated all patch/minor dependencies - Next.js, React, Tailwind CSS, Zod, AWS SDK, Vitest and 20+ other packages
+
+### 🗑️ Removed
+
+- **auth**: Removed deprecated `@better-auth/cli` package (replaced by `npx auth` CLI)
+
+### 🔧 CI/CD
+
+- **Docker**: Prisma CLI version in Dockerfile is now dynamically read from `package.json` at build time instead of being hardcoded, ensuring automatic version sync
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.4.3`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
 ## v1.4.2 - Security Fixes
 *Released: April 2, 2026*
 
