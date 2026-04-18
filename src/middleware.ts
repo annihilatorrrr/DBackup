@@ -130,12 +130,10 @@ export async function middleware(request: NextRequest) {
     // Protect dashboard routes via cookie check (middleware layer)
     // The main protection is still in the server components (layout.tsx) via safe session verification
     if (request.nextUrl.pathname.startsWith("/dashboard")) {
-        // "better-auth.session_token" is the default cookie name for better-auth
-        // "better-auth.session_token.sig" might also exist
-        const sessionToken = request.cookies.get("better-auth.session_token");
-
-        // Also check if we are in a public asset that shouldn't be protected?
-        // No, matcher handles excluding _next/static etc.
+        // Check both cookie names: HTTPS uses "__Secure-" prefix automatically
+        const sessionToken =
+            request.cookies.get("better-auth.session_token") ||
+            request.cookies.get("__Secure-better-auth.session_token");
 
         if (!sessionToken) {
             return NextResponse.redirect(new URL("/", request.url));
