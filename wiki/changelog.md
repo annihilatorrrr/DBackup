@@ -2,6 +2,19 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.4.4 - HTTPS Redirect Loop Fix
+*Released: April 18, 2026*
+
+### 🐛 Bug Fixes
+
+- **auth**: Fixed infinite redirect loop (ERR_TOO_MANY_REDIRECTS) after login in Docker/HTTPS mode caused by middleware not recognizing the `__Secure-` cookie prefix that browsers set for HTTPS sessions
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.4.4`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
 ## v1.4.3 - TypeScript Migration, Prisma Upgrade & Security Fixes
 *Released: April 5, 2026*
 
