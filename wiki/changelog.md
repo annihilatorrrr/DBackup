@@ -2,6 +2,24 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.4.6 - Issue Templates and extension corrections
+*Released: April 19, 2026*
+
+### 🔄 Changed
+
+- **backup**: Multi-database backups now use `.tar` file extension instead of the adapter-specific extension (e.g. `.sql`), correctly reflecting the TAR archive format (#25)
+
+### 🔧 CI/CD
+
+- **github**: Added GitHub Issue templates for Bug Reports, Feature Requests, Questions/Support, and Documentation Issues
+
+###  🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.4.6`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v1.4.5 - SSH Backup Fixes with single database selection
 *Released: April 19, 2026*
 

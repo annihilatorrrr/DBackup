@@ -253,6 +253,14 @@ export async function stepExecuteDump(ctx: RunnerContext) {
                     }
                 };
                 ctx.log(`Multi-DB TAR archive detected: ${manifest.databases.length} databases`);
+
+                // Rename file to .tar extension to reflect actual format
+                if (!dumpPath.endsWith('.tar')) {
+                    const tarPath = dumpPath.replace(/\.[^.]+$/, '.tar');
+                    await fs.rename(dumpPath, tarPath);
+                    ctx.tempFile = tarPath;
+                    ctx.log(`Renamed backup file to .tar extension: ${path.basename(tarPath)}`);
+                }
             }
         }
     } catch (e: unknown) {
