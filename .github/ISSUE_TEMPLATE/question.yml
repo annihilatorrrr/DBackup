@@ -1,0 +1,30 @@
+name: Question / Support
+description: Ask a question about setup, configuration, or usage
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question about DBackup? Check the [documentation](https://dbackup.skyfay.dev) first - your answer might already be there.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What would you like to know?
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: DBackup Version
+      description: Which version are you running? (optional)
+      placeholder: e.g. v1.4.6
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any relevant details, screenshots, or configuration snippets.

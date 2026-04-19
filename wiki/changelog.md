@@ -2,6 +2,20 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.4.6
+*Release: In Progress*
+
+### � CI/CD
+
+- **github**: Added GitHub Issue templates for Bug Reports, Feature Requests, Questions/Support, and Documentation Issues
+
+### �🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.4.6`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v1.4.5 - SSH Backup Fixes with single database selection
 *Released: April 19, 2026*
 
