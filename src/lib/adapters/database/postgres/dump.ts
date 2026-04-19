@@ -1,6 +1,5 @@
 import { BackupResult } from "@/lib/core/interfaces";
 import { LogLevel, LogType } from "@/lib/core/logs";
-import { getDialect } from "./dialects";
 import { spawn } from "child_process";
 import fs from "fs/promises";
 import { createWriteStream } from "fs";
@@ -208,34 +207,10 @@ export async function dump(
             }
         }
 
-        const dialect = getDialect('postgres', config.detectedVersion);
-
         // Case 1: Single Database - Direct dump with custom format
         if (dbs.length <= 1) {
-            const args = dialect.getDumpArgs(config, dbs);
-
-            log(`Starting single-database dump (custom format)`, 'info', 'command', `pg_dump ${args.join(' ')}`);
-
-            const dumpProcess = spawn('pg_dump', args, { env });
-            const writeStream = createWriteStream(destinationPath);
-
-            dumpProcess.stdout.pipe(writeStream);
-
-            dumpProcess.stderr.on('data', (data) => {
-                const msg = data.toString().trim();
-                if (msg && !msg.includes('NOTICE:')) {
-                    log(msg, 'info');
-                }
-            });
-
-            await new Promise<void>((resolve, reject) => {
-                dumpProcess.on('close', (code) => {
-                    if (code === 0) resolve();
-                    else reject(new Error(`pg_dump exited with code ${code}`));
-                });
-                dumpProcess.on('error', (err) => reject(err));
-                writeStream.on('error', (err) => reject(err));
-            });
+            log(`Starting single-database dump (custom format)`, 'info');
+            await dumpSingleDatabase(dbs[0], destinationPath, config, env, log);
         }
         // Case 2: Multiple Databases - TAR archive with individual pg_dump per DB
         else {

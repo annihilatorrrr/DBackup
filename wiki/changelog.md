@@ -2,6 +2,20 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.4.5 - SSH Backup Fixes with single database selection
+*Released: April 19, 2026*
+
+### 🐛 Bug Fixes
+
+- **postgres**: Fixed single-database backups via SSH running `pg_dump` locally instead of on the remote server, causing "Connection refused" errors (#22)
+- **mongodb**: Fixed same SSH bypass bug for single-database `mongodump` backups
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.4.5`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
 ## v1.4.4 - HTTPS Redirect Loop Fix
 *Released: April 18, 2026*
 

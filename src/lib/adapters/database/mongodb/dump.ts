@@ -1,6 +1,5 @@
 import { BackupResult } from "@/lib/core/interfaces";
 import { LogLevel, LogType } from "@/lib/core/logs";
-import { getDialect } from "./dialects";
 import { spawn } from "child_process";
 import { createWriteStream } from "fs";
 import { waitForProcess } from "@/lib/adapters/process";
@@ -203,37 +202,10 @@ export async function dump(
             }
         }
 
-        const dialect = getDialect('mongodb', config.detectedVersion);
-
         // Case 1: Single Database or ALL - Direct archive dump
         if (dbs.length <= 1) {
-            const args = dialect.getDumpArgs(config, dbs);
-
-            // Mask password in logs
-            const logArgs = args.map(arg => {
-                if (arg.startsWith('--password')) return '--password=******';
-                if (arg.startsWith('mongodb')) return 'mongodb://...';
-                return arg;
-            });
-
-            log(`Running mongo dump`, 'info', 'command', `mongodump ${logArgs.join(' ')}`);
-
-            const dumpProcess = spawn('mongodump', args);
-            const writeStream = createWriteStream(destinationPath);
-            const stderrLines: string[] = [];
-
-            dumpProcess.stdout.pipe(writeStream);
-
-            dumpProcess.stderr.on('data', (data) => {
-                const msg = data.toString().trim();
-                if (msg) stderrLines.push(msg);
-            });
-
-            await waitForProcess(dumpProcess, 'mongodump');
-
-            if (stderrLines.length > 0) {
-                log(`mongodump output`, 'info', 'command', stderrLines.join('\n'));
-            }
+            log(`Starting single-database dump (archive format)`, 'info');
+            await dumpSingleDatabase(dbs[0] || '', destinationPath, config, log);
         }
         // Case 2: Multiple Databases - TAR archive with individual mongodump per DB
         else {
