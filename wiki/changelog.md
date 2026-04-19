@@ -5,11 +5,15 @@ All notable changes to DBackup are documented here.
 ## v1.4.6
 *Release: In Progress*
 
-### � CI/CD
+### 🔄 Changed
+
+- **backup**: Multi-database backups now use `.tar` file extension instead of the adapter-specific extension (e.g. `.sql`), correctly reflecting the TAR archive format (#25)
+
+### 🔧 CI/CD
 
 - **github**: Added GitHub Issue templates for Bug Reports, Feature Requests, Questions/Support, and Documentation Issues
 
-### �🐳 Docker
+###  🐳 Docker
 
 - **Image**: `skyfay/dbackup:v1.4.6`
 - **Also tagged as**: `latest`, `v1`
