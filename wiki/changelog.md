@@ -2,8 +2,8 @@
 
 All notable changes to DBackup are documented here.
 
-## v1.4.6
-*Release: In Progress*
+## v1.4.6 - Issue Templates and extension corrections
+*Released: April 19, 2026*
 
 ### 🔄 Changed
 
