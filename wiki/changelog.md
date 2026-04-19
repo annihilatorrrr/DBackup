@@ -34,6 +34,7 @@ All notable changes to DBackup are documented here.
 - **Also tagged as**: `latest`, `v1`
 - **Platforms**: linux/amd64, linux/arm64
 
+
 ## v1.4.4 - HTTPS Redirect Loop Fix
 *Released: April 18, 2026*
 
@@ -46,6 +47,7 @@ All notable changes to DBackup are documented here.
 - **Image**: `skyfay/dbackup:v1.4.4`
 - **Also tagged as**: `latest`, `v1`
 - **Platforms**: linux/amd64, linux/arm64
+
 
 ## v1.4.3 - TypeScript Migration, Prisma Upgrade & Security Fixes
 *Released: April 5, 2026*
@@ -74,6 +76,7 @@ All notable changes to DBackup are documented here.
 - **Image**: `skyfay/dbackup:v1.4.3`
 - **Also tagged as**: `latest`, `v1`
 - **Platforms**: linux/amd64, linux/arm64
+
 
 ## v1.4.2 - Security Fixes
 *Released: April 2, 2026*
