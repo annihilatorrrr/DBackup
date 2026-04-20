@@ -12,7 +12,6 @@ All notable changes to DBackup are documented here.
 ### 🔧 CI/CD
 
 - **github**: Added GitHub Issue templates for Bug Reports, Feature Requests, Questions/Support, and Documentation Issues
-- **copilot**: Removed German response language directive from Copilot instructions so all Code Reviews and AI responses appear in English for all contributors
 
 ###  🐳 Docker
 
