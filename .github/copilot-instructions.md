@@ -8,7 +8,7 @@ applyTo: "**/*"
 Self-hosted web app for automating database backups (MySQL, PostgreSQL, MongoDB) with encryption, compression, and retention policies. Built with **Next.js 16 (App Router)**, **TypeScript**, **Prisma** (SQLite), and **Shadcn UI**.
 
 ## Language & Commands
-- **Response**: German (Deutsch) | **Code/Comments**: English
+- **Code/Comments**: English
 - **Package Manager**: Always use `pnpm` (e.g., `pnpm dev`, `pnpm add`, `pnpm test`)
 - **Typography**: Never use em dashes (`-`). Use a hyphen (`-`) instead where needed.
 
