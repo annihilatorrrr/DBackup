@@ -16,6 +16,7 @@ export interface CreateJobInput {
     notificationIds?: string[];
     encryptionProfileId?: string;
     compression?: string;
+    pgCompression?: string;
     enabled?: boolean;
     notificationEvents?: string;
 }
@@ -29,6 +30,7 @@ export interface UpdateJobInput {
     notificationIds?: string[];
     encryptionProfileId?: string;
     compression?: string;
+    pgCompression?: string;
     enabled?: boolean;
     notificationEvents?: string;
 }
@@ -67,7 +69,7 @@ export class JobService {
     }
 
     async createJob(input: CreateJobInput) {
-        const { name, schedule, sourceId, databases, destinations, notificationIds, enabled, encryptionProfileId, compression, notificationEvents } = input;
+        const { name, schedule, sourceId, databases, destinations, notificationIds, enabled, encryptionProfileId, compression, pgCompression, notificationEvents } = input;
 
         // Check name uniqueness
         const existingByName = await prisma.job.findFirst({ where: { name } });
@@ -84,6 +86,7 @@ export class JobService {
                 enabled: enabled !== undefined ? enabled : true,
                 encryptionProfileId: encryptionProfileId || null,
                 compression: compression || "NONE",
+                pgCompression: pgCompression ?? "",
                 notificationEvents: notificationEvents || "ALWAYS",
                 notifications: {
                     connect: notificationIds?.map((id) => ({ id })) || []
@@ -105,7 +108,7 @@ export class JobService {
     }
 
     async updateJob(id: string, input: UpdateJobInput) {
-        const { name, schedule, sourceId, databases, destinations, notificationIds, enabled, encryptionProfileId, compression, notificationEvents } = input;
+        const { name, schedule, sourceId, databases, destinations, notificationIds, enabled, encryptionProfileId, compression, pgCompression, notificationEvents } = input;
 
         // Check name uniqueness (excluding current job)
         if (name) {
@@ -140,6 +143,7 @@ export class JobService {
                     sourceId,
                     databases: databases !== undefined ? JSON.stringify(databases) : undefined,
                     compression,
+                    pgCompression,
                     notificationEvents,
                     encryptionProfileId: encryptionProfileId === "" ? null : encryptionProfileId,
                     notifications: {

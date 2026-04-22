@@ -27,7 +27,44 @@ import {
  */
 type PostgresDumpConfig = PostgresConfig & {
     detectedVersion?: string;
+    pgCompression?: string;
 };
+
+/**
+ * Builds the -Z flag arguments for pg_dump based on the pgCompression job setting.
+ *
+ * pgCompression values:
+ *   ""        - legacy behavior: -Z 6 (gzip level 6, all pg versions)
+ *   "NONE"    - no compression: -Z 0
+ *   "GZIP:N"  - gzip level N (numeric syntax, all pg versions)
+ *   "LZ4:N"   - lz4 level N (requires pg14+)
+ *   "ZSTD:N"  - zstd level N (requires pg16+)
+ */
+function buildCompressionArgs(pgCompression: string | undefined): string[] {
+    if (!pgCompression || pgCompression === "") {
+        // Legacy: keep original behavior for existing jobs
+        return ["-Z", "6"];
+    }
+    if (pgCompression === "NONE") {
+        return ["-Z", "0"];
+    }
+    const colonIdx = pgCompression.indexOf(":");
+    if (colonIdx === -1) return ["-Z", "6"];
+    const algo = pgCompression.slice(0, colonIdx).toUpperCase();
+    const level = pgCompression.slice(colonIdx + 1);
+    if (algo === "GZIP") {
+        // Use numeric syntax for broadest pg version compatibility
+        return ["-Z", level];
+    }
+    if (algo === "LZ4") {
+        return ["-Z", `lz4:${level}`];
+    }
+    if (algo === "ZSTD") {
+        return ["-Z", `zstd:${level}`];
+    }
+    // Unknown algo - fall back to legacy
+    return ["-Z", "6"];
+}
 
 /**
  * Dump a single PostgreSQL database using pg_dump with custom format (-Fc)
@@ -48,7 +85,7 @@ async function dumpSingleDatabase(
         '-p', String(config.port),
         '-U', config.user,
         '-F', 'c', // Custom format (compressed, binary)
-        '-Z', '6', // Compression level
+        ...buildCompressionArgs(config.pgCompression),
         '-d', dbName,
     ];
 
@@ -110,7 +147,7 @@ async function dumpSingleDatabaseSSH(
         const dumpArgs = [
             ...args,
             "-F", "c",
-            "-Z", "6",
+            ...buildCompressionArgs(config.pgCompression),
             "-d", shellEscape(dbName),
         ];
 

@@ -51,6 +51,11 @@ export async function stepExecuteDump(ctx: RunnerContext) {
         sourceConfig.database = [];
     }
 
+    // Inject PostgreSQL native compression setting (only consumed by the postgres adapter)
+    if (job.pgCompression !== undefined) {
+        sourceConfig.pgCompression = job.pgCompression;
+    }
+
     try {
         const dbVal = sourceConfig.database;
         const options = sourceConfig.options || "";

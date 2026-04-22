@@ -48,6 +48,7 @@ model Job {
   encryptionProfileId String?
   encryptionProfile   EncryptionProfile? @relation(fields: [encryptionProfileId], references: [id])
   compression         String             @default("NONE")
+  pgCompression       String             @default("") // PostgreSQL native dump compression: "" (legacy gzip-6), "NONE", "GZIP:6", "LZ4:1", "ZSTD:3"
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
   executions          Execution[]

@@ -105,6 +105,17 @@ npx prisma migrate dev    # Create DB migration
 
 **Test Infrastructure**: See [docker-compose.test.yml](docker-compose.test.yml) for MySQL/PG/Mongo containers.
 
+### Prisma Migrations - IMPORTANT
+
+**Never run `prisma migrate dev` while `pnpm dev` is running.** The dev server holds an open SQLite connection. `migrate dev` can trigger an interactive DB reset (on drift), which conflicts with the file lock and crashes the Node process - and often VS Code with it.
+
+**Safe workflow for schema changes:**
+1. Stop the dev server first (Ctrl+C in the node terminal)
+2. Run `npx prisma migrate dev --name <migration-name>`
+3. Restart `pnpm dev`
+
+**Alternative for local dev only:** `npx prisma db push` - applies schema changes without migration history, safe to run alongside the dev server, and never prompts for a reset.
+
 ## Queue System (`src/lib/queue-manager.ts`)
 
 Backups run asynchronously via a **FIFO queue** with configurable concurrency:

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,10 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Lock, History, ChevronsUpDown, Plus, Trash2, ChevronDown, ChevronRight, Database } from "lucide-react";
+import { Lock, History, ChevronsUpDown, Plus, Trash2, ChevronDown, ChevronRight, Database, Info } from "lucide-react";
 import { SchedulePicker } from "./schedule-picker";
 import { AdapterIcon } from "@/components/adapter/adapter-icon";
 import { DatabasePicker } from "@/components/adapter/database-picker";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -63,6 +64,7 @@ export interface JobData {
     databases?: string;
     encryptionProfileId?: string;
     compression: string;
+    pgCompression?: string;
     notificationEvents?: string;
     notifications: { id: string, name: string }[];
     destinations: {
@@ -76,11 +78,44 @@ export interface AdapterOption {
     id: string;
     name: string;
     adapterId: string;
+    metadata?: string | null;
 }
 
 export interface EncryptionOption {
     id: string;
     name: string;
+}
+
+const PG_COMPRESSION_ALGOS = ["LEGACY", "NONE", "GZIP", "LZ4", "ZSTD"] as const;
+type PgCompressionAlgo = typeof PG_COMPRESSION_ALGOS[number];
+
+const PG_LEVEL_CONSTRAINTS: Record<string, { min: number; max: number; default: number; values: number[] }> = {
+    GZIP: { min: 0, max: 9, default: 6, values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] },
+    LZ4:  { min: 0, max: 9, default: 1, values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] },
+    ZSTD: { min: 1, max: 22, default: 3, values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22] },
+};
+
+/** Extract the major version number from a version string like "16.2" or "PostgreSQL 14.1" */
+function parsePgMajorVersion(metadata: string | null | undefined): number | null {
+    if (!metadata) return null;
+    try {
+        const parsed = JSON.parse(metadata);
+        const version: string = parsed.engineVersion || parsed.version || "";
+        const match = version.match(/(\d+)\./);
+        return match ? parseInt(match[1], 10) : null;
+    } catch {
+        return null;
+    }
+}
+
+function parsePgCompression(pgCompression: string | undefined): { algo: PgCompressionAlgo; level: number } {
+    if (!pgCompression || pgCompression === "") return { algo: "LEGACY", level: 6 };
+    if (pgCompression === "NONE") return { algo: "NONE", level: 0 };
+    const colonIdx = pgCompression.indexOf(":");
+    if (colonIdx === -1) return { algo: "LEGACY", level: 6 };
+    const algo = pgCompression.slice(0, colonIdx).toUpperCase() as PgCompressionAlgo;
+    const level = parseInt(pgCompression.slice(colonIdx + 1), 10);
+    return { algo, level: isNaN(level) ? (PG_LEVEL_CONSTRAINTS[algo]?.default ?? 6) : level };
 }
 
 const jobSchema = z.object({
@@ -91,6 +126,8 @@ const jobSchema = z.object({
     destinations: z.array(destinationSchema).min(1, "At least one destination is required"),
     encryptionProfileId: z.string().optional(),
     compression: z.enum(["NONE", "GZIP", "BROTLI"]).default("NONE"),
+    pgCompressionAlgo: z.enum(["LEGACY", "NONE", "GZIP", "LZ4", "ZSTD"]).default("LEGACY"),
+    pgCompressionLevel: z.coerce.number().int().min(0).max(22).default(6),
     notificationIds: z.array(z.string()).optional(),
     notificationEvents: z.enum(["ALWAYS", "FAILURE_ONLY", "SUCCESS_ONLY"]).default("ALWAYS"),
     enabled: z.boolean().default(true),
@@ -112,6 +149,7 @@ interface JobFormProps {
         databases?: string;
         encryptionProfileId?: string;
         compression: string;
+        pgCompression?: string;
         notificationEvents?: string;
         notifications: { id: string; name: string }[];
         destinations: { configId: string; priority: number; retention: string }[];
@@ -165,6 +203,8 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
             destinations: defaultDestinations,
             encryptionProfileId: initialData?.encryptionProfileId || "no-encryption",
             compression: (initialData?.compression as "NONE" | "GZIP" | "BROTLI") || "NONE",
+            pgCompressionAlgo: parsePgCompression(initialData?.pgCompression).algo,
+            pgCompressionLevel: parsePgCompression(initialData?.pgCompression).level,
             notificationIds: initialData?.notifications?.map((n) => n.id) || [],
             notificationEvents: (initialData?.notificationEvents as "ALWAYS" | "FAILURE_ONLY" | "SUCCESS_ONLY") || "ALWAYS",
             enabled: initialData?.enabled ?? true,
@@ -189,6 +229,41 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
     const selectedSourceId = form.watch("sourceId");
     const selectedSource = sources.find(s => s.id === selectedSourceId);
     const showDatabasePicker = selectedSource && !["sqlite", "redis"].includes(selectedSource.adapterId);
+    const isPgSource = selectedSource?.adapterId === "postgres";
+    const pgMajorVersion = isPgSource ? parsePgMajorVersion(selectedSource?.metadata) : null;
+
+    const pgCompressionAlgo = (form.watch("pgCompressionAlgo") ?? "LEGACY") as PgCompressionAlgo;
+    const isNativeCompressionActive = ["LEGACY", "GZIP", "LZ4", "ZSTD"].includes(pgCompressionAlgo);
+
+    // Auto-disable external compression when native pg compression is active
+    useEffect(() => {
+        if (isNativeCompressionActive) {
+            form.setValue("compression", "NONE");
+        }
+    }, [isNativeCompressionActive, form]);
+
+    // Reset pgCompression when source changes to a non-PG adapter,
+    // or when the selected algo is incompatible with the detected PG version.
+    useEffect(() => {
+        const algo = form.getValues("pgCompressionAlgo") as PgCompressionAlgo;
+        if (!isPgSource) {
+            // Source is not PostgreSQL - clear any pg-specific settings silently
+            if (algo !== "LEGACY") {
+                form.setValue("pgCompressionAlgo", "LEGACY", { shouldDirty: false });
+                form.setValue("pgCompressionLevel", 6, { shouldDirty: false });
+            }
+            return;
+        }
+        if (pgMajorVersion !== null) {
+            if (algo === "LZ4" && pgMajorVersion < 14) {
+                form.setValue("pgCompressionAlgo", "LEGACY", { shouldDirty: true });
+                form.setValue("pgCompressionLevel", 6, { shouldDirty: true });
+            } else if (algo === "ZSTD" && pgMajorVersion < 16) {
+                form.setValue("pgCompressionAlgo", "LEGACY", { shouldDirty: true });
+                form.setValue("pgCompressionLevel", 6, { shouldDirty: true });
+            }
+        }
+    }, [selectedSourceId, pgMajorVersion, isPgSource, form]);
 
     const fetchDatabases = useCallback(async () => {
         if (!selectedSourceId) return;
@@ -225,8 +300,28 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
             const url = initialData ? `/api/jobs/${initialData.id}` : '/api/jobs';
             const method = initialData ? 'PUT' : 'POST';
 
+            // Combine algo + level into a single pgCompression string for the API
+            // Only send pgCompression for PostgreSQL sources - clear it for all other adapters
+            const currentSource = sources.find(s => s.id === data.sourceId);
+            const isPostgres = currentSource?.adapterId === "postgres";
+            let pgCompression: string;
+            if (!isPostgres) {
+                pgCompression = "";
+            } else {
+                const algo = data.pgCompressionAlgo;
+                if (algo === "LEGACY") {
+                    pgCompression = "";
+                } else if (algo === "NONE") {
+                    pgCompression = "NONE";
+                } else {
+                    pgCompression = `${algo}:${data.pgCompressionLevel}`;
+                }
+            }
+
+            const { pgCompressionAlgo: _algo, pgCompressionLevel: _level, ...rest } = data;
             const payload = {
-                ...data,
+                ...rest,
+                pgCompression,
                 encryptionProfileId: data.encryptionProfileId === "no-encryption" ? "" : data.encryptionProfileId,
                 databases: data.databases || [],
                 destinations: data.destinations.map((d, i) => ({
@@ -485,7 +580,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                             <FormField control={form.control} name="compression" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Compression</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value} disabled={isNativeCompressionActive}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select compression" />
@@ -497,11 +592,108 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                                             <SelectItem value="BROTLI">Brotli (Best Compression)</SelectItem>
                                         </SelectContent>
                                     </Select>
-                                    <FormDescription>Trade CPU for storage.</FormDescription>
+                                    <FormDescription>
+                                        {isNativeCompressionActive
+                                            ? "Disabled - PostgreSQL native compression is active."
+                                            : "Trade CPU for storage."}
+                                    </FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )} />
                         </div>
+
+                        {/* PostgreSQL native dump compression - only visible when a postgres source is selected */}
+                        {isPgSource && (
+                            <div className="rounded-md border p-4 space-y-4 bg-muted/30">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium">PostgreSQL Native Compression</span>
+                                    <Badge variant="outline" className="text-xs font-mono">pg_dump -Z</Badge>
+                                    {pgMajorVersion && (
+                                        <Badge variant="secondary" className="text-xs">PostgreSQL {pgMajorVersion}</Badge>
+                                    )}
+                                </div>
+                                <p className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                    <Info className="h-3 w-3 mt-0.5 shrink-0" />
+                                    pg_dump compresses internally using the custom format (-Fc). When a native algorithm is selected, the pipeline compression above is automatically disabled to prevent double compression.
+                                </p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                                    <FormField control={form.control} name="pgCompressionAlgo" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Algorithm</FormLabel>
+                                            <Select
+                                                value={field.value}
+                                                onValueChange={(val) => {
+                                                    field.onChange(val);
+                                                    const constraints = PG_LEVEL_CONSTRAINTS[val];
+                                                    if (constraints) {
+                                                        form.setValue("pgCompressionLevel", constraints.default);
+                                                    }
+                                                }}
+                                            >
+                                                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="LEGACY">Legacy (Gzip, level 6)</SelectItem>
+                                                    <SelectItem value="NONE">None (no compression)</SelectItem>
+                                                    <SelectItem value="GZIP">Gzip (all versions)</SelectItem>
+                                                    <SelectItem
+                                                        value="LZ4"
+                                                        disabled={pgMajorVersion !== null && pgMajorVersion < 14}
+                                                    >
+                                                        LZ4{pgMajorVersion !== null && pgMajorVersion < 14 ? " (requires PostgreSQL 14+)" : " (PostgreSQL 14+)"}
+                                                    </SelectItem>
+                                                    <SelectItem
+                                                        value="ZSTD"
+                                                        disabled={pgMajorVersion !== null && pgMajorVersion < 16}
+                                                    >
+                                                        Zstd{pgMajorVersion !== null && pgMajorVersion < 16 ? " (requires PostgreSQL 16+)" : " (PostgreSQL 16+)"}
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormDescription>
+                                                {pgCompressionAlgo === "LEGACY" && "Keeps original behavior: -Z 6."}
+                                                {pgCompressionAlgo === "NONE" && "Passes -Z 0 to pg_dump (uncompressed)."}
+                                                {pgCompressionAlgo === "GZIP" && "Gzip via -Z N. Works on all PostgreSQL versions."}
+                                                {pgCompressionAlgo === "LZ4" && "Fast compression via -Z lz4:N. Requires PostgreSQL 14+."}
+                                                {pgCompressionAlgo === "ZSTD" && "Best ratio via -Z zstd:N. Requires PostgreSQL 16+."}
+                                            </FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+
+                                    {pgCompressionAlgo && PG_LEVEL_CONSTRAINTS[pgCompressionAlgo] && (
+                                        <FormField control={form.control} name="pgCompressionLevel" render={({ field }) => {
+                                            const constraints = PG_LEVEL_CONSTRAINTS[pgCompressionAlgo]!;
+                                            return (
+                                                <FormItem>
+                                                    <FormLabel>Level</FormLabel>
+                                                    <Select
+                                                        value={String(field.value)}
+                                                        onValueChange={(val) => field.onChange(parseInt(val, 10))}
+                                                    >
+                                                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                        <SelectContent>
+                                                            {constraints.values.map((v) => (
+                                                                <SelectItem key={v} value={String(v)}>
+                                                                    {v}
+                                                                    {v === constraints.default ? " (default)" : ""}
+                                                                    {pgCompressionAlgo === "GZIP" && v === 0 ? " - store only" : ""}
+                                                                    {pgCompressionAlgo === "GZIP" && v === 9 ? " - best ratio" : ""}
+                                                                    {pgCompressionAlgo === "LZ4" && v === 0 ? " - fastest" : ""}
+                                                                    {pgCompressionAlgo === "LZ4" && v === 9 ? " - best ratio" : ""}
+                                                                    {pgCompressionAlgo === "ZSTD" && v === 1 ? " - fastest" : ""}
+                                                                    {pgCompressionAlgo === "ZSTD" && v === 22 ? " - best ratio" : ""}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            );
+                                        }} />
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </TabsContent>
 
                     {/* TAB 4: NOTIFICATIONS */}
