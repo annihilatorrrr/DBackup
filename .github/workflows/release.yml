@@ -23,6 +23,9 @@ jobs:
   validate:
     name: Validate
     uses: ./.github/workflows/validate.yml
+    permissions:
+      contents: read
+      id-token: write
 
   # ── Build per-arch images ───────────────────────────────────
   build:
