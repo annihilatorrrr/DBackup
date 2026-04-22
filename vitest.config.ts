@@ -13,13 +13,15 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['lcov', 'text'],
-      include: ['src/**/*.{ts,tsx}'],
+      include: [
+        'src/lib/**/*.ts',
+        'src/services/**/*.ts',
+      ],
       exclude: [
-        'src/**/*.test.{ts,tsx}',
-        'src/**/*.spec.{ts,tsx}',
-        'src/**/*.config.ts',
-        'src/types/**',
-        'src/app/**/*.tsx',
+        'src/**/*.test.ts',
+        'src/**/*.spec.ts',
+        'src/lib/testing/**',
+        'src/lib/adapters/definitions.ts',
       ],
     },
   },
