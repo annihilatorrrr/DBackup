@@ -5,6 +5,10 @@ All notable changes to DBackup are documented here.
 ## v1.4.7
 *Release: In Progress*
 
+### 🔧 CI/CD
+
+- **docker**: Added OCI standard labels to Docker image (`title`, `description`, `url`, `source`, `version`, `revision`, `created`, `licenses`, `vendor`) via `docker/metadata-action@v5` for better registry compatibility and dependency bot integration (#27) - Thanks @Erwan-loot
+
 ### 🐳 Docker
 
 - **Image**: `skyfay/dbackup:v1.4.7`
