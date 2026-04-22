@@ -34,7 +34,9 @@ export async function stepExecuteDump(ctx: RunnerContext) {
     // Inject adapterId as type for Dialect selection (e.g. 'mariadb')
     sourceConfig.type = job.source.adapterId;
 
-    // Inject databases from Job if configured (takes precedence over source config)
+    // Inject databases from Job (always takes precedence over source config).
+    // An empty job selection means "backup all" - clear the source's default database
+    // so each adapter's auto-discovery logic triggers instead of using the source default.
     const jobDatabases: string[] = (() => {
         try {
             const parsed = JSON.parse(job.databases || "[]");
@@ -44,6 +46,9 @@ export async function stepExecuteDump(ctx: RunnerContext) {
     if (jobDatabases.length > 0) {
         sourceConfig.database = jobDatabases;
         ctx.log(`Using ${jobDatabases.length} database(s) from job config: ${jobDatabases.join(', ')}`);
+    } else {
+        // No explicit DB selection in job = backup all → clear source default so adapters auto-discover
+        sourceConfig.database = [];
     }
 
     try {

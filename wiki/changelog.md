@@ -5,6 +5,11 @@ All notable changes to DBackup are documented here.
 ## v1.4.7
 *Release: In Progress*
 
+### 🐛 Bug Fixes
+
+- **mssql**: Fixed `Dump failed: No database specified for backup` when no databases were selected in the job. The MSSQL adapter now auto-discovers all user databases (matching the behavior of MySQL/PostgreSQL adapters) instead of aborting (#30)
+- **backup**: Fixed all database adapters (MySQL, PostgreSQL, MSSQL, etc.) only backing up one database when no explicit selection was made in the job config. The source config's default `database` field was leaking through and overriding the intended "backup all" behavior (#30)
+
 ### 🔧 CI/CD
 
 - **docker**: Added OCI standard labels to Docker image (`title`, `description`, `url`, `source`, `version`, `revision`, `created`, `licenses`, `vendor`) via `docker/metadata-action@v5` for better registry compatibility and dependency bot integration (#27) - Thanks @Erwan-loot
