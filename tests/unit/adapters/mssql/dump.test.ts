@@ -6,6 +6,7 @@ import { MSSQLConfig } from "@/lib/adapters/definitions";
 // Use vi.hoisted for variables referenced inside vi.mock factories
 const {
     mockExecuteQueryWithMessages,
+    mockGetDatabases,
     mockSupportsCompression,
     mockSshConnect,
     mockSshDownload,
@@ -20,6 +21,7 @@ const {
     const { PassThrough } = require("stream") as { PassThrough: typeof import("stream").PassThrough };
     return {
         mockExecuteQueryWithMessages: vi.fn(),
+        mockGetDatabases: vi.fn(),
         mockSupportsCompression: vi.fn(),
         mockSshConnect: vi.fn(),
         mockSshDownload: vi.fn(),
@@ -35,6 +37,7 @@ const {
 // Mock connection module
 vi.mock("@/lib/adapters/database/mssql/connection", () => ({
     executeQueryWithMessages: (...args: any[]) => mockExecuteQueryWithMessages(...args),
+    getDatabases: (...args: any[]) => mockGetDatabases(...args),
     supportsCompression: (...args: any[]) => mockSupportsCompression(...args),
 }));
 
@@ -143,6 +146,7 @@ describe("MSSQL Dump", () => {
         mockFsStat.mockResolvedValue({ size: 1024 * 1024 }); // 1 MB
         mockFsUnlink.mockResolvedValue(undefined);
         mockExistsSync.mockReturnValue(true);
+        mockGetDatabases.mockResolvedValue(["testdb"]);
         mockSshConnect.mockResolvedValue(undefined);
         mockSshDownload.mockResolvedValue(undefined);
         mockSshDeleteRemote.mockResolvedValue(undefined);
@@ -346,12 +350,13 @@ describe("MSSQL Dump", () => {
     });
 
     describe("Error Handling", () => {
-        it("should return failure result when no database specified", async () => {
+        it("should return failure result when no user databases found on server", async () => {
+            mockGetDatabases.mockResolvedValue([]);
             const config = buildConfig({ database: "" });
             const result = await dump(config, "/dest/backup.bak");
 
             expect(result.success).toBe(false);
-            expect(result.error).toContain("No database specified");
+            expect(result.error).toContain("No user databases found on server");
         });
 
         it("should return failure result when SQL query fails", async () => {

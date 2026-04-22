@@ -19,6 +19,8 @@ All notable changes to DBackup are documented here.
 
 - **docker**: Added `lz4` and `zstd` Alpine packages to the base image so that `pg_dump` (postgresql18-client) can use LZ4 and ZSTD native compression at runtime
 - **docker**: Added OCI standard labels to Docker image (`title`, `description`, `url`, `source`, `version`, `revision`, `created`, `licenses`, `vendor`) via `docker/metadata-action@v5` for better registry compatibility and dependency bot integration (#27) - Thanks @Erwan-loot
+- **codecov**: Added Codecov integration - `codecov.yml`, `@vitest/coverage-v8`, `test:coverage` script, lcov reporter in `vitest.config.ts`, and coverage upload step in `validate.yml` using OIDC (no token secret required)
+- **readme**: Added Codecov coverage badge to `README.md`
 
 ### 🐳 Docker
 

@@ -86,8 +86,7 @@ export interface EncryptionOption {
     name: string;
 }
 
-const PG_COMPRESSION_ALGOS = ["LEGACY", "NONE", "GZIP", "LZ4", "ZSTD"] as const;
-type PgCompressionAlgo = typeof PG_COMPRESSION_ALGOS[number];
+type PgCompressionAlgo = "LEGACY" | "NONE" | "GZIP" | "LZ4" | "ZSTD";
 
 const PG_LEVEL_CONSTRAINTS: Record<string, { min: number; max: number; default: number; values: number[] }> = {
     GZIP: { min: 0, max: 9, default: 6, values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] },
