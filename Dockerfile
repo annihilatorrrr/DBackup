@@ -12,6 +12,8 @@ RUN apk update && \
     apk add --no-cache \
     mysql-client \
     postgresql18-client \
+    lz4 \
+    zstd \
     mongodb-tools \
     redis \
     samba-client \

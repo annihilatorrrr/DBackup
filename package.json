@@ -1,6 +1,6 @@
 {
   "name": "dbackup",
-  "version": "1.4.6",
+  "version": "1.4.7",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "type": "tsc --noEmit",
+    "validate": "./scripts/validate.sh",
     "test": "vitest",
+    "test:coverage": "vitest run --coverage",
     "test:integration:run": "vitest run -c vitest.integration.config.ts",
     "test:integration": "./scripts/run-integration-tests.sh",
     "test:env:up": "docker compose -f docker-compose.test.yml up -d",
@@ -108,6 +110,7 @@
     "@types/ssh2-sftp-client": "^9.0.6",
     "@types/tar-stream": "^3.1.4",
     "@vitejs/plugin-react": "^5.2.0",
+    "@vitest/coverage-v8": "^4.1.5",
     "eslint": "^9.39.4",
     "eslint-config-next": "16.2.2",
     "jsdom": "^29.0.1",

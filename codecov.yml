@@ -1,0 +1,30 @@
+comment:
+  require_changes: true
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        target: auto
+        threshold: 1%
+
+ignore:
+  - "**/dist/**"
+  - "**/node_modules/**"
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+  - "**/*.config.ts"
+  - "tests/**"
+  - "scripts/**"
+  - "prisma/**"
+  - "wiki/**"
+  - "src/components/**"
+  - "src/app/**"
+  - "src/hooks/**"
+  - "src/types/**"
+  - "src/lib/testing/**"

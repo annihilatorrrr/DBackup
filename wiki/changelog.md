@@ -2,6 +2,32 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.4.7 - PostgreSQL Compression, MSSQL Dump Fixes & Docker Metadata
+*Released: April 22, 2026*
+
+### ✨ Features
+
+- **postgresql**: Added per-job native PostgreSQL dump compression. Jobs with a PostgreSQL source now expose an "Algorithm" selector (Legacy Gzip-6, None, Gzip, LZ4, ZSTD) and a "Level" input under the Security tab. The selection maps directly to `pg_dump -Z`, allowing e.g. `-Z zstd:3` or `-Z lz4:1` without modifying the source adapter config (#24)
+
+### 🐛 Bug Fixes
+
+- **postgresql**: Fixed hardcoded `-Z 6` in the PostgreSQL dump adapter. Previously, `pg_dump` always ran with Gzip level 6 regardless of the job's compression setting, resulting in silent double-compression when pipeline Gzip or Brotli was enabled. The adapter now derives the `-Z` flag from the job's `pgCompression` setting (legacy jobs are unaffected) (#24)
+- **mssql**: Fixed `Dump failed: No database specified for backup` when no databases were selected in the job. The MSSQL adapter now auto-discovers all user databases (matching the behavior of MySQL/PostgreSQL adapters) instead of aborting (#30)
+- **backup**: Fixed all database adapters (MySQL, PostgreSQL, MSSQL, etc.) only backing up one database when no explicit selection was made in the job config. The source config's default `database` field was leaking through and overriding the intended "backup all" behavior (#30)
+
+### 🔧 CI/CD
+
+- **docker**: Added `lz4` and `zstd` Alpine packages to the base image so that `pg_dump` (postgresql18-client) can use LZ4 and ZSTD native compression at runtime
+- **docker**: Added OCI standard labels to Docker image (`title`, `description`, `url`, `source`, `version`, `revision`, `created`, `licenses`, `vendor`) via `docker/metadata-action@v5` for better registry compatibility and dependency bot integration (#27) - Thanks @Erwan-loot
+- **codecov**: Added Codecov integration - `codecov.yml`, `@vitest/coverage-v8`, `test:coverage` script, lcov reporter in `vitest.config.ts`, and coverage upload step in `validate.yml` using OIDC (no token secret required)
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.4.7`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v1.4.6 - Issue Templates and extension corrections
 *Released: April 19, 2026*
 

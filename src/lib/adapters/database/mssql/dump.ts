@@ -1,6 +1,6 @@
 import { BackupResult } from "@/lib/core/interfaces";
 import { LogLevel, LogType } from "@/lib/core/logs";
-import { executeQueryWithMessages, supportsCompression } from "./connection";
+import { executeQueryWithMessages, getDatabases, supportsCompression } from "./connection";
 import { getDialect } from "./dialects";
 import { MssqlSshTransfer, isSSHTransferEnabled } from "./ssh-transfer";
 import fs from "fs/promises";
@@ -49,15 +49,21 @@ export async function dump(
         // Determine databases to backup
         let databases: string[] = [];
         if (Array.isArray(config.database)) {
-            databases = config.database;
+            databases = config.database.filter((s: string) => s && s.trim().length > 0);
         } else if (config.database && config.database.includes(",")) {
-            databases = config.database.split(",").map((s: string) => s.trim());
-        } else if (config.database) {
-            databases = [config.database];
+            databases = config.database.split(",").map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+        } else if (config.database && config.database.trim().length > 0) {
+            databases = [config.database.trim()];
         }
 
+        // No databases selected: discover all user databases on the server
         if (databases.length === 0) {
-            throw new Error("No database specified for backup");
+            log("No databases selected - discovering all user databases");
+            databases = await getDatabases(config);
+            if (databases.length === 0) {
+                throw new Error("No user databases found on server (system DBs are excluded)");
+            }
+            log(`Found ${databases.length} database(s): ${databases.join(", ")}`);
         }
 
         const dialect = getDialect(config.detectedVersion);

@@ -10,5 +10,19 @@ export default defineConfig({
     setupFiles: ['./src/lib/testing/setup.ts'],
     include: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
     exclude: ['**/node_modules/**', '**/dist/**', '**/cypress/**', '**/.{idea,git,cache,output,temp}/**', '**/.next/**', '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*', 'tests/integration/**'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['lcov', 'text'],
+      include: [
+        'src/lib/**/*.ts',
+        'src/services/**/*.ts',
+      ],
+      exclude: [
+        'src/**/*.test.ts',
+        'src/**/*.spec.ts',
+        'src/lib/testing/**',
+        'src/lib/adapters/definitions.ts',
+      ],
+    },
   },
 });
