@@ -10,6 +10,8 @@ const log = logger.child({ module: "Scheduler" });
 
 export class BackupScheduler {
     private tasks: Map<string, ScheduledTask> = new Map();
+    private refreshing = false;
+    private refreshQueued = false;
 
     constructor() {
         this.tasks = new Map();
@@ -21,6 +23,34 @@ export class BackupScheduler {
     }
 
     async refresh() {
+        // Guard against concurrent refresh calls.
+        // If a refresh is already running, queue one more to run after it finishes.
+        // Any additional queued requests are collapsed into a single pending refresh.
+        if (this.refreshing) {
+            log.debug("Refresh already in progress - queuing");
+            this.refreshQueued = true;
+            return;
+        }
+
+        this.refreshing = true;
+        this.refreshQueued = false;
+
+        try {
+            await this._doRefresh();
+        } finally {
+            this.refreshing = false;
+            if (this.refreshQueued) {
+                this.refreshQueued = false;
+                log.debug("Running queued refresh");
+                // Use setImmediate so the current call stack unwinds first
+                setImmediate(() => {
+                    this.refresh().catch((e) => log.error("Queued refresh failed", {}, wrapError(e)));
+                });
+            }
+        }
+    }
+
+    private async _doRefresh() {
         log.info("Refreshing jobs");
 
         // Stop all existing tasks to avoid duplicates
@@ -91,9 +121,11 @@ export class BackupScheduler {
     }
 }
 
-// Singleton pattern to prevent multiple schedulers in dev hot-reload
+// Singleton - store on globalThis to survive module re-imports in both dev and prod.
+// In dev, Next.js hot-reload can re-execute this module; in prod, certain Next.js
+// internals can also reimport modules in a fresh module scope.
 const globalForScheduler = globalThis as unknown as { scheduler: BackupScheduler };
 
 export const scheduler = globalForScheduler.scheduler || new BackupScheduler();
 
-if (process.env.NODE_ENV !== 'production') globalForScheduler.scheduler = scheduler;
+globalForScheduler.scheduler = scheduler;

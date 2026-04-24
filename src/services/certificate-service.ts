@@ -198,6 +198,24 @@ export function uploadCertificate(certPem: string, keyPem: string): void {
 }
 
 /**
+ * Extracts additional SAN entries from BETTER_AUTH_URL.
+ * Returns a comma-prefixed string like ",DNS:myhost.example.com" or ",IP:192.168.1.1",
+ * or an empty string if no extra SAN is needed.
+ */
+function getExtraSansFromAuthUrl(): string {
+  const authUrl = process.env.BETTER_AUTH_URL || "";
+  if (!authUrl) return "";
+  try {
+    const hostname = new URL(authUrl).hostname;
+    if (!hostname || hostname === "localhost" || hostname === "127.0.0.1") return "";
+    const isIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname);
+    return isIp ? `,IP:${hostname}` : `,DNS:${hostname}`;
+  } catch {
+    return "";
+  }
+}
+
+/**
  * Regenerates the self-signed certificate, replacing the existing one.
  */
 export function regenerateSelfSignedCert(): void {
@@ -213,11 +231,13 @@ export function regenerateSelfSignedCert(): void {
     // ignore
   }
 
+  const extraSans = getExtraSansFromAuthUrl();
+
   try {
     execSync(
       `openssl req -x509 -newkey rsa:2048 -keyout "${KEY_PATH}" -out "${CERT_PATH}" ` +
         `-days 365 -nodes -subj "/CN=DBackup/O=DBackup Self-Signed" ` +
-        `-addext "subjectAltName=DNS:localhost,IP:127.0.0.1"`,
+        `-addext "subjectAltName=DNS:localhost,IP:127.0.0.1${extraSans}"`,
       { stdio: "pipe", timeout: 30000 }
     );
     execSync(`chmod 600 "${KEY_PATH}"`, { stdio: "pipe" });

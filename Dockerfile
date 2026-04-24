@@ -53,7 +53,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Generate Prisma Client, build Next.js app, and compile custom server
-RUN pnpm prisma generate && pnpm run build && npx tsc -p tsconfig.server.json
+# --mount=type=cache persists the Next.js incremental build cache (.next/cache)
+# across Docker builds via GitHub Actions cache (type=gha,mode=max in release.yml).
+# Next.js reuses webpack/SWC artefacts for unchanged modules, cutting rebuild time significantly.
+RUN --mount=type=cache,id=next-cache,target=/app/.next/cache \
+    pnpm prisma generate && pnpm run build && npx tsc -p tsconfig.server.json
 
 # 3. Runner Phase (The actual image)
 FROM base AS runner

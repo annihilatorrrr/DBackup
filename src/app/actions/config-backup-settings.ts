@@ -75,7 +75,7 @@ export async function updateConfigBackupSettings(data: z.infer<typeof configBack
         ]);
 
         // Refresh scheduler so enabling/disabling takes effect immediately without a restart
-        await scheduler.refresh();
+        scheduler.refresh().catch((e) => log.error("Scheduler refresh failed after config backup settings update", {}, wrapError(e)));
 
         revalidatePath("/dashboard/settings");
         return { success: true };

@@ -2,6 +2,31 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.4.8 - Scheduler, Runner & TLS Fixes
+*Released: April 24, 2026*
+
+### 🐛 Bug Fixes
+
+- **scheduler**: Fixed a race condition where concurrent `scheduler.refresh()` calls (e.g. saving a job while config-backup settings are updated simultaneously) could create orphaned `node-cron` tasks that are never stopped. These ghost tasks could cause scheduled jobs to fire more than once per cron interval
+- **scheduler**: Fixed the scheduler singleton not being stored on `globalThis` in production mode (`NODE_ENV=production`). If the module was re-imported in a fresh module scope (a known Next.js standalone behavior), a second independent `BackupScheduler` instance with its own cron tasks was created
+- **runner**: Fixed a TOCTOU race condition in `performExecution` that caused duplicate backup files when two or more jobs are scheduled at the same cron minute. Both `processQueue()` calls ran concurrently, both found the same `Pending` execution, and both ran the full backup pipeline. The execution is now claimed atomically via a conditional `updateMany` (`status: "Pending" → "Running"`); the call that gets `count=0` back exits immediately without running the backup (#32)
+- **tls**: Fixed self-signed certificate not including the hostname from `BETTER_AUTH_URL` as a SubjectAltName (SAN). Browsers like Brave (and per RFC, all browsers) block `fetch()` API calls when the SAN does not match the accessed hostname, even after manually accepting the certificate warning for the page itself. The generated SAN now includes the hostname/IP extracted from `BETTER_AUTH_URL` in addition to `localhost` and `127.0.0.1`. On startup, if an existing self-signed cert is missing the configured hostname, it is automatically regenerated. The "Regenerate" button in Settings also benefits from this fix
+
+### 🎨 Improvements
+
+- **scheduler**: `scheduler.refresh()` is now fire-and-forget at all call sites (job create/update/delete, config-backup settings save, system-task API). The DB write completes and the response is returned to the browser immediately, the scheduler rebuilds its task list in the background. This eliminates the UI hang that some users noticed when saving settings
+
+### 🔧 CI/CD
+
+- **docker**: Added a BuildKit cache mount (`--mount=type=cache,target=/app/.next/cache`) to the builder stage in the Dockerfile. Combined with the existing `type=gha,mode=max` layer cache in the release workflow, Next.js reuses its webpack/SWC artefacts for unchanged modules between releases - cutting image build times significantly
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.4.8`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v1.4.7 - PostgreSQL Compression, MSSQL Dump Fixes & Docker Metadata
 *Released: April 22, 2026*
 
@@ -39,7 +64,7 @@ All notable changes to DBackup are documented here.
 
 - **github**: Added GitHub Issue templates for Bug Reports, Feature Requests, Questions/Support, and Documentation Issues
 
-###  🐳 Docker
+### 🐳 Docker
 
 - **Image**: `skyfay/dbackup:v1.4.6`
 - **Also tagged as**: `latest`, `v1`
