@@ -71,15 +71,59 @@ function isExpired(): boolean {
   }
 }
 
+/**
+ * Extracts additional SAN entries from BETTER_AUTH_URL.
+ * Returns a comma-prefixed string like ",DNS:myhost.example.com" or ",IP:192.168.1.1",
+ * or an empty string if no extra SAN is needed.
+ */
+function getExtraSansFromAuthUrl(): string {
+  const authUrl = process.env.BETTER_AUTH_URL || "";
+  if (!authUrl) return "";
+  try {
+    const hostname = new URL(authUrl).hostname;
+    if (!hostname || hostname === "localhost" || hostname === "127.0.0.1") return "";
+    const isIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname);
+    return isIp ? `,IP:${hostname}` : `,DNS:${hostname}`;
+  } catch {
+    return "";
+  }
+}
+
 function generateSelfSignedCert(): void {
+  const extraSans = getExtraSansFromAuthUrl();
   execSync(
     `openssl req -x509 -newkey rsa:2048 -keyout "${keyPath}" -out "${certPath}" ` +
       `-days 365 -nodes -subj "/CN=DBackup/O=DBackup Self-Signed" ` +
-      `-addext "subjectAltName=DNS:localhost,IP:127.0.0.1"`,
+      `-addext "subjectAltName=DNS:localhost,IP:127.0.0.1${extraSans}"`,
     { stdio: "pipe", timeout: 30000 }
   );
   execSync(`chmod 600 "${keyPath}"`, { stdio: "pipe" });
   execSync(`chmod 644 "${certPath}"`, { stdio: "pipe" });
+}
+
+/**
+ * Checks whether the existing self-signed cert covers the hostname from BETTER_AUTH_URL.
+ * Returns true if the cert needs to be regenerated.
+ */
+function selfSignedCertMissesHostname(): boolean {
+  const authUrl = process.env.BETTER_AUTH_URL || "";
+  if (!authUrl) return false;
+  let hostname: string;
+  try {
+    hostname = new URL(authUrl).hostname;
+  } catch {
+    return false;
+  }
+  if (!hostname || hostname === "localhost" || hostname === "127.0.0.1") return false;
+  try {
+    const sans = execSync(
+      `openssl x509 -in "${certPath}" -noout -ext subjectAltName`,
+      { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"], timeout: 5000 }
+    );
+    return !sans.includes(hostname);
+  } catch {
+    return false;
+  }
 }
 
 function ensureCertificate(): boolean {
@@ -106,6 +150,19 @@ function ensureCertificate(): boolean {
           "[TLS] WARNING: Custom certificate has expired! " +
             "Upload a new certificate via Settings - Certificate or replace files in the configured CERTS_DIR"
         );
+      }
+    } else if (isSelfSigned() && selfSignedCertMissesHostname()) {
+      console.log(
+        "[TLS] Self-signed certificate does not cover the configured hostname - regenerating..."
+      );
+      try {
+        generateSelfSignedCert();
+        console.log("[TLS] Self-signed certificate regenerated with updated hostname");
+        return true;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error("[TLS] Failed to regenerate certificate:", message);
+        return false;
       }
     } else {
       console.log("[TLS] Using existing certificate from configured CERTS_DIR");

@@ -13,6 +13,8 @@ vi.mock('@/lib/prisma', () => ({
         execution: {
             update: vi.fn(),
             create: vi.fn(),
+            updateMany: vi.fn(),
+            findUnique: vi.fn(),
         }
     }
 }));
@@ -39,6 +41,15 @@ describe('Runner Pipeline Resilience', () => {
         vi.clearAllMocks();
 
         // Default prisma mock
+        vi.mocked(prisma.execution.updateMany).mockResolvedValue({ count: 1 });
+        vi.mocked(prisma.execution.findUnique).mockResolvedValue({
+            id: mockExecutionId,
+            jobId: mockJobId,
+            logs: '[]',
+            status: 'Running',
+            startedAt: new Date(),
+            job: { id: mockJobId, name: 'Test Job', notifications: [], notificationEvents: 'ALWAYS', source: null, destinations: [] },
+        } as any);
         vi.mocked(prisma.execution.update).mockResolvedValue({
             id: mockExecutionId,
             jobId: mockJobId,
@@ -78,9 +89,9 @@ describe('Runner Pipeline Resilience', () => {
         await runner.performExecution(mockExecutionId, mockJobId);
 
         // Assert
-        // 1. Check if DB was updated to Running
-        expect(prisma.execution.update).toHaveBeenCalledWith(expect.objectContaining({
-            where: { id: mockExecutionId },
+        // 1. Check if DB was claimed atomically via updateMany
+        expect(prisma.execution.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+            where: expect.objectContaining({ id: mockExecutionId, status: "Pending" }),
             data: expect.objectContaining({ status: "Running" })
         }));
 
