@@ -2,8 +2,8 @@
 
 All notable changes to DBackup are documented here.
 
-## v1.4.8
-*Release: In Progress*
+## v1.4.8 - Scheduler, Runner & TLS Fixes
+*Released: April 24, 2026*
 
 ### 🐛 Bug Fixes
 
@@ -15,6 +15,10 @@ All notable changes to DBackup are documented here.
 ### 🎨 Improvements
 
 - **scheduler**: `scheduler.refresh()` is now fire-and-forget at all call sites (job create/update/delete, config-backup settings save, system-task API). The DB write completes and the response is returned to the browser immediately, the scheduler rebuilds its task list in the background. This eliminates the UI hang that some users noticed when saving settings
+
+### 🔧 CI/CD
+
+- **docker**: Added a BuildKit cache mount (`--mount=type=cache,target=/app/.next/cache`) to the builder stage in the Dockerfile. Combined with the existing `type=gha,mode=max` layer cache in the release workflow, Next.js reuses its webpack/SWC artefacts for unchanged modules between releases - cutting image build times significantly
 
 ### 🐳 Docker
 
