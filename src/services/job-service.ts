@@ -1,5 +1,9 @@
 import prisma from "@/lib/prisma";
 import { scheduler } from "@/lib/scheduler";
+import { logger } from "@/lib/logger";
+import { wrapError } from "@/lib/errors";
+
+const log = logger.child({ service: "JobService" });
 
 export interface DestinationInput {
     configId: string;
@@ -102,7 +106,7 @@ export class JobService {
             include: jobInclude
         });
 
-        await scheduler.refresh();
+        scheduler.refresh().catch((e) => log.error("Scheduler refresh failed after createJob", {}, wrapError(e)));
 
         return newJob;
     }
@@ -155,7 +159,7 @@ export class JobService {
             });
         });
 
-        await scheduler.refresh();
+        scheduler.refresh().catch((e) => log.error("Scheduler refresh failed after updateJob", {}, wrapError(e)));
 
         return updatedJob;
     }
@@ -165,7 +169,7 @@ export class JobService {
             where: { id },
         });
 
-        await scheduler.refresh();
+        scheduler.refresh().catch((e) => log.error("Scheduler refresh failed after deleteJob", {}, wrapError(e)));
 
         return deletedJob;
     }

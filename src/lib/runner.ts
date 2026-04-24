@@ -59,18 +59,35 @@ export async function performExecution(executionId: string, jobId: string) {
     const jobLog = logger.child({ module: "Runner", jobId, executionId });
     jobLog.info("Starting execution");
 
+    // Atomically claim the execution: transition Pending → Running only if it is
+    // still Pending. When two jobs are scheduled at the same cron minute, two
+    // concurrent processQueue() calls can both "see" the same Pending execution
+    // before either has updated it. The updateMany condition ensures only one
+    // caller proceeds; the other sees count=0 and bails out.
+    const claimed = await prisma.execution.updateMany({
+        where: { id: executionId, status: "Pending" },
+        data: { status: "Running", startedAt: new Date() }
+    });
+
+    if (claimed.count === 0) {
+        jobLog.warn("Execution already claimed by a concurrent call - skipping duplicate run");
+        return;
+    }
+
     // Set up cancellation
     const abortController = registerExecution(executionId);
 
-    // 1. Mark as RUNNING
-    const initialExe = await prisma.execution.update({
+    // Fetch full execution data (including job relation) after claiming
+    const initialExe = await prisma.execution.findUnique({
         where: { id: executionId },
-        data: {
-            status: "Running",
-            startedAt: new Date(), // Reset start time to actual run time
-        },
         include: { job: true }
     });
+
+    if (!initialExe) {
+        jobLog.error("Execution record not found after claiming", { executionId });
+        unregisterExecution(executionId);
+        return;
+    }
 
     let currentProgress = 0;
     let currentStage = "Initializing";

@@ -6,7 +6,7 @@ import { scheduler } from '@/lib/scheduler';
 // Mock the global scheduler singleton to avoid side effects (like starting cron timers)
 vi.mock('@/lib/scheduler', () => ({
     scheduler: {
-        refresh: vi.fn()
+        refresh: vi.fn().mockResolvedValue(undefined)
     }
 }));
 

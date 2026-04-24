@@ -6,6 +6,10 @@ import { headers } from "next/headers";
 import { scheduler } from "@/lib/scheduler";
 import { auditService } from "@/services/audit-service";
 import { AUDIT_ACTIONS, AUDIT_RESOURCES } from "@/lib/core/audit-types";
+import { logger } from "@/lib/logger";
+import { wrapError } from "@/lib/errors";
+
+const log = logger.child({ route: "system-tasks" });
 
 export async function GET(_req: NextRequest) {
     const ctx = await getAuthContext(await headers());
@@ -59,7 +63,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Refresh scheduler
-    await scheduler.refresh();
+    scheduler.refresh().catch((e) => log.error("Scheduler refresh failed after system task update", {}, wrapError(e)));
 
     await auditService.log(
         ctx.userId,
