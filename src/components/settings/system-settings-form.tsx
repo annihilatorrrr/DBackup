@@ -13,7 +13,7 @@ import {
     FormMessage,
 } from "@/components/ui/form"
 import { toast } from "sonner"
-import { updateSystemSettings } from "@/app/actions/settings"
+import { updateSystemSettings } from "@/app/actions/settings/settings"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Shield, Cpu, Rocket, Database, ScrollText, HardDrive, Bell } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"

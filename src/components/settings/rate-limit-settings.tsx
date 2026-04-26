@@ -13,7 +13,7 @@ import {
     FormMessage,
 } from "@/components/ui/form";
 import { toast } from "sonner";
-import { updateRateLimitSettings, resetRateLimitSettings } from "@/app/actions/rate-limit-settings";
+import { updateRateLimitSettings, resetRateLimitSettings } from "@/app/actions/settings/rate-limit-settings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Globe, PenLine, RotateCcw, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";

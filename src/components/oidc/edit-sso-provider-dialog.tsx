@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { getOIDCAdapter } from "@/services/sso/oidc-registry";
 import { DynamicOidcForm } from "./dynamic-oidc-form";
 import { toast } from "sonner";
-import { updateSsoProvider } from "@/app/actions/oidc";
+import { updateSsoProvider } from "@/app/actions/auth/oidc";
 import { OIDCAdapter } from "@/lib/core/oidc-adapter";
 import { SsoProvider } from "@prisma/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

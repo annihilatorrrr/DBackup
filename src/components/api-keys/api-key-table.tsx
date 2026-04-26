@@ -10,7 +10,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { deleteApiKey, toggleApiKey, rotateApiKey } from "@/app/actions/api-key"
+import { deleteApiKey, toggleApiKey, rotateApiKey } from "@/app/actions/auth/api-key"
 import { toast } from "sonner"
 import { DateDisplay } from "@/components/utils/date-display"
 import { DataTable } from "@/components/ui/data-table"

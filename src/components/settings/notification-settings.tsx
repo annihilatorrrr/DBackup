@@ -41,7 +41,7 @@ import {
   getNotificationSettings,
   updateNotificationSettings,
   sendTestNotification,
-} from "@/app/actions/notification-settings";
+} from "@/app/actions/settings/notification-settings";
 import type { SystemNotificationConfig, NotifyUserMode } from "@/lib/notifications/types";
 import type { NotificationEventDefinition } from "@/lib/notifications/types";
 

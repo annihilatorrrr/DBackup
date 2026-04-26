@@ -6,7 +6,7 @@ import {
   getCertificateInfo,
   uploadCertificate,
   regenerateCertificate,
-} from "@/app/actions/certificate";
+} from "@/app/actions/settings/certificate";
 import {
   Card,
   CardContent,

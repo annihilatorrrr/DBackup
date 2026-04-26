@@ -10,7 +10,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { deleteUser } from "@/app/actions/user"
+import { deleteUser } from "@/app/actions/auth/user"
 import { toast } from "sonner"
 import { User, Group } from "@prisma/client"
 import { DataTable } from "@/components/ui/data-table"

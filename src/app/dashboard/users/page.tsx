@@ -1,7 +1,7 @@
-import { getUsers } from "@/app/actions/user";
-import { getGroups } from "@/app/actions/group";
-import { getSsoProviders } from "@/app/actions/oidc";
-import { getApiKeys } from "@/app/actions/api-key";
+import { getUsers } from "@/app/actions/auth/user";
+import { getGroups } from "@/app/actions/auth/group";
+import { getSsoProviders } from "@/app/actions/auth/oidc";
+import { getApiKeys } from "@/app/actions/auth/api-key";
 import { UserTable } from "./user-table";
 import { GroupTable } from "./group-table";
 import { AddSsoProviderDialog } from "@/components/oidc/add-sso-provider-dialog";

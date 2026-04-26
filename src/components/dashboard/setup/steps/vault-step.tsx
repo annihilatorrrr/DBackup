@@ -14,7 +14,7 @@ import {
     SkipForward,
     ShieldCheck,
 } from "lucide-react";
-import { createEncryptionProfile } from "@/app/actions/encryption";
+import { createEncryptionProfile } from "@/app/actions/backup/encryption";
 import { WizardData } from "../setup-wizard";
 
 interface VaultStepProps {

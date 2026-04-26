@@ -13,8 +13,8 @@ import {
     FormMessage,
 } from "@/components/ui/form"
 import { toast } from "sonner"
-import { updateConfigBackupSettings } from "@/app/actions/config-backup-settings"
-import { uploadAndRestoreConfigAction } from "@/app/actions/config-management"
+import { updateConfigBackupSettings } from "@/app/actions/backup/config-backup-settings"
+import { uploadAndRestoreConfigAction } from "@/app/actions/backup/config-management"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Upload, ShieldCheck, Database, FileCog, LockKeyhole } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"

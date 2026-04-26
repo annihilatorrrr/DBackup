@@ -25,7 +25,7 @@ import * as z from "zod"
 import { useState } from "react"
 import { toast } from "sonner"
 import { Loader2, Plus } from "lucide-react"
-import { createUser } from "@/app/actions/user"
+import { createUser } from "@/app/actions/auth/user"
 import { useRouter } from "next/navigation"
 
 const formSchema = z.object({

@@ -14,7 +14,7 @@ vi.mock("sonner", () => ({
 
 // Mock createEncryptionProfile server action
 const mockCreateEncryptionProfile = vi.fn();
-vi.mock("@/app/actions/encryption", () => ({
+vi.mock("@/app/actions/backup/encryption", () => ({
     createEncryptionProfile: (...args: unknown[]) => mockCreateEncryptionProfile(...args),
 }));
 

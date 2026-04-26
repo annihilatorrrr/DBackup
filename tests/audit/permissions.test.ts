@@ -7,8 +7,21 @@ import path from 'path';
 const ACTIONS_DIR = path.join(process.cwd(), 'src/app/actions');
 
 describe('Security Audit: Server Actions', () => {
-    // Read all files in the actions directory
-    const files = fs.readdirSync(ACTIONS_DIR).filter(file => file.endsWith('.ts'));
+    // Recursively collect all .ts files in the actions directory
+    function collectFiles(dir: string): string[] {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        const result: string[] = [];
+        for (const entry of entries) {
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                result.push(...collectFiles(full));
+            } else if (entry.isFile() && entry.name.endsWith('.ts')) {
+                result.push(full);
+            }
+        }
+        return result;
+    }
+    const files = collectFiles(ACTIONS_DIR).map(f => path.relative(ACTIONS_DIR, f));
 
     files.forEach(file => {
         it(`File ${file} should implement Permission Checks`, () => {

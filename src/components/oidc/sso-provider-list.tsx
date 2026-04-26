@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Trash2, ShieldCheck, Box, Settings2, Globe, CheckCircle2, UserPlus, UserX, Copy } from "lucide-react";
-import { deleteSsoProvider, toggleSsoProvider } from "@/app/actions/oidc";
+import { deleteSsoProvider, toggleSsoProvider } from "@/app/actions/auth/oidc";
 import { toast } from "sonner";
 import { EditSsoProviderDialog } from "./edit-sso-provider-dialog";
 import {
