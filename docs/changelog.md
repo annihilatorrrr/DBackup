@@ -5,6 +5,10 @@ All notable changes to DBackup are documented here.
 ## v1.5.0
 *Release: In Progress*
 
+### 🎨 Improvements
+
+- **jobs**: Renamed "Security" tab to "Advanced" in the backup job form - the tab contains both Compression and Encryption settings, so "Advanced" is more accurate
+
 ### 🔄 Changed
 
 - **docs**: Renamed `wiki/` folder to `docs/` and moved documentation domain from `dbackup.app` to `docs.dbackup.app` across all configuration files, app source code, CI/CD workflows, and docs content

@@ -368,7 +368,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                     <TabsList className="grid w-full grid-cols-4">
                         <TabsTrigger value="config">General</TabsTrigger>
                         <TabsTrigger value="destinations">Destinations</TabsTrigger>
-                        <TabsTrigger value="security">Security</TabsTrigger>
+                        <TabsTrigger value="advanced">Advanced</TabsTrigger>
                         <TabsTrigger value="notifications">Notify</TabsTrigger>
                     </TabsList>
 
@@ -553,8 +553,8 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                         </Card>
                     </TabsContent>
 
-                    {/* TAB 3: SECURITY & OPTIMIZATION */}
-                    <TabsContent value="security" className="space-y-4 pt-4">
+                    {/* TAB 3: ADVANCED (Compression & Encryption) */}
+                    <TabsContent value="advanced" className="space-y-4 pt-4">
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField control={form.control} name="encryptionProfileId" render={({ field }) => (
                                 <FormItem>
