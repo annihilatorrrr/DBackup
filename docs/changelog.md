@@ -12,6 +12,7 @@ All notable changes to DBackup are documented here.
 ### 🎨 Improvements
 
 - **jobs**: Renamed "Security" tab to "Advanced" in the backup job form - the tab contains both Compression and Encryption settings, so "Advanced" is more accurate
+- **refactor**: Split three oversized files (`config-service.ts`, `restore-service.ts`, `adapters/definitions.ts`) into focused sub-modules using the Facade Pattern - all public APIs and imports remain unchanged. Also moved `permission-picker.tsx` into a dedicated `permissions/` subfolder
 
 ### 🔄 Changed
 

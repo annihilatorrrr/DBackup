@@ -26,7 +26,7 @@ import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { updateGroup } from "@/app/actions/group"
-import { PermissionPicker } from "@/components/permission-picker"
+import { PermissionPicker } from "@/components/permissions/permission-picker"
 import { GroupWithStats } from "@/types"
 
 const formSchema = z.object({

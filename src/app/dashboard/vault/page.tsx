@@ -34,23 +34,23 @@ export default async function VaultPage() {
                 </div>
             </div>
 
-            <Tabs defaultValue="encryption" className="w-full">
-                <TabsList className={canManageCredentials ? "grid w-full grid-cols-2 max-w-md" : "grid w-full grid-cols-1 max-w-md"}>
-                    <TabsTrigger value="encryption">Encryption</TabsTrigger>
+            <Tabs defaultValue={canManageCredentials ? "credentials" : "encryption"} className="w-full">
+                <TabsList>
                     {canManageCredentials && (
                         <TabsTrigger value="credentials">Credentials</TabsTrigger>
                     )}
+                    <TabsTrigger value="encryption">Encryption</TabsTrigger>
                 </TabsList>
-
-                <TabsContent value="encryption" className="mt-4">
-                    <EncryptionProfilesList />
-                </TabsContent>
 
                 {canManageCredentials && (
                     <TabsContent value="credentials" className="mt-4">
                         <CredentialProfilesList canReveal={canRevealCredentials} />
                     </TabsContent>
                 )}
+
+                <TabsContent value="encryption" className="mt-4">
+                    <EncryptionProfilesList />
+                </TabsContent>
             </Tabs>
         </div>
     );

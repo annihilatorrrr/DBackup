@@ -27,7 +27,7 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { Loader2, Plus } from "lucide-react"
 import { createGroup } from "@/app/actions/group"
-import { PermissionPicker } from "@/components/permission-picker"
+import { PermissionPicker } from "@/components/permissions/permission-picker"
 
 const formSchema = z.object({
     name: z.string().min(1, "Name is required"),
