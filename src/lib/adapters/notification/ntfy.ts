@@ -56,6 +56,7 @@ export const NtfyAdapter: NotificationAdapter = {
     type: "notification",
     name: "ntfy",
     configSchema: NtfySchema,
+    credentials: { primary: "TOKEN" },
 
     async test(config: NtfyConfig): Promise<{ success: boolean; message: string }> {
         try {

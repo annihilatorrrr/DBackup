@@ -47,6 +47,7 @@ export const WebDAVAdapter: StorageAdapter = {
     type: "storage",
     name: "WebDAV",
     configSchema: WebDAVSchema,
+    credentials: { primary: "USERNAME_PASSWORD" },
 
     async upload(config: WebDAVConfig, localPath: string, remotePath: string, onProgress?: (percent: number) => void, onLog?: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void): Promise<boolean> {
         try {

@@ -10,6 +10,7 @@ export const PostgresAdapter: DatabaseAdapter = {
     type: "database",
     name: "PostgreSQL",
     configSchema: PostgresSchema,
+    credentials: { primary: "USERNAME_PASSWORD", ssh: "SSH_KEY" },
     dump,
     restore,
     prepareRestore,

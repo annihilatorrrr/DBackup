@@ -227,6 +227,7 @@ export const S3GenericAdapter: StorageAdapter = {
     type: "storage",
     name: "S3 Compatible (Generic)",
     configSchema: S3GenericSchema,
+    credentials: { primary: "ACCESS_KEY" },
     upload: (config, ...args) => s3Upload({
         endpoint: config.endpoint,
         region: config.region,
@@ -282,6 +283,7 @@ export const S3AWSAdapter: StorageAdapter = {
     type: "storage",
     name: "Amazon S3",
     configSchema: S3AWSSchema,
+    credentials: { primary: "ACCESS_KEY" },
     upload: (config, ...args) => s3Upload({
         region: config.region,
         bucket: config.bucket,
@@ -324,6 +326,7 @@ export const S3R2Adapter: StorageAdapter = {
     type: "storage",
     name: "Cloudflare R2",
     configSchema: S3R2Schema,
+    credentials: { primary: "ACCESS_KEY" },
     upload: (config, ...args) => s3Upload({
         endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
         region: "auto",
@@ -371,6 +374,7 @@ export const S3HetznerAdapter: StorageAdapter = {
     type: "storage",
     name: "Hetzner Object Storage",
     configSchema: S3HetznerSchema,
+    credentials: { primary: "ACCESS_KEY" },
     upload: (config, ...args) => s3Upload({
         endpoint: `https://${config.region}.your-objectstorage.com`,
         region: config.region,

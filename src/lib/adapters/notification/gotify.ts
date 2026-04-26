@@ -52,6 +52,7 @@ export const GotifyAdapter: NotificationAdapter = {
     type: "notification",
     name: "Gotify",
     configSchema: GotifySchema,
+    credentials: { primary: "TOKEN" },
 
     async test(config: GotifyConfig): Promise<{ success: boolean; message: string }> {
         try {

@@ -10,6 +10,7 @@ export const MongoDBAdapter: DatabaseAdapter = {
     type: "database",
     name: "MongoDB",
     configSchema: MongoDBSchema,
+    credentials: { primary: "USERNAME_PASSWORD", ssh: "SSH_KEY" },
     dump,
     restore,
     prepareRestore,

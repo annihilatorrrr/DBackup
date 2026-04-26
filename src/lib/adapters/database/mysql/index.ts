@@ -10,6 +10,7 @@ export const MySQLAdapter: DatabaseAdapter = {
     type: "database",
     name: "MySQL",
     configSchema: MySQLSchema,
+    credentials: { primary: "USERNAME_PASSWORD", ssh: "SSH_KEY" },
     dump,
     restore,
     prepareRestore,

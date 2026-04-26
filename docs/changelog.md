@@ -8,6 +8,7 @@ All notable changes to DBackup are documented here.
 ### ✨ Features
 
 - **credentials**: Added Phase 1 of the Generic Credential Profile System - centralized, reusable credential storage. Introduces a new `CredentialProfile` model (typed: `USERNAME_PASSWORD`, `SSH_KEY`, `ACCESS_KEY`, `TOKEN`, `SMTP`) with AES-256-GCM encrypted payloads, two new reference slots on `AdapterConfig` (`primaryCredentialId`, `sshCredentialId`), a `lastError` field for status diagnostics, dedicated `CREDENTIALS` permissions (`READ`, `WRITE`, `DELETE`, `REVEAL`), and a full REST API under `/api/credentials` (list/create/get/update/delete/usage/reveal) with audit logging for create, update, delete and reveal actions
+- **credentials**: Added Phase 2 of the Generic Credential Profile System - adapter integration. Every adapter now self-declares its credential needs via a new `credentials` property (e.g. MySQL/Postgres/Mongo accept `{ primary: "USERNAME_PASSWORD", ssh: "SSH_KEY" }`, S3 family accepts `{ primary: "ACCESS_KEY" }`, Gotify/ntfy/Telegram accept `{ primary: "TOKEN" }`). A new `resolveAdapterConfig()` runtime resolver merges credential profile payloads onto the structural config with smart field overlays (e.g. `user`/`username` aliasing, `ssh*` prefixing only when the adapter also has a primary slot). The adapter create/update API now accepts and validates `primaryCredentialId`/`sshCredentialId` against the adapter's declared types. A startup check flags adapters missing a required primary profile as `OFFLINE` with `lastError = "No credential profile assigned"` and clears the flag automatically once a profile is assigned
 
 ### 🎨 Improvements
 
@@ -20,6 +21,7 @@ All notable changes to DBackup are documented here.
 ### 🧪 Tests
 
 - **credentials**: Added unit tests for the credential service (CRUD, uniqueness, reference counting, deletion guards, sanitized output) and for every per-type Zod schema including the SSH key conditional `authType` rules - 36 new tests total
+- **credentials**: Added 19 new unit tests for the Phase 2 adapter integration - covers `resolveAdapterConfig` (overlay rules per type, SSH-prefix logic with/without primary slot, missing profile = `ConfigurationError`, structural-only adapters) and `validateCredentialAssignments` (unknown adapter, slot-not-accepted, type mismatch, missing profile)
 - **fixtures**: Updated `storage-service` and `system-notification-service` test fixtures with the new `AdapterConfig` fields (`lastError`, `primaryCredentialId`, `sshCredentialId`)
 
 ### 🐳 Docker

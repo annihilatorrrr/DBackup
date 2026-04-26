@@ -18,7 +18,11 @@ export async function register() {
         const { scheduler } = await import('@/lib/scheduler');
         await scheduler.init();
 
-        // 5. Register graceful shutdown handlers
+        // 5. Validate credential profile assignments (flags adapters OFFLINE if missing)
+        const { validateAdapterCredentials } = await import('@/lib/startup-checks');
+        await validateAdapterCredentials();
+
+        // 6. Register graceful shutdown handlers
         const { registerShutdownHandlers } = await import('@/lib/shutdown');
         registerShutdownHandlers();
     }

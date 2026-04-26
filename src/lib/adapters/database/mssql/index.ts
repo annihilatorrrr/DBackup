@@ -10,6 +10,7 @@ export const MSSQLAdapter: DatabaseAdapter = {
     type: "database",
     name: "Microsoft SQL Server",
     configSchema: MSSQLSchema,
+    credentials: { primary: "USERNAME_PASSWORD", ssh: "SSH_KEY" },
     dump,
     restore,
     prepareRestore,

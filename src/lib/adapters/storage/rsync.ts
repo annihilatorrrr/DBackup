@@ -265,6 +265,7 @@ export const RsyncAdapter: StorageAdapter = {
     type: "storage",
     name: "Rsync (SSH)",
     configSchema: RsyncSchema,
+    credentials: { primary: "SSH_KEY" },
 
     async upload(config: RsyncConfig, localPath: string, remotePath: string, onProgress?: (percent: number) => void, onLog?: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void): Promise<boolean> {
         let keyFile: string | undefined;
