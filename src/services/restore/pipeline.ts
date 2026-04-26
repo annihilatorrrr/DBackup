@@ -16,7 +16,7 @@ import { isMultiDbTar, readTarManifest } from "@/lib/adapters/database/common/ta
 import { logger } from "@/lib/logging/logger";
 import { wrapError, getErrorMessage } from "@/lib/logging/errors";
 import { verifyFileChecksum } from "@/lib/crypto/checksum";
-import { notify } from "@/services/system-notification-service";
+import { notify } from "@/services/notifications/system-notification-service";
 import { NOTIFICATION_EVENTS } from "@/lib/notifications";
 import { registerExecution, unregisterExecution } from "@/lib/execution/abort";
 import type { RestoreInput } from "./types";

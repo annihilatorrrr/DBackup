@@ -6,7 +6,7 @@ import { NOTIFICATION_EVENTS } from "@/lib/notifications/types";
 
 const mockNotify = vi.fn().mockResolvedValue(undefined);
 
-vi.mock("@/services/system-notification-service", () => ({
+vi.mock("@/services/notifications/system-notification-service", () => ({
   notify: (...args: any[]) => mockNotify(...args),
 }));
 
@@ -36,7 +36,7 @@ import {
   ALERT_COOLDOWN_MS,
   type StorageAlertConfig,
   type StorageAlertStates,
-} from "@/services/storage-alert-service";
+} from "@/services/storage/storage-alert-service";
 
 // ── Helpers ────────────────────────────────────────────────────
 

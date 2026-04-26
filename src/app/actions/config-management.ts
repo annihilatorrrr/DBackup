@@ -2,7 +2,7 @@
 
 import { checkPermission } from "@/lib/auth/access-control";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { ConfigService } from "@/services/config-service";
+import { ConfigService } from "@/services/config/config-service";
 import { RestoreOptions } from "@/lib/types/config-backup";
 import { runConfigBackup } from "@/lib/runner/config-runner";
 import { getTempDir } from "@/lib/temp-dir";

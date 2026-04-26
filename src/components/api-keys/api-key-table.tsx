@@ -17,7 +17,7 @@ import { DataTable } from "@/components/ui/data-table"
 import { Badge } from "@/components/ui/badge"
 import { useState } from "react"
 import { ApiKeyRevealDialog } from "./api-key-reveal-dialog"
-import type { ApiKeyListItem } from "@/services/api-key-service"
+import type { ApiKeyListItem } from "@/services/auth/api-key-service"
 import {
     AlertDialog,
     AlertDialogAction,

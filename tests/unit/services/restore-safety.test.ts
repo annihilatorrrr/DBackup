@@ -1,6 +1,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { RestoreService } from '@/services/restore-service';
+import { RestoreService } from '@/services/restore/restore-service';
 import prisma from '@/lib/prisma';
 import { registry } from '@/lib/core/registry';
 import { compareVersions } from '@/lib/utils';
@@ -38,7 +38,7 @@ vi.mock('@/lib/utils', () => ({
     formatBytes: vi.fn(),
 }));
 
-vi.mock('@/services/encryption-service', () => ({
+vi.mock('@/services/backup/encryption-service', () => ({
     getProfileMasterKey: vi.fn(),
 }));
 

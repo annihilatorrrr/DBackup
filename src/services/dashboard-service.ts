@@ -6,7 +6,7 @@ import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { registerAdapters } from "@/lib/adapters";
 import { logger } from "@/lib/logging/logger";
 import { wrapError } from "@/lib/logging/errors";
-import { checkStorageAlerts } from "@/services/storage-alert-service";
+import { checkStorageAlerts } from "@/services/storage/storage-alert-service";
 
 export interface DashboardStats {
   totalJobs: number;

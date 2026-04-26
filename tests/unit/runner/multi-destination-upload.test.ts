@@ -12,7 +12,7 @@ vi.mock('@/lib/crypto', () => ({
 vi.mock('@/lib/crypto/stream', () => ({
     createEncryptionStream: vi.fn(),
 }));
-vi.mock('@/services/encryption-service', () => ({
+vi.mock('@/services/backup/encryption-service', () => ({
     getProfileMasterKey: vi.fn(),
 }));
 vi.mock('@/lib/crypto/checksum', () => ({

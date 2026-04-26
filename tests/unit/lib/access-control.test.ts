@@ -54,7 +54,7 @@ vi.mock("@/lib/prisma", () => ({
 
 // Mock apiKeyService
 const mockValidate = vi.fn();
-vi.mock("@/services/api-key-service", () => ({
+vi.mock("@/services/auth/api-key-service", () => ({
   apiKeyService: {
     validate: (...args: any[]) => mockValidate(...args),
   },

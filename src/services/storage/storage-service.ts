@@ -4,7 +4,7 @@ import { StorageAdapter, FileInfo, BackupMetadata } from "@/lib/core/interfaces"
 import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { pipeline } from "stream/promises";
 import { createReadStream, createWriteStream, promises as fs } from "fs";
-import { getProfileMasterKey } from "@/services/encryption-service";
+import { getProfileMasterKey } from "@/services/backup/encryption-service";
 import { createDecryptionStream } from "@/lib/crypto/stream";
 import { getTempDir } from "@/lib/temp-dir";
 import path from "path";

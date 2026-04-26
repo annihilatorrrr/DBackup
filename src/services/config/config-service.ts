@@ -1,8 +1,8 @@
 import { AppConfigurationBackup, RestoreOptions } from "@/lib/types/config-backup";
-import { exportConfiguration, ExportOptions } from "./config/export";
-import { importConfiguration } from "./config/import";
-import { parseBackupFile } from "./config/parse";
-import { restoreFromStorage } from "./config/restore-pipeline";
+import { exportConfiguration, ExportOptions } from "./export";
+import { importConfiguration } from "./import";
+import { parseBackupFile } from "./parse";
+import { restoreFromStorage } from "./restore-pipeline";
 
 /**
  * Facade for config backup/restore operations.

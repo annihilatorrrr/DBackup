@@ -8,7 +8,7 @@ import { wrapError } from "@/lib/logging/errors";
 import {
   getAlertConfig,
   saveAlertConfig,
-} from "@/services/storage-alert-service";
+} from "@/services/storage/storage-alert-service";
 
 const log = logger.child({ action: "storage-alerts" });
 

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getOIDCAdapter } from "@/services/oidc-registry";
+import { getOIDCAdapter } from "@/services/sso/oidc-registry";
 import { DynamicOidcForm } from "./dynamic-oidc-form";
 import { toast } from "sonner";
 import { updateSsoProvider } from "@/app/actions/oidc";

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { prismaMock } from '@/lib/testing/prisma-mock';
-import { HealthCheckService } from '@/services/healthcheck-service';
+import { HealthCheckService } from '@/services/system/healthcheck-service';
 import { registry } from '@/lib/core/registry';
 
 // Mock registry and crypto

@@ -1,6 +1,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { userService } from '@/services/user-service';
+import { userService } from '@/services/user/user-service';
 import prisma from '@/lib/prisma';
 
 // Mock Prisma

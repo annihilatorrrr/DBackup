@@ -19,8 +19,8 @@
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logging/logger";
 import { wrapError } from "@/lib/logging/errors";
-import { notify } from "@/services/system-notification-service";
-import { getNotificationConfig } from "@/services/system-notification-service";
+import { notify } from "@/services/notifications/system-notification-service";
+import { getNotificationConfig } from "@/services/notifications/system-notification-service";
 import { NOTIFICATION_EVENTS } from "@/lib/notifications/types";
 import type { StorageVolumeEntry } from "@/services/dashboard-service";
 

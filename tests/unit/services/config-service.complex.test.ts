@@ -1,6 +1,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ConfigService } from '@/services/config-service';
+import { ConfigService } from '@/services/config/config-service';
 
 // --- MOCKS ---
 
@@ -31,7 +31,7 @@ vi.mock('@/lib/crypto', async () => {
 });
 
 // 2. Mock Encryption Service
-vi.mock('@/services/encryption-service', () => ({
+vi.mock('@/services/backup/encryption-service', () => ({
     getEncryptionProfiles: vi.fn(),
     getProfileMasterKey: vi.fn(),
 }));

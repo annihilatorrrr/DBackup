@@ -4,9 +4,9 @@ import path from "path";
 import { logger } from "@/lib/logging/logger";
 import { wrapError } from "@/lib/logging/errors";
 import { registerAdapters } from "@/lib/adapters";
-import type { RestoreInput } from "./restore/types";
-import { preflightRestore } from "./restore/preflight";
-import { runRestorePipeline } from "./restore/pipeline";
+import type { RestoreInput } from "./types";
+import { preflightRestore } from "./preflight";
+import { runRestorePipeline } from "./pipeline";
 
 const svcLog = logger.child({ service: "RestoreService" });
 

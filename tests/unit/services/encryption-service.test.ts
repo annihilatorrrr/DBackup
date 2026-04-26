@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createEncryptionProfile, importEncryptionProfile, getDecryptedMasterKey, getProfileMasterKey } from '@/services/encryption-service';
+import { createEncryptionProfile, importEncryptionProfile, getDecryptedMasterKey, getProfileMasterKey } from '@/services/backup/encryption-service';
 import prisma from '@/lib/prisma';
 import * as cryptoLib from '@/lib/crypto';
 import crypto from 'crypto';

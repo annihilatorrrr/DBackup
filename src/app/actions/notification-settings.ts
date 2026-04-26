@@ -10,7 +10,7 @@ import {
   getNotificationConfig,
   saveNotificationConfig,
   getAvailableChannels,
-} from "@/services/system-notification-service";
+} from "@/services/notifications/system-notification-service";
 import { EVENT_DEFINITIONS } from "@/lib/notifications/events";
 
 const log = logger.child({ action: "notification-settings" });
@@ -86,7 +86,7 @@ export async function sendTestNotification(eventType: string) {
     }
 
     // Dynamically import to avoid circular dependencies
-    const { notify } = await import("@/services/system-notification-service");
+    const { notify } = await import("@/services/notifications/system-notification-service");
 
     // Build a synthetic event with example data
     const testData = buildTestData(eventType);

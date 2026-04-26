@@ -4,7 +4,7 @@ import { PERMISSIONS, Permission, AVAILABLE_PERMISSIONS } from "@/lib/auth/permi
 import prisma from "@/lib/prisma";
 import { logger } from "@/lib/logging/logger";
 import { AuthenticationError, PermissionError, wrapError } from "@/lib/logging/errors";
-import { apiKeyService } from "@/services/api-key-service";
+import { apiKeyService } from "@/services/auth/api-key-service";
 
 const log = logger.child({ module: "AccessControl" });
 

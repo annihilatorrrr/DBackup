@@ -1,5 +1,5 @@
 import { RunnerContext, DestinationContext } from "../types";
-import { RetentionService } from "@/services/retention-service";
+import { RetentionService } from "@/services/backup/retention-service";
 import { FileInfo } from '@/lib/core/interfaces';
 import path from "path";
 import { logger } from "@/lib/logging/logger";

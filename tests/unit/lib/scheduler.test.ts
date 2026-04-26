@@ -4,7 +4,7 @@ import { BackupScheduler } from '@/lib/server/scheduler';
 import prisma from '@/lib/prisma';
 import cron from 'node-cron';
 import { runJob } from '@/lib/runner';
-import { systemTaskService, SYSTEM_TASKS } from '@/services/system-task-service';
+import { systemTaskService, SYSTEM_TASKS } from '@/services/system/system-task-service';
 
 // Mock dependencies
 vi.mock('@/lib/prisma', () => ({
@@ -19,7 +19,7 @@ vi.mock('@/lib/runner', () => ({
     runJob: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('@/services/system-task-service', () => ({
+vi.mock('@/services/system/system-task-service', () => ({
     systemTaskService: {
         getTaskConfig: vi.fn(),
         getTaskEnabled: vi.fn(),

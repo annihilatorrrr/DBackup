@@ -5,10 +5,10 @@ import { DatabaseAdapter } from "@/lib/core/interfaces";
 import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { updateService } from "./update-service";
 import { healthCheckService } from "./healthcheck-service";
-import { auditService } from "./audit-service";
-import { notify } from "@/services/system-notification-service";
+import { auditService } from "../audit-service";
+import { notify } from "@/services/notifications/system-notification-service";
 import { NOTIFICATION_EVENTS } from "@/lib/notifications/types";
-import { getNotificationConfig } from "@/services/system-notification-service";
+import { getNotificationConfig } from "@/services/notifications/system-notification-service";
 import { getEventDefinition } from "@/lib/notifications/events";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { logger } from "@/lib/logging/logger";
@@ -223,7 +223,7 @@ export class SystemTaskService {
                 break;
             }
             case SYSTEM_TASKS.INTEGRITY_CHECK: {
-                const { integrityService } = await import("@/services/integrity-service");
+                const { integrityService } = await import("@/services/backup/integrity-service");
                 const result = await integrityService.runFullIntegrityCheck();
                 log.info("Integrity check results", {
                     total: result.totalFiles,

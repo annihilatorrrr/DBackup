@@ -11,7 +11,7 @@ import { createReadStream, promises as fs } from "fs";
 import { getTempDir } from "@/lib/temp-dir";
 import path from "path";
 import { Readable, Transform } from "stream";
-import { getProfileMasterKey, getEncryptionProfiles } from "@/services/encryption-service";
+import { getProfileMasterKey, getEncryptionProfiles } from "@/services/backup/encryption-service";
 import { pipeline } from "stream/promises";
 import { logger } from "@/lib/logging/logger";
 import { wrapError } from "@/lib/logging/errors";

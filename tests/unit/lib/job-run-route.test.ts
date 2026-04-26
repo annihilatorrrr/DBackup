@@ -31,7 +31,7 @@ vi.mock("next/headers", () => ({
 
 // Mock backupService
 const mockExecuteJob = vi.fn();
-vi.mock("@/services/backup-service", () => ({
+vi.mock("@/services/backup/backup-service", () => ({
   backupService: {
     executeJob: (...args: any[]) => mockExecuteJob(...args),
   },

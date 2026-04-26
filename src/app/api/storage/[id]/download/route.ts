@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { registerAdapters } from "@/lib/adapters";
-import { storageService } from "@/services/storage-service";
+import { storageService } from "@/services/storage/storage-service";
 import { getTempDir } from "@/lib/temp-dir";
 import path from "path";
 import fs from "fs";

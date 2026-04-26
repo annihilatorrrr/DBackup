@@ -7,7 +7,7 @@ import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { logger } from "@/lib/logging/logger";
 import { wrapError, getErrorMessage } from "@/lib/logging/errors";
 import { renderTemplate, NOTIFICATION_EVENTS } from "@/lib/notifications";
-import { recordNotificationLog } from "@/services/notification-log-service";
+import { recordNotificationLog } from "@/services/notifications/notification-log-service";
 import { PIPELINE_STAGES } from "@/lib/core/logs";
 
 const log = logger.child({ step: "04-completion" });

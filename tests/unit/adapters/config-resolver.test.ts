@@ -3,7 +3,7 @@ import { resolveAdapterConfig, overlayCredentialsOnConfig } from "@/lib/adapters
 import { registry } from "@/lib/core/registry";
 import { ConfigurationError, NotFoundError } from "@/lib/logging/errors";
 
-vi.mock("@/services/credential-service", () => ({
+vi.mock("@/services/auth/credential-service", () => ({
     getDecryptedCredentialData: vi.fn(),
 }));
 
@@ -11,7 +11,7 @@ vi.mock("@/lib/crypto", () => ({
     decryptConfig: vi.fn((c: unknown) => c),
 }));
 
-import { getDecryptedCredentialData } from "@/services/credential-service";
+import { getDecryptedCredentialData } from "@/services/auth/credential-service";
 import { registerAdapters } from "@/lib/adapters";
 
 registerAdapters();

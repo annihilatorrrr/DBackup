@@ -40,7 +40,7 @@ import {
   FileKey,
   Info,
 } from "lucide-react";
-import type { CertificateInfo } from "@/services/certificate-service";
+import type { CertificateInfo } from "@/services/system/certificate-service";
 
 export function CertificateSettings() {
   const [certInfo, setCertInfo] = useState<CertificateInfo | null>(null);

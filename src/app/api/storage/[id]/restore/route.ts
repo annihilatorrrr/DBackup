@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { restoreService } from "@/services/restore-service";
+import { restoreService } from "@/services/restore/restore-service";
 import { headers } from "next/headers";
 import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
 import { PERMISSIONS } from "@/lib/auth/permissions";

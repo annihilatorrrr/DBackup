@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { backupService } from "@/services/backup-service";
+import { backupService } from "@/services/backup/backup-service";
 import { headers } from "next/headers";
 import { getAuthContext, checkPermissionWithContext, AuthContext } from "@/lib/auth/access-control";
 import { PERMISSIONS } from "@/lib/auth/permissions";

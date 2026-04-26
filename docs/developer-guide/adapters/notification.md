@@ -1032,7 +1032,7 @@ case NOTIFICATION_EVENTS.MY_NEW_EVENT:
 ### 5. Fire the Event
 
 ```typescript
-import { notify } from "@/services/system-notification-service";
+import { notify } from "@/services/notifications/system-notification-service";
 import { NOTIFICATION_EVENTS } from "@/lib/notifications/types";
 
 notify({

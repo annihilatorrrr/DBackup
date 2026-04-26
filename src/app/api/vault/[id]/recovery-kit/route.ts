@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import * as encryptionService from "@/services/encryption-service";
+import * as encryptionService from "@/services/backup/encryption-service";
 import AdmZip from "adm-zip";
 import fs from "fs/promises";
 import path from "path";

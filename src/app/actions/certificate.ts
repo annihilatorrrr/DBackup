@@ -4,7 +4,7 @@ import { checkPermission } from "@/lib/auth/access-control";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { logger } from "@/lib/logging/logger";
 import { wrapError, getErrorMessage } from "@/lib/logging/errors";
-import * as certificateService from "@/services/certificate-service";
+import * as certificateService from "@/services/system/certificate-service";
 
 const log = logger.child({ action: "certificate" });
 

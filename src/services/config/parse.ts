@@ -3,7 +3,7 @@ import { createDecryptionStream } from "@/lib/crypto/stream";
 import { createGunzip } from "zlib";
 import { createReadStream, promises as fs } from "fs";
 import { Readable, Transform } from "stream";
-import { getProfileMasterKey } from "@/services/encryption-service";
+import { getProfileMasterKey } from "@/services/backup/encryption-service";
 import { pipeline } from "stream/promises";
 import { logger } from "@/lib/logging/logger";
 import { wrapError } from "@/lib/logging/errors";

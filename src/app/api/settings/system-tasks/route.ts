@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { systemTaskService, SYSTEM_TASKS, DEFAULT_TASK_CONFIG } from "@/services/system-task-service";
+import { systemTaskService, SYSTEM_TASKS, DEFAULT_TASK_CONFIG } from "@/services/system/system-task-service";
 import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { headers } from "next/headers";

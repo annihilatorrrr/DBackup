@@ -3,7 +3,7 @@ import { registry } from "@/lib/core/registry";
 import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { logger } from "@/lib/logging/logger";
 import { wrapError, getErrorMessage } from "@/lib/logging/errors";
-import { notify, getNotificationConfig } from "@/services/system-notification-service";
+import { notify, getNotificationConfig } from "@/services/notifications/system-notification-service";
 import { NOTIFICATION_EVENTS } from "@/lib/notifications/types";
 
 const log = logger.child({ service: "HealthCheckService" });

@@ -22,7 +22,7 @@ import {
   SystemNotificationConfig,
   NOTIFICATION_EVENTS,
 } from "@/lib/notifications/types";
-import { recordNotificationLog } from "@/services/notification-log-service";
+import { recordNotificationLog } from "@/services/notifications/notification-log-service";
 
 const log = logger.child({ service: "SystemNotificationService" });
 

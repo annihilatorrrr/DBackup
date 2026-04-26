@@ -203,7 +203,7 @@ export const auth = betterAuth({
                     // Fire-and-forget system notification for user login
                     // Dynamic import to avoid circular dependencies
                     Promise.all([
-                        import("@/services/system-notification-service"),
+                        import("@/services/notifications/system-notification-service"),
                         import("@/lib/notifications"),
                         prisma.user.findUnique({
                             where: { id: session.userId },

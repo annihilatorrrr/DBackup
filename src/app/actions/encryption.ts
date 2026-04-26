@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { getUserPermissions, checkPermission as _checkPermission } from "@/lib/auth/access-control"; // ADDED
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import * as encryptionService from "@/services/encryption-service";
+import * as encryptionService from "@/services/backup/encryption-service";
 import { revalidatePath } from "next/cache";
 import { auditService } from "@/services/audit-service";
 import { AUDIT_ACTIONS, AUDIT_RESOURCES } from "@/lib/core/audit-types";

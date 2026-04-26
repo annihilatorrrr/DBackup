@@ -72,7 +72,7 @@ pnpm test
 ```typescript
 // tests/unit/retention-service.test.ts
 import { describe, it, expect } from "vitest";
-import { RetentionService } from "@/services/retention-service";
+import { RetentionService } from "@/services/backup/retention-service";
 
 describe("RetentionService", () => {
   describe("calculateRetention", () => {

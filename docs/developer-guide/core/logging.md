@@ -490,7 +490,7 @@ Every notification sent through the system (per-job and system-wide) is logged t
 Logging happens transparently in both dispatch points:
 
 ```typescript
-import { recordNotificationLog } from "@/services/notification-log-service";
+import { recordNotificationLog } from "@/services/notifications/notification-log-service";
 
 // After sending a notification
 await recordNotificationLog({

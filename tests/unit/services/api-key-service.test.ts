@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createHash, scryptSync } from "crypto";
 import { prismaMock } from "@/lib/testing/prisma-mock";
-import { ApiKeyService, CreateApiKeyInput } from "@/services/api-key-service";
+import { ApiKeyService, CreateApiKeyInput } from "@/services/auth/api-key-service";
 import { ApiKeyError, NotFoundError } from "@/lib/logging/errors";
 
 // Mock logger

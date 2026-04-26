@@ -12,8 +12,7 @@ All notable changes to DBackup are documented here.
 ### 🎨 Improvements
 
 - **jobs**: Renamed "Security" tab to "Advanced" in the backup job form - the tab contains both Compression and Encryption settings, so "Advanced" is more accurate
-- **refactor**: Split three oversized files (`config-service.ts`, `restore-service.ts`, `adapters/definitions.ts`) into focused sub-modules using the Facade Pattern - all public APIs and imports remain unchanged. Also moved `permission-picker.tsx` into a dedicated `permissions/` subfolder
-- **refactor**: Reorganized `src/lib/` root into topical subfolders to make the structure easier to navigate. Moved 20 loose files into 6 new groups: `crypto/` (crypto, stream, checksum, compression), `logging/` (logger, errors), `auth/` (auth, client, access-control, permissions, download-tokens), `rate-limit/` (limiters, server), `execution/` (queue-manager, abort, recovery), and `server/` (shutdown, scheduler, env-validation, startup-checks). All `~470` import paths across the codebase were updated; `@/lib/crypto`, `@/lib/auth`, and `@/lib/rate-limit` continue to work via the new folder `index.ts` barrels
+- **refactor**: Major codebase reorganization - split three oversized files (`config-service.ts`, `restore-service.ts`, `adapters/definitions.ts`) into focused sub-modules via the Facade Pattern, and grouped all loose files in `src/lib/` (20 files into 6 topical folders) and `src/services/` (19 files into 9 topical folders) into a clear directory structure. All ~570 import paths across source, tests, and docs were updated; public APIs remain unchanged
 
 ### 🔄 Changed
 

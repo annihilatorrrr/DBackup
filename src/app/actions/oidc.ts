@@ -3,8 +3,8 @@
 import { z } from "zod";
 import { checkPermission, getUserPermissions } from "@/lib/auth/access-control";
 import { PERMISSIONS } from "@/lib/auth/permissions";
-import { OidcProviderService } from "@/services/oidc-provider-service";
-import { getOIDCAdapter } from "@/services/oidc-registry";
+import { OidcProviderService } from "@/services/sso/oidc-provider-service";
+import { getOIDCAdapter } from "@/services/sso/oidc-registry";
 import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logging/logger";
 import { wrapError, getErrorMessage } from "@/lib/logging/errors";

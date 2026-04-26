@@ -4,7 +4,7 @@ import fs from "fs/promises";
 import { createReadStream, createWriteStream } from "fs";
 import { pipeline } from "stream/promises";
 import { BackupMetadata } from "@/lib/core/interfaces";
-import { getProfileMasterKey } from "@/services/encryption-service";
+import { getProfileMasterKey } from "@/services/backup/encryption-service";
 import { createEncryptionStream } from "@/lib/crypto/stream";
 import { getCompressionStream, getCompressionExtension, CompressionType } from "@/lib/crypto/compression";
 import { ProgressMonitorStream } from "@/lib/streams/progress-monitor";

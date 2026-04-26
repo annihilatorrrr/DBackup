@@ -42,7 +42,7 @@ import {
   getNotificationConfig,
   saveNotificationConfig,
   notify,
-} from "@/services/system-notification-service";
+} from "@/services/notifications/system-notification-service";
 
 describe("SystemNotificationService", () => {
   beforeEach(() => {

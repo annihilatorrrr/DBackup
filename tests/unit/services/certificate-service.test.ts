@@ -51,7 +51,7 @@ import {
   getCertificateInfo,
   uploadCertificate,
   regenerateSelfSignedCert,
-} from "@/services/certificate-service";
+} from "@/services/system/certificate-service";
 
 describe("CertificateService", () => {
   const originalEnv = { ...process.env };

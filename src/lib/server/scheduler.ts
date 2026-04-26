@@ -2,7 +2,7 @@ import cron from "node-cron";
 import type { ScheduledTask } from "node-cron";
 import prisma from "@/lib/prisma";
 import { runJob } from "@/lib/runner";
-import { systemTaskService, SYSTEM_TASKS } from "@/services/system-task-service";
+import { systemTaskService, SYSTEM_TASKS } from "@/services/system/system-task-service";
 import { logger } from "@/lib/logging/logger";
 import { wrapError } from "@/lib/logging/errors";
 
