@@ -103,6 +103,53 @@ export async function resolveAdapterConfig(adapter: AdapterConfigInput): Promise
     return parsed;
 }
 
+/**
+ * Overlays credential profiles onto a plaintext (non-encrypted) config object.
+ * Use this for client-driven flows (e.g. test-connection in the adapter form)
+ * where the structural config is already plaintext and only the credential
+ * IDs need to be resolved.
+ *
+ * Mutates and returns the supplied config. Throws `ConfigurationError` if a
+ * required primary slot is missing or has the wrong type.
+ */
+export async function overlayCredentialsOnConfig(
+    adapterId: string,
+    config: Record<string, unknown>,
+    primaryCredentialId: string | null,
+    sshCredentialId: string | null
+): Promise<Record<string, unknown>> {
+    const adapterDef = registry.get(adapterId);
+    if (!adapterDef) {
+        throw new NotFoundError("Adapter", adapterId);
+    }
+
+    const requirements = adapterDef.credentials;
+    if (!requirements) return config;
+
+    if (requirements.primary && primaryCredentialId) {
+        const profile = await loadAndValidate(
+            primaryCredentialId,
+            requirements.primary,
+            adapterId,
+            "primary"
+        );
+        applyPrimaryOverlay(config, profile, requirements.primary);
+    }
+
+    if (requirements.ssh && sshCredentialId) {
+        const profile = await loadAndValidate(
+            sshCredentialId,
+            requirements.ssh,
+            adapterId,
+            "ssh"
+        );
+        const useSshPrefix = requirements.primary !== undefined;
+        applySshOverlay(config, profile as SshKeyData, useSshPrefix);
+    }
+
+    return config;
+}
+
 async function loadAndValidate(
     profileId: string,
     expected: CredentialType,
@@ -164,7 +211,14 @@ function applyPrimaryOverlay(
         }
         case "TOKEN": {
             const p = profile as TokenData;
+            // Write to all known token field names. Each notification adapter
+            // schema uses a different key (Gotify: appToken, ntfy: accessToken,
+            // Telegram: botToken) and zod strips unknowns it doesn't declare,
+            // so spraying is safe and avoids per-adapter switch logic.
             config.token = p.token;
+            config.appToken = p.token;
+            config.accessToken = p.token;
+            config.botToken = p.token;
             return;
         }
         case "SMTP": {

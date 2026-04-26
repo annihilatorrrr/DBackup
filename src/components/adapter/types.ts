@@ -7,6 +7,10 @@ export interface AdapterConfig {
     config: string; // JSON string
     metadata?: string; // JSON string
     createdAt: string;
+    primaryCredentialId?: string | null;
+    sshCredentialId?: string | null;
+    lastStatus?: string | null;
+    lastError?: string | null;
 }
 
 export interface AdapterManagerProps {

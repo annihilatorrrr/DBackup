@@ -38,13 +38,66 @@ import { DropboxOAuthButton } from "./dropbox-oauth-button";
 import { DropboxFolderBrowser } from "./dropbox-folder-browser";
 import { OneDriveOAuthButton } from "./onedrive-oauth-button";
 import { OneDriveFolderBrowser } from "./onedrive-folder-browser";
+import { CredentialPicker } from "./credential-picker";
 import { AdapterConfig } from "./types";
 
-interface SectionProps {
+interface CredentialPickerHostProps {
+    primaryCredentialId?: string | null;
+    sshCredentialId?: string | null;
+    onPrimaryChange?: (id: string | null) => void;
+    onSshChange?: (id: string | null) => void;
+}
+
+interface SectionProps extends CredentialPickerHostProps {
     adapter: AdapterDefinition;
     detectedVersion?: string | null;
     healthNotificationsDisabled?: boolean;
     onHealthNotificationsDisabledChange?: (disabled: boolean) => void;
+}
+
+/**
+ * Renders the primary credential picker if the adapter declares a primary
+ * credential slot. Returns null otherwise.
+ */
+function PrimaryCredentialPickerSlot({
+    adapter,
+    primaryCredentialId,
+    onPrimaryChange,
+}: { adapter: AdapterDefinition } & CredentialPickerHostProps) {
+    const required = adapter.credentials?.primary;
+    if (!required || !onPrimaryChange) return null;
+    return (
+        <CredentialPicker
+            slot="primary"
+            requiredType={required}
+            value={primaryCredentialId ?? null}
+            onChange={onPrimaryChange}
+            label="Credential Profile"
+        />
+    );
+}
+
+/**
+ * Renders the SSH credential picker if the adapter declares an SSH slot.
+ * Returns null otherwise.
+ */
+function SshCredentialPickerSlot({
+    adapter,
+    sshCredentialId,
+    onSshChange,
+}: { adapter: AdapterDefinition } & CredentialPickerHostProps) {
+    const required = adapter.credentials?.ssh;
+    if (!required || !onSshChange) return null;
+    return (
+        <CredentialPicker
+            slot="ssh"
+            requiredType={required}
+            value={sshCredentialId ?? null}
+            onChange={onSshChange}
+            label="SSH Credential Profile"
+            description="Reusable SSH credential used for the tunnel or remote command execution."
+        />
+    );
 }
 
 function HealthCheckNotificationSwitch({
@@ -78,6 +131,10 @@ export function DatabaseFormContent({
     detectedVersion,
     healthNotificationsDisabled,
     onHealthNotificationsDisabledChange,
+    primaryCredentialId,
+    sshCredentialId,
+    onPrimaryChange,
+    onSshChange,
 }: SectionProps) {
     const { watch, getValues } = useFormContext();
     const mode = watch("config.mode");
@@ -158,6 +215,11 @@ export function DatabaseFormContent({
                         </TabsList>
 
                         <TabsContent value="connection" className="space-y-4 pt-4 border p-4 rounded-md bg-muted/10 mt-2">
+                             <SshCredentialPickerSlot
+                                 adapter={adapter}
+                                 sshCredentialId={sshCredentialId}
+                                 onSshChange={onSshChange}
+                             />
                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div className="md:col-span-3">
                                     <FieldList keys={['host']} adapter={adapter} />
@@ -237,6 +299,10 @@ export function DatabaseFormContent({
                 detectedVersion={detectedVersion}
                 healthNotificationsDisabled={healthNotificationsDisabled}
                 onHealthNotificationsDisabledChange={onHealthNotificationsDisabledChange}
+                primaryCredentialId={primaryCredentialId}
+                sshCredentialId={sshCredentialId}
+                onPrimaryChange={onPrimaryChange}
+                onSshChange={onSshChange}
             />
         );
     }
@@ -264,6 +330,11 @@ export function DatabaseFormContent({
                         </Badge>
                     </div>
                 )}
+                <PrimaryCredentialPickerSlot
+                    adapter={adapter}
+                    primaryCredentialId={primaryCredentialId}
+                    onPrimaryChange={onPrimaryChange}
+                />
                 <FieldList
                     keys={['uri', 'host', 'port', 'user', 'username', 'password']}
                     adapter={adapter}
@@ -306,7 +377,14 @@ export function DatabaseFormContent({
                     <FieldList keys={['backupPath', 'fileTransferMode']} adapter={adapter} />
 
                     {fileTransferMode === "ssh" && (
-                        <SshConfigSection adapter={adapter} sshAuthType={sshAuthType} />
+                        <>
+                            <SshCredentialPickerSlot
+                                adapter={adapter}
+                                sshCredentialId={sshCredentialId}
+                                onSshChange={onSshChange}
+                            />
+                            <SshConfigSection adapter={adapter} sshAuthType={sshAuthType} />
+                        </>
                     )}
                     {fileTransferMode === "local" && (
                         <div className="space-y-4">
@@ -334,6 +412,10 @@ function SshAwareTabLayout({
     detectedVersion,
     healthNotificationsDisabled,
     onHealthNotificationsDisabledChange,
+    primaryCredentialId,
+    sshCredentialId,
+    onPrimaryChange,
+    onSshChange,
 }: {
     isSSH: boolean;
     defaultTab: string;
@@ -342,7 +424,7 @@ function SshAwareTabLayout({
     detectedVersion?: string | null;
     healthNotificationsDisabled?: boolean;
     onHealthNotificationsDisabledChange?: (disabled: boolean) => void;
-}) {
+} & CredentialPickerHostProps) {
     return (
         <div className="space-y-4 pt-2">
             {detectedVersion && (
@@ -363,6 +445,11 @@ function SshAwareTabLayout({
                     </TabsList>
 
                     <TabsContent value="ssh" className="space-y-4 pt-4">
+                        <SshCredentialPickerSlot
+                            adapter={adapter}
+                            sshCredentialId={sshCredentialId}
+                            onSshChange={onSshChange}
+                        />
                         <SshConfigSection adapter={adapter} sshAuthType={sshAuthType} description="SSH credentials to execute database commands on the remote server." />
                     </TabsContent>
 
@@ -370,6 +457,11 @@ function SshAwareTabLayout({
                         <p className="text-sm text-muted-foreground">
                             Database connection as seen from the SSH host (e.g. 127.0.0.1 if the database runs on the same server).
                         </p>
+                        <PrimaryCredentialPickerSlot
+                            adapter={adapter}
+                            primaryCredentialId={primaryCredentialId}
+                            onPrimaryChange={onPrimaryChange}
+                        />
                         <FieldList
                             keys={['uri', 'host', 'port', 'user', 'username', 'password']}
                             adapter={adapter}
@@ -402,6 +494,11 @@ function SshAwareTabLayout({
                     </TabsList>
 
                     <TabsContent value="connection" className="space-y-4 pt-4">
+                        <PrimaryCredentialPickerSlot
+                            adapter={adapter}
+                            primaryCredentialId={primaryCredentialId}
+                            onPrimaryChange={onPrimaryChange}
+                        />
                         <FieldList
                             keys={['uri', 'host', 'port', 'user', 'username', 'password']}
                             adapter={adapter}
@@ -506,7 +603,11 @@ export function StorageFormContent({
     initialData,
     healthNotificationsDisabled,
     onHealthNotificationsDisabledChange,
-}: { adapter: AdapterDefinition; initialData?: AdapterConfig; healthNotificationsDisabled?: boolean; onHealthNotificationsDisabledChange?: (disabled: boolean) => void }) {
+    primaryCredentialId,
+    sshCredentialId,
+    onPrimaryChange,
+    onSshChange,
+}: { adapter: AdapterDefinition; initialData?: AdapterConfig; healthNotificationsDisabled?: boolean; onHealthNotificationsDisabledChange?: (disabled: boolean) => void } & CredentialPickerHostProps) {
     const { watch } = useFormContext();
     const authType = watch("config.authType");
     const hasRealConfigKeys = hasFields(adapter, STORAGE_CONFIG_KEYS);
@@ -550,6 +651,11 @@ export function StorageFormContent({
             </TabsList>
 
             <TabsContent value="connection" className="space-y-4 pt-4">
+                <PrimaryCredentialPickerSlot
+                    adapter={adapter}
+                    primaryCredentialId={primaryCredentialId}
+                    onPrimaryChange={onPrimaryChange}
+                />
                 {(adapter.id === 'sftp' || adapter.id === 'rsync') ? (
                     <div className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -636,7 +742,11 @@ export function StorageFormContent({
     );
 }
 
-export function NotificationFormContent({ adapter }: { adapter: AdapterDefinition }) {
+export function NotificationFormContent({
+    adapter,
+    primaryCredentialId,
+    onPrimaryChange,
+}: { adapter: AdapterDefinition } & CredentialPickerHostProps) {
     const hasConfigKeys = hasFields(adapter, NOTIFICATION_CONFIG_KEYS);
     const isEmail = adapter.id === "email";
     // Filter out 'to' from config keys for email - rendered separately as TagInput
@@ -654,6 +764,11 @@ export function NotificationFormContent({ adapter }: { adapter: AdapterDefinitio
             </TabsList>
 
             <TabsContent value="connection" className="space-y-4 pt-4">
+                <PrimaryCredentialPickerSlot
+                    adapter={adapter}
+                    primaryCredentialId={primaryCredentialId}
+                    onPrimaryChange={onPrimaryChange}
+                />
                 <FieldList keys={NOTIFICATION_CONNECTION_KEYS} adapter={adapter} />
             </TabsContent>
 
@@ -917,9 +1032,15 @@ function FieldList({
     isDbListOpen?: boolean;
     setIsDbListOpen?: (open: boolean) => void;
 }) {
+    // Hide fields whose values are now sourced from a referenced credential
+    // profile. The set depends on whether the adapter consumes a primary or
+    // SSH credential slot.
+    const hidden = getCredentialManagedKeys(adapter);
+
     return (
         <>
             {keys.map((key) => {
+                if (hidden.has(key)) return null;
                 if (!((adapter.configSchema as any).shape[key])) return null;
                 const shape = (adapter.configSchema as any).shape[key];
 
@@ -941,6 +1062,49 @@ function FieldList({
             })}
         </>
     );
+}
+
+/**
+ * Returns the set of config keys that are now managed via a credential
+ * profile reference and should therefore be hidden from the rendered form.
+ *
+ * Mirrors the overlay logic in `applyPrimaryOverlay` / `applySshOverlay`.
+ */
+function getCredentialManagedKeys(adapter: AdapterDefinition): Set<string> {
+    const hidden = new Set<string>();
+    const reqs = adapter.credentials;
+    if (!reqs) return hidden;
+
+    if (reqs.primary === "USERNAME_PASSWORD") {
+        ["user", "username", "password"].forEach((k) => hidden.add(k));
+    } else if (reqs.primary === "SSH_KEY") {
+        // SFTP/Rsync: unprefixed identity fields
+        ["username", "authType", "password", "privateKey", "passphrase"].forEach((k) =>
+            hidden.add(k)
+        );
+    } else if (reqs.primary === "ACCESS_KEY") {
+        ["accessKeyId", "secretAccessKey"].forEach((k) => hidden.add(k));
+    } else if (reqs.primary === "TOKEN") {
+        ["token", "appToken", "accessToken", "botToken"].forEach((k) => hidden.add(k));
+    } else if (reqs.primary === "SMTP") {
+        ["user", "password"].forEach((k) => hidden.add(k));
+    }
+
+    if (reqs.ssh === "SSH_KEY") {
+        if (reqs.primary !== undefined) {
+            // DB adapters with SSH tunnel: ssh-prefixed keys
+            ["sshUsername", "sshAuthType", "sshPassword", "sshPrivateKey", "sshPassphrase"].forEach(
+                (k) => hidden.add(k)
+            );
+        } else {
+            // Adapter with no primary slot (SQLite SSH mode): unprefixed keys
+            ["username", "authType", "password", "privateKey", "passphrase"].forEach((k) =>
+                hidden.add(k)
+            );
+        }
+    }
+
+    return hidden;
 }
 
 function hasFields(adapter: AdapterDefinition, keys: string[]) {
