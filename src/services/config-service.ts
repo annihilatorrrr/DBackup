@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { AppConfigurationBackup, RestoreOptions } from "@/lib/types/config-backup";
 import { decryptConfig, encryptConfig, stripSecrets, decrypt, encrypt } from "@/lib/crypto";
+import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import packageJson from "../../package.json";
 import { registry } from "@/lib/core/registry";
 import { registerAdapters } from "@/lib/adapters";
@@ -739,7 +740,7 @@ export class ConfigService {
 
           const adapter = registry.get(storageConfig.adapterId) as StorageAdapter;
           if (!adapter) throw new Error(`Storage adapter '${storageConfig.adapterId}' not found in registry`);
-          const config = decryptConfig(JSON.parse(storageConfig.config));
+          const config = await resolveAdapterConfig(storageConfig);
 
           // Download
           log("Downloading backup file...");

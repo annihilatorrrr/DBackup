@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { registry } from "@/lib/core/registry";
 import { StorageAdapter, FileInfo, BackupMetadata } from "@/lib/core/interfaces";
-import { decryptConfig } from "@/lib/crypto";
+import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { pipeline } from "stream/promises";
 import { createReadStream, createWriteStream, promises as fs } from "fs";
 import { getProfileMasterKey } from "@/services/encryption-service";
@@ -39,7 +39,7 @@ export class StorageService {
         if (!adapterConfig) throw new Error("Storage not found");
 
         const adapter = registry.get(adapterConfig.adapterId) as StorageAdapter;
-        const config = decryptConfig(JSON.parse(adapterConfig.config));
+        const config = await resolveAdapterConfig(adapterConfig);
 
         // Define paths
         const metaPath = filePath + ".meta.json";
@@ -102,10 +102,10 @@ export class StorageService {
             throw new Error(`Storage adapter implementation '${adapterConfig.adapterId}' not found in registry.`);
         }
 
-        // Decrypt and parse config
+        // Resolve config (merges credential profile if present)
         let config: any;
         try {
-            config = decryptConfig(JSON.parse(adapterConfig.config));
+            config = await resolveAdapterConfig(adapterConfig);
         } catch (e) {
             throw new Error(`Failed to decrypt configuration for ${adapterConfigId}: ${(e as Error).message}`);
         }
@@ -136,7 +136,7 @@ export class StorageService {
 
         let config: any;
         try {
-            config = decryptConfig(JSON.parse(adapterConfig.config));
+            config = await resolveAdapterConfig(adapterConfig);
         } catch (e) {
             throw new Error(`Failed to decrypt configuration for ${adapterConfigId}: ${(e as Error).message}`);
         }
@@ -356,7 +356,7 @@ export class StorageService {
 
          let config: any;
         try {
-            config = decryptConfig(JSON.parse(adapterConfig.config));
+            config = await resolveAdapterConfig(adapterConfig);
         } catch (e) {
             throw new Error(`Failed to decrypt configuration for ${adapterConfigId}: ${(e as Error).message}`);
         }
@@ -399,7 +399,7 @@ export class StorageService {
 
         let config: any;
        try {
-           config = decryptConfig(JSON.parse(adapterConfig.config));
+           config = await resolveAdapterConfig(adapterConfig);
        } catch (e) {
            throw new Error(`Failed to decrypt configuration for ${adapterConfigId}: ${(e as Error).message}`);
        }

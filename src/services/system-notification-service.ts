@@ -11,7 +11,7 @@
 import prisma from "@/lib/prisma";
 import { registry } from "@/lib/core/registry";
 import { NotificationAdapter } from "@/lib/core/interfaces";
-import { decryptConfig } from "@/lib/crypto";
+import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { registerAdapters } from "@/lib/adapters";
 import { logger } from "@/lib/logger";
 import { wrapError, getErrorMessage } from "@/lib/errors";
@@ -98,7 +98,7 @@ function extractUserEmail(event: NotificationEventData): string | undefined {
  * replaced (used for user-targeted delivery).
  */
 async function sendThroughChannel(
-  channel: { id: string; name: string; adapterId: string; config: string },
+  channel: { id: string; name: string; adapterId: string; config: string; primaryCredentialId: string | null; sshCredentialId: string | null },
   payload: ReturnType<typeof renderTemplate>,
   eventType: string,
   toOverride?: string
@@ -115,7 +115,7 @@ async function sendThroughChannel(
     return;
   }
 
-  let channelConfig = decryptConfig(JSON.parse(channel.config));
+  let channelConfig = await resolveAdapterConfig(channel) as Record<string, unknown>;
 
   // Override the recipient for user-targeted emails
   if (toOverride && EMAIL_ADAPTER_IDS.includes(channel.adapterId)) {

@@ -161,6 +161,7 @@ export default defineConfig({
           items: [
             { text: 'Encryption Key', link: '/user-guide/security/encryption-key' },
             { text: 'Encryption Vault', link: '/user-guide/security/encryption' },
+            { text: 'Credential Profiles', link: '/user-guide/security/credential-profiles' },
             { text: 'Compression', link: '/user-guide/security/compression' },
             { text: 'Recovery Kit', link: '/user-guide/security/recovery-kit' }
           ]

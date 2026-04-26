@@ -11,7 +11,7 @@ import { createEncryptionStream } from "@/lib/crypto-stream";
 import prisma from "@/lib/prisma";
 import { registry } from "@/lib/core/registry";
 import { StorageAdapter } from "@/lib/core/interfaces";
-import { decryptConfig } from "@/lib/crypto";
+import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { logger } from "@/lib/logger";
 import { wrapError, EncryptionError, ConfigurationError } from "@/lib/errors";
 import { notify } from "@/services/system-notification-service";
@@ -56,10 +56,10 @@ export async function runConfigBackup() {
         throw new ConfigurationError("config-backup", `Adapter class ${storageConfig.adapterId} not registered`);
     }
 
-    // Decrypt adapter config before instantiation
+    // Resolve adapter config (merges referenced credential profile if present)
     let decryptedConfig = {};
     try {
-        decryptedConfig = decryptConfig(JSON.parse(storageConfig.config));
+        decryptedConfig = await resolveAdapterConfig(storageConfig) as Record<string, unknown>;
     } catch (e) {
         log.error("Config parse error", {}, wrapError(e));
     }

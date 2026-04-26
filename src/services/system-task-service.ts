@@ -2,7 +2,7 @@ import prisma from "@/lib/prisma";
 import { registry } from "@/lib/core/registry";
 import { registerAdapters } from "@/lib/adapters";
 import { DatabaseAdapter } from "@/lib/core/interfaces";
-import { decryptConfig } from "@/lib/crypto";
+import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { updateService } from "./update-service";
 import { healthCheckService } from "./healthcheck-service";
 import { auditService } from "./audit-service";
@@ -419,10 +419,10 @@ export class SystemTaskService {
                     continue;
                 }
 
-                // Decrypt config
+                // Resolve config (merges credential profile if present)
                 let config;
                 try {
-                    config = decryptConfig(JSON.parse(source.config));
+                    config = await resolveAdapterConfig(source);
                 } catch(e: unknown) {
                     log.error("Config decrypt failed", { sourceName: source.name }, wrapError(e));
                     continue;

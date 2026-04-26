@@ -22,6 +22,12 @@ vi.mock('@/lib/crypto', () => ({
     decryptConfig: (input: any) => input,
 }));
 
+vi.mock('@/lib/adapters/config-resolver', () => ({
+    resolveAdapterConfig: vi.fn(async (adapter: any) => {
+        try { return JSON.parse(adapter.config); } catch { return {}; }
+    }),
+}));
+
 vi.mock('@/lib/core/registry', () => ({
     registry: {
         get: vi.fn(),

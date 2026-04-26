@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
 import { registry } from "@/lib/core/registry";
-import { decryptConfig } from "@/lib/crypto";
+import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { logger } from "@/lib/logger";
 import { wrapError, getErrorMessage } from "@/lib/errors";
 import { notify, getNotificationConfig } from "@/services/system-notification-service";
@@ -161,10 +161,10 @@ export class HealthCheckService {
                 return false;
             }
 
-             // Decrypt config
+             // Resolve adapter config (merges credential profile if present)
             let config;
             try {
-                config = decryptConfig(JSON.parse(configRow.config));
+                config = await resolveAdapterConfig(configRow);
             } catch(e: unknown) {
                 throw new Error(`Config decrypt failed: ${getErrorMessage(e)}`);
             }

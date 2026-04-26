@@ -2,7 +2,7 @@ import prisma from "@/lib/prisma";
 import { registry } from "@/lib/core/registry";
 import { registerAdapters } from "@/lib/adapters";
 import { StorageAdapter, BackupMetadata } from "@/lib/core/interfaces";
-import { decryptConfig } from "@/lib/crypto";
+import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { getTempDir } from "@/lib/temp-dir";
 import { verifyFileChecksum } from "@/lib/checksum";
 import { logger } from "@/lib/logger";
@@ -92,7 +92,7 @@ export class IntegrityService {
       return;
     }
 
-    const config = decryptConfig(JSON.parse(storageConfig.config));
+    const config = await resolveAdapterConfig(storageConfig);
 
     // List all top-level folders in storage (not just active jobs).
     // This ensures backups from deleted jobs are also verified.
