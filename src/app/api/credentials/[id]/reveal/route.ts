@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import * as credentialService from "@/services/credential-service";
 import { auditService } from "@/services/audit-service";
 import { AUDIT_ACTIONS, AUDIT_RESOURCES } from "@/lib/core/audit-types";
-import { NotFoundError, wrapError } from "@/lib/errors";
-import { logger } from "@/lib/logger";
+import { NotFoundError, wrapError } from "@/lib/logging/errors";
+import { logger } from "@/lib/logging/logger";
 
 const log = logger.child({ route: "credentials/[id]/reveal" });
 

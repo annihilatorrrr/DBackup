@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { AppConfigurationBackup, RestoreOptions } from "@/lib/types/config-backup";
 import { encryptConfig, encrypt } from "@/lib/crypto";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/logging/logger";
 
 const svcLog = logger.child({ service: "ConfigService" });
 

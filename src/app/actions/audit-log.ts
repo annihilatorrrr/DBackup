@@ -4,8 +4,8 @@ import { auditService } from "@/services/audit-service";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { AUDIT_ACTIONS, AUDIT_RESOURCES } from "@/lib/core/audit-types";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ action: "audit-log" });
 

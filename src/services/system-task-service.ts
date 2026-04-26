@@ -10,9 +10,9 @@ import { notify } from "@/services/system-notification-service";
 import { NOTIFICATION_EVENTS } from "@/lib/notifications/types";
 import { getNotificationConfig } from "@/services/system-notification-service";
 import { getEventDefinition } from "@/lib/notifications/events";
-import { PERMISSIONS } from "@/lib/permissions";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ service: "SystemTaskService" });
 

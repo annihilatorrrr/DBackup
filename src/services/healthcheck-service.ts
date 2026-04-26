@@ -1,8 +1,8 @@
 import prisma from "@/lib/prisma";
 import { registry } from "@/lib/core/registry";
 import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
-import { logger } from "@/lib/logger";
-import { wrapError, getErrorMessage } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError, getErrorMessage } from "@/lib/logging/errors";
 import { notify, getNotificationConfig } from "@/services/system-notification-service";
 import { NOTIFICATION_EVENTS } from "@/lib/notifications/types";
 

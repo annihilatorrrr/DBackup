@@ -1,8 +1,8 @@
 
 import { Suspense } from "react";
 import { StorageClient } from "./storage-client";
-import { getUserPermissions } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { getUserPermissions } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 export default async function StoragePage() {
     const permissions = await getUserPermissions();

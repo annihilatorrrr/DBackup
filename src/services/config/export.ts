@@ -2,8 +2,8 @@ import prisma from "@/lib/prisma";
 import { AppConfigurationBackup } from "@/lib/types/config-backup";
 import { decryptConfig, stripSecrets, decrypt } from "@/lib/crypto";
 import packageJson from "../../../package.json";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const svcLog = logger.child({ service: "ConfigService" });
 

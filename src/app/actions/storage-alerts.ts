@@ -1,10 +1,10 @@
 "use server";
 
 import { z } from "zod";
-import { checkPermission } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { checkPermission } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 import {
   getAlertConfig,
   saveAlertConfig,

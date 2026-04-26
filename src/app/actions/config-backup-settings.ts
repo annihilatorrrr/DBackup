@@ -3,11 +3,11 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { checkPermission } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
-import { scheduler } from "@/lib/scheduler";
+import { checkPermission } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
+import { scheduler } from "@/lib/server/scheduler";
 
 const log = logger.child({ action: "config-backup-settings" });
 

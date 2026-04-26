@@ -328,7 +328,7 @@ export async function stepRetention(ctx: RunnerContext): Promise<void> {
 Controls concurrent backup execution:
 
 ```typescript
-// src/lib/queue-manager.ts
+// src/lib/execution/queue-manager.ts
 class QueueManager {
   private queue: string[] = [];
   private running = 0;
@@ -438,7 +438,7 @@ The `RestoreService` verifies checksums before processing:
 
 ```typescript
 // src/lib/checksum.ts
-import { calculateFileChecksum, verifyFileChecksum } from "@/lib/checksum";
+import { calculateFileChecksum, verifyFileChecksum } from "@/lib/crypto/checksum";
 
 // Calculate SHA-256 hash of a file (stream-based, memory-efficient)
 const hash = await calculateFileChecksum("/path/to/backup.sql.gz.enc");

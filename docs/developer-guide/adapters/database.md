@@ -882,7 +882,7 @@ For wget/curl access (where session cookies aren't available), the app generates
 
 ```typescript
 // src/lib/download-tokens.ts
-import { generateDownloadToken, consumeDownloadToken } from "@/lib/download-tokens";
+import { generateDownloadToken, consumeDownloadToken } from "@/lib/auth/download-tokens";
 
 // Generate (5-min TTL, single-use)
 const token = generateDownloadToken(storageConfigId, filePath, decrypt);

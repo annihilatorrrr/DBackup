@@ -1,4 +1,4 @@
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/logging/logger";
 import prisma from "@/lib/prisma";
 
 const log = logger.child({ module: "Shutdown" });
@@ -59,7 +59,7 @@ export function registerShutdownHandlers(): void {
 async function performShutdown(signal: string): Promise<void> {
     // 1. Stop scheduler to prevent new cron triggers
     try {
-        const { scheduler } = await import("@/lib/scheduler");
+        const { scheduler } = await import("@/lib/server/scheduler");
         scheduler.stopAll();
         log.info("Scheduler stopped");
     } catch (error) {

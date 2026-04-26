@@ -52,7 +52,7 @@ model Group {
 
 ## Permission Definitions
 
-All permissions are defined in `src/lib/permissions.ts`:
+All permissions are defined in `src/lib/auth/permissions.ts`:
 
 ```typescript
 export const PERMISSIONS = {
@@ -144,7 +144,7 @@ export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS][keyof type
 
 ## Access Control Functions
 
-Located in `src/lib/access-control.ts`:
+Located in `src/lib/auth/access-control.ts`:
 
 ### checkPermission()
 
@@ -221,8 +221,8 @@ export async function getUserPermissions(): Promise<string[]> {
 // src/app/actions/source.ts
 "use server";
 
-import { checkPermission } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { checkPermission } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 export async function createSource(data: SourceInput) {
   // 1. Permission check (throws if denied)
@@ -251,8 +251,8 @@ export async function getSources() {
 ```typescript
 // src/app/dashboard/sources/page.tsx
 import { redirect } from "next/navigation";
-import { hasPermission } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { hasPermission } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 export default async function SourcesPage() {
   // Redirect if no access
@@ -273,8 +273,8 @@ Pass permission flags from Server Components to Client Components:
 ```typescript
 // Server Component (Page)
 // src/app/dashboard/sources/page.tsx
-import { getUserPermissions } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { getUserPermissions } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { SourceManager } from "@/components/source-manager";
 
 export default async function SourcesPage() {

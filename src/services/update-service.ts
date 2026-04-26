@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import packageJson from "../../package.json";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ service: "UpdateService" });
 

@@ -3,7 +3,7 @@ import {
   calculateFileChecksum,
   calculateChecksum,
   verifyFileChecksum,
-} from "@/lib/checksum";
+} from "@/lib/crypto/checksum";
 import fs from "fs";
 import path from "path";
 import os from "os";

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { decryptConfig, encryptConfig } from "@/lib/crypto";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/logging/logger";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 

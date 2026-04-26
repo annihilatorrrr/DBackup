@@ -215,7 +215,7 @@ Executes backups through discrete steps:
 Manages concurrent backup execution:
 
 ```typescript
-// src/lib/queue-manager.ts
+// src/lib/execution/queue-manager.ts
 class QueueManager {
   private queue: string[] = [];
   private running = 0;
@@ -348,7 +348,7 @@ DBackup uses a centralized logging system for consistent debugging and monitorin
 ### System Logger
 
 ```typescript
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/logging/logger";
 
 const log = logger.child({ service: "MyService" });
 log.info("Operation started", { id: "123" });
@@ -358,7 +358,7 @@ log.error("Operation failed", { id: "123" }, error);
 ### Custom Errors
 
 ```typescript
-import { AdapterError, wrapError } from "@/lib/errors";
+import { AdapterError, wrapError } from "@/lib/logging/errors";
 
 try {
   await riskyOperation();

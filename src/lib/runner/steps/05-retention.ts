@@ -2,7 +2,7 @@ import { RunnerContext, DestinationContext } from "../types";
 import { RetentionService } from "@/services/retention-service";
 import { FileInfo } from '@/lib/core/interfaces';
 import path from "path";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/logging/logger";
 
 const log = logger.child({ step: "05-retention" });
 

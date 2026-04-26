@@ -1,9 +1,9 @@
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { PERMISSIONS, Permission, AVAILABLE_PERMISSIONS } from "@/lib/permissions";
+import { PERMISSIONS, Permission, AVAILABLE_PERMISSIONS } from "@/lib/auth/permissions";
 import prisma from "@/lib/prisma";
-import { logger } from "@/lib/logger";
-import { AuthenticationError, PermissionError, wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { AuthenticationError, PermissionError, wrapError } from "@/lib/logging/errors";
 import { apiKeyService } from "@/services/api-key-service";
 
 const log = logger.child({ module: "AccessControl" });

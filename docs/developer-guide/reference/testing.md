@@ -108,7 +108,7 @@ describe("RetentionService", () => {
 ```typescript
 // tests/unit/lib/checksum.test.ts
 import { describe, it, expect } from "vitest";
-import { calculateChecksum, calculateFileChecksum, verifyFileChecksum } from "@/lib/checksum";
+import { calculateChecksum, calculateFileChecksum, verifyFileChecksum } from "@/lib/crypto/checksum";
 import fs from "fs/promises";
 
 describe("calculateChecksum", () => {

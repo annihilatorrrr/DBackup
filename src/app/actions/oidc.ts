@@ -1,13 +1,13 @@
 "use server";
 
 import { z } from "zod";
-import { checkPermission, getUserPermissions } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { checkPermission, getUserPermissions } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { OidcProviderService } from "@/services/oidc-provider-service";
 import { getOIDCAdapter } from "@/services/oidc-registry";
 import { revalidatePath } from "next/cache";
-import { logger } from "@/lib/logger";
-import { wrapError, getErrorMessage } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError, getErrorMessage } from "@/lib/logging/errors";
 
 const log = logger.child({ action: "oidc" });
 

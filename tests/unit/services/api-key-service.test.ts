@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createHash, scryptSync } from "crypto";
 import { prismaMock } from "@/lib/testing/prisma-mock";
 import { ApiKeyService, CreateApiKeyInput } from "@/services/api-key-service";
-import { ApiKeyError, NotFoundError } from "@/lib/errors";
+import { ApiKeyError, NotFoundError } from "@/lib/logging/errors";
 
 // Mock logger
-vi.mock("@/lib/logger", () => ({
+vi.mock("@/lib/logging/logger", () => ({
   logger: {
     child: () => ({
       info: vi.fn(),

@@ -4,7 +4,7 @@ import { RestoreService } from '@/services/restore-service';
 import { registry } from '@/lib/core/registry';
 import { StorageAdapter, DatabaseAdapter } from '@/lib/core/interfaces';
 import * as encryptionService from '@/services/encryption-service';
-import * as cryptoStream from '@/lib/crypto-stream';
+import * as cryptoStream from '@/lib/crypto/stream';
 import fs from 'fs';
 import { PassThrough } from 'stream';
 
@@ -14,7 +14,7 @@ vi.mock('@/services/encryption-service', () => ({
     getEncryptionProfiles: vi.fn(),
 }));
 
-vi.mock('@/lib/crypto-stream', () => ({
+vi.mock('@/lib/crypto/stream', () => ({
     createDecryptionStream: vi.fn(),
 }));
 

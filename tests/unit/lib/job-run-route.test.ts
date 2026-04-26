@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
-import { PermissionError, ApiKeyError } from "@/lib/errors";
+import { PermissionError, ApiKeyError } from "@/lib/logging/errors";
 
 // Mock logger
-vi.mock("@/lib/logger", () => ({
+vi.mock("@/lib/logging/logger", () => ({
   logger: {
     child: () => ({
       info: vi.fn(),
@@ -17,7 +17,7 @@ vi.mock("@/lib/logger", () => ({
 // Mock getAuthContext and checkPermissionWithContext
 const mockGetAuthContext = vi.fn();
 const mockCheckPermissionWithContext = vi.fn();
-vi.mock("@/lib/access-control", () => ({
+vi.mock("@/lib/auth/access-control", () => ({
   getAuthContext: (...args: any[]) => mockGetAuthContext(...args),
   checkPermissionWithContext: (...args: any[]) => mockCheckPermissionWithContext(...args),
   AuthContext: {},
@@ -45,7 +45,7 @@ vi.mock("@/services/audit-service", () => ({
   },
 }));
 
-vi.mock("@/lib/permissions", () => ({
+vi.mock("@/lib/auth/permissions", () => ({
   PERMISSIONS: {
     JOBS: { EXECUTE: "jobs:execute" },
   },

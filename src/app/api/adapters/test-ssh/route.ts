@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { MssqlSshTransfer } from "@/lib/adapters/database/mssql/ssh-transfer";
 import { MSSQLConfig } from "@/lib/adapters/definitions";
 import { SshClient } from "@/lib/ssh";
 import { extractSshConfig } from "@/lib/ssh";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ route: "adapters/test-ssh" });
 

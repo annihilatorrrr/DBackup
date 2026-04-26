@@ -435,8 +435,8 @@ Implement the full `StorageAdapter` interface. All six methods are required:
 ```typescript
 import { StorageAdapter, FileInfo } from "@/lib/core/interfaces";
 import { WebDAVSchema } from "@/lib/adapters/definitions";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ adapter: "webdav" });
 

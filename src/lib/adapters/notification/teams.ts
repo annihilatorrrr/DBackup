@@ -1,7 +1,7 @@
 import { NotificationAdapter } from "@/lib/core/interfaces";
 import { TeamsSchema, TeamsConfig } from "@/lib/adapters/definitions";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 import { validateOutboundUrl } from "@/lib/url-validation";
 
 const log = logger.child({ adapter: "teams" });

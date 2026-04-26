@@ -1,8 +1,8 @@
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { getUserPermissions } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { getUserPermissions } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { EncryptionProfilesList } from "@/components/settings/encryption-profiles-list";
 import { CredentialProfilesList } from "@/components/settings/credential-profiles-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

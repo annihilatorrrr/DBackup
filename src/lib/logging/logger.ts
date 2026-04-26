@@ -9,7 +9,7 @@
  *
  * @example
  * ```typescript
- * import { logger } from "@/lib/logger";
+ * import { logger } from "@/lib/logging/logger";
  *
  * // Basic usage
  * logger.info("User logged in", { userId: "123" });

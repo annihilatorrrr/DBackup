@@ -1,8 +1,8 @@
 import { randomBytes, createHash, scryptSync } from "crypto";
 import prisma from "@/lib/prisma";
-import { logger } from "@/lib/logger";
-import { ApiKeyError, NotFoundError, wrapError } from "@/lib/errors";
-import { Permission } from "@/lib/permissions";
+import { logger } from "@/lib/logging/logger";
+import { ApiKeyError, NotFoundError, wrapError } from "@/lib/logging/errors";
+import { Permission } from "@/lib/auth/permissions";
 
 const log = logger.child({ service: "ApiKeyService" });
 

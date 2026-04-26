@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { prismaMock } from '@/lib/testing/prisma-mock';
 import { JobService, CreateJobInput } from '@/services/job-service';
-import { scheduler } from '@/lib/scheduler';
+import { scheduler } from '@/lib/server/scheduler';
 
 // Mock the global scheduler singleton to avoid side effects (like starting cron timers)
-vi.mock('@/lib/scheduler', () => ({
+vi.mock('@/lib/server/scheduler', () => ({
     scheduler: {
         refresh: vi.fn().mockResolvedValue(undefined)
     }

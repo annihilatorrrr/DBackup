@@ -26,7 +26,7 @@ import { AdapterPicker } from "./adapter-picker";
 import { AdapterIcon } from "@/components/adapter/adapter-icon";
 import { HealthStatusBadge } from "@/components/ui/health-status-badge";
 import { StorageHistoryModal } from "@/components/dashboard/widgets/storage-history-modal";
-import { PERMISSIONS } from "@/lib/permissions";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 export function AdapterManager({ type, title, description, canManage = true, permissions = [] }: AdapterManagerProps) {
     const [configs, setConfigs] = useState<AdapterConfig[]>([]);

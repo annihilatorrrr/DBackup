@@ -23,7 +23,7 @@ vi.mock("@/lib/core/registry", () => ({
   },
 }));
 
-vi.mock("@/lib/logger", () => ({
+vi.mock("@/lib/logging/logger", () => ({
   logger: {
     child: () => ({
       debug: vi.fn(),
@@ -34,7 +34,7 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
-vi.mock("@/lib/errors", () => ({
+vi.mock("@/lib/logging/errors", () => ({
   wrapError: vi.fn((e: any) => e),
 }));
 

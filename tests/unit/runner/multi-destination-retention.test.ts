@@ -7,7 +7,7 @@ import { RetentionService } from '@/services/retention-service';
 vi.mock('@/lib/prisma', () => ({
     default: { execution: { update: vi.fn() } }
 }));
-vi.mock('@/lib/logger', () => ({
+vi.mock('@/lib/logging/logger', () => ({
     logger: { child: () => ({ warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() }) },
 }));
 vi.mock('@/services/retention-service');

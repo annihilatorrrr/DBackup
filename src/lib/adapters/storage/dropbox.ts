@@ -5,8 +5,8 @@ import fs from "fs/promises";
 import { createReadStream } from "fs";
 import path from "path";
 import { LogLevel, LogType } from "@/lib/core/logs";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ adapter: "dropbox" });
 

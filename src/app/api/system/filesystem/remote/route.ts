@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkPermission } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { checkPermission } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import Client from "ssh2-sftp-client";
-import { logger } from "@/lib/logger";
-import { wrapError, getErrorMessage } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError, getErrorMessage } from "@/lib/logging/errors";
 
 const log = logger.child({ route: "filesystem/remote" });
 

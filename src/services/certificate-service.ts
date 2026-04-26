@@ -1,8 +1,8 @@
 import { execSync } from "node:child_process";
 import { existsSync, writeFileSync, mkdirSync, unlinkSync, renameSync } from "node:fs";
 import path from "node:path";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ service: "CertificateService" });
 

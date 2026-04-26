@@ -1,6 +1,6 @@
 
 import { randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
-import { EncryptionError } from '@/lib/errors';
+import { EncryptionError } from '@/lib/logging/errors';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;

@@ -4,10 +4,10 @@ import { registerAdapters } from "@/lib/adapters";
 import { overlayCredentialsOnConfig } from "@/lib/adapters/config-resolver";
 import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
-import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PERMISSIONS, Permission } from "@/lib/permissions";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PERMISSIONS, Permission } from "@/lib/auth/permissions";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ route: "adapters/test-connection" });
 

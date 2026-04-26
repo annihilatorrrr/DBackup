@@ -1,6 +1,6 @@
 import { AdapterManager } from "@/components/adapter/adapter-manager";
-import { getUserPermissions } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { getUserPermissions } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 export default async function NotificationsPage() {
     const permissions = await getUserPermissions();

@@ -1,9 +1,9 @@
 "use server";
 
-import { checkPermission } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
-import { logger } from "@/lib/logger";
-import { wrapError, getErrorMessage } from "@/lib/errors";
+import { checkPermission } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { logger } from "@/lib/logging/logger";
+import { wrapError, getErrorMessage } from "@/lib/logging/errors";
 import * as certificateService from "@/services/certificate-service";
 
 const log = logger.child({ action: "certificate" });

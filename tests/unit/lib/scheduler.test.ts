@@ -1,6 +1,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { BackupScheduler } from '@/lib/scheduler';
+import { BackupScheduler } from '@/lib/server/scheduler';
 import prisma from '@/lib/prisma';
 import cron from 'node-cron';
 import { runJob } from '@/lib/runner';

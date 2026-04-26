@@ -3,7 +3,7 @@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { AVAILABLE_PERMISSIONS } from "@/lib/permissions"
+import { AVAILABLE_PERMISSIONS } from "@/lib/auth/permissions"
 import { cn } from "@/lib/utils"
 
 interface PermissionPickerProps {

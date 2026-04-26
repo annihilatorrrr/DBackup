@@ -3,8 +3,8 @@ import type { ScheduledTask } from "node-cron";
 import prisma from "@/lib/prisma";
 import { runJob } from "@/lib/runner";
 import { systemTaskService, SYSTEM_TASKS } from "@/services/system-task-service";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ module: "Scheduler" });
 

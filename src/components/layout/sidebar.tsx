@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { LayoutDashboard, Database, HardDrive, FolderOpen, CalendarClock, History, Settings, Bell, ChevronsUpDown, LogOut, Moon, Sun, Monitor, Users, User, Lock, BookOpen, SearchCode, Rocket, ArrowUpCircle, FileCode2, Globe } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { useSession, signOut } from "@/lib/auth-client"
+import { useSession, signOut } from "@/lib/auth/client"
 import Image from "next/image"
 import {
     DropdownMenu,
@@ -28,7 +28,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useTheme } from "next-themes"
-import { PERMISSIONS } from "@/lib/permissions"
+import { PERMISSIONS } from "@/lib/auth/permissions"
 
 interface SidebarItem {
     icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;

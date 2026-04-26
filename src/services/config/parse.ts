@@ -1,12 +1,12 @@
 import { AppConfigurationBackup } from "@/lib/types/config-backup";
-import { createDecryptionStream } from "@/lib/crypto-stream";
+import { createDecryptionStream } from "@/lib/crypto/stream";
 import { createGunzip } from "zlib";
 import { createReadStream, promises as fs } from "fs";
 import { Readable, Transform } from "stream";
 import { getProfileMasterKey } from "@/services/encryption-service";
 import { pipeline } from "stream/promises";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const svcLog = logger.child({ service: "ConfigService" });
 

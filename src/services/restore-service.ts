@@ -1,8 +1,8 @@
 import prisma from "@/lib/prisma";
 import { LogEntry } from "@/lib/core/logs";
 import path from "path";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 import { registerAdapters } from "@/lib/adapters";
 import type { RestoreInput } from "./restore/types";
 import { preflightRestore } from "./restore/preflight";

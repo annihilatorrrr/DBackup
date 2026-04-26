@@ -1,7 +1,7 @@
 import { AdapterManager } from "@/components/adapter/adapter-manager";
 import { OAuthToastHandler } from "@/components/adapter/oauth-toast-handler";
-import { getUserPermissions } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { getUserPermissions } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { Suspense } from "react";
 
 export default async function DestinationsPage() {

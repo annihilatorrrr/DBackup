@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/logging/logger";
 
 const log = logger.child({ module: "ExecutionRecovery" });
 

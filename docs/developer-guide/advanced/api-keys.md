@@ -137,7 +137,7 @@ Request with "Authorization: Bearer dbackup_abc123..."
 
 ## Unified Authentication (`getAuthContext`)
 
-Location: `src/lib/access-control.ts`
+Location: `src/lib/auth/access-control.ts`
 
 The `getAuthContext()` function provides a single entry point for authenticating requests from both browser sessions and API keys.
 
@@ -355,7 +355,7 @@ API key operations generate audit log entries:
 API key-specific errors use the `ApiKeyError` class:
 
 ```typescript
-// src/lib/errors.ts
+// src/lib/logging/errors.ts
 export class ApiKeyError extends DBackupError {
   constructor(reason: "disabled" | "expired" | string) {
     super(`API key error: ${reason}`);
@@ -396,8 +396,8 @@ export class ApiKeyError extends DBackupError {
 When creating a new API route that should support API key authentication:
 
 ```typescript
-import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 export async function GET(req: Request) {
   // 1. Get auth context (session or API key)

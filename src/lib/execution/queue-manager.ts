@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
-import { logger } from "@/lib/logger";
-import { isShutdownRequested } from "@/lib/shutdown";
+import { logger } from "@/lib/logging/logger";
+import { isShutdownRequested } from "@/lib/server/shutdown";
 
 const log = logger.child({ module: "Queue" });
 

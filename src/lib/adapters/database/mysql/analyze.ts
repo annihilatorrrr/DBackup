@@ -1,7 +1,7 @@
 import { execFileAsync } from "./connection";
 import { isMultiDbTar, readTarManifest } from "../common/tar-utils";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ adapter: "mysql", module: "analyze" });
 

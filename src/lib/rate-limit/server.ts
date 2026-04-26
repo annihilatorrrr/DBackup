@@ -1,11 +1,11 @@
-import prisma from './prisma';
-import { logger } from './logger';
+import prisma from '@/lib/prisma';
+import { logger } from '@/lib/logging/logger';
 import {
     RATE_LIMIT_KEYS,
     RATE_LIMIT_DEFAULTS,
     applyExternalConfig,
     type RateLimitConfig,
-} from './rate-limit';
+} from '.';
 
 const log = logger.child({ module: "RateLimit" });
 

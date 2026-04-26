@@ -68,7 +68,7 @@ All database adapters use a unified TAR archive for multi-database backups:
 // src/app/actions/user.ts
 await checkPermission(PERMISSIONS.USERS.WRITE);
 ```
-Permissions defined in [src/lib/permissions.ts](src/lib/permissions.ts). Access control via [src/lib/access-control.ts](src/lib/access-control.ts).
+Permissions defined in [src/lib/auth/permissions.ts](src/lib/auth/permissions.ts). Access control via [src/lib/auth/access-control.ts](src/lib/auth/access-control.ts).
 
 ## Key Patterns
 
@@ -116,7 +116,7 @@ npx prisma migrate dev    # Create DB migration
 
 **Alternative for local dev only:** `npx prisma db push` - applies schema changes without migration history, safe to run alongside the dev server, and never prompts for a reset.
 
-## Queue System (`src/lib/queue-manager.ts`)
+## Queue System (`src/lib/execution/queue-manager.ts`)
 
 Backups run asynchronously via a **FIFO queue** with configurable concurrency:
 
@@ -236,9 +236,9 @@ interface RestoreInput {
 
 **IMPORTANT:** Never use `console.log`, `console.error`, or `console.warn` directly. Use the centralized logger instead.
 
-### System Logger (`src/lib/logger.ts`)
+### System Logger (`src/lib/logging/logger.ts`)
 ```typescript
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/logging/logger";
 
 // Create a child logger with context
 const log = logger.child({ service: "MyService" });
@@ -248,9 +248,9 @@ log.info("Operation started", { jobId: "123" });
 log.error("Operation failed", { jobId: "123" }, wrapError(error));
 ```
 
-### Custom Errors (`src/lib/errors.ts`)
+### Custom Errors (`src/lib/logging/errors.ts`)
 ```typescript
-import { AdapterError, wrapError, getErrorMessage } from "@/lib/errors";
+import { AdapterError, wrapError, getErrorMessage } from "@/lib/logging/errors";
 
 // Throw specific errors
 throw new AdapterError("mysql", "Connection timeout");
@@ -277,10 +277,10 @@ catch (e: unknown) {
 |---------|----------|
 | DB Schema | [prisma/schema.prisma](prisma/schema.prisma) |
 | Types/Interfaces | [src/lib/core/](src/lib/core/) |
-| Permissions | [src/lib/permissions.ts](src/lib/permissions.ts) |
+| Permissions | [src/lib/auth/permissions.ts](src/lib/auth/permissions.ts) |
 | Adapters | [src/lib/adapters/](src/lib/adapters/) |
 | Services | [src/services/](src/services/) |
 | Server Actions | [src/app/actions/](src/app/actions/) |
-| Scheduler (Cron) | [src/lib/scheduler.ts](src/lib/scheduler.ts) |
-| Logger | [src/lib/logger.ts](src/lib/logger.ts) |
-| Error Classes | [src/lib/errors.ts](src/lib/errors.ts) |
+| Scheduler (Cron) | [src/lib/server/scheduler.ts](src/lib/server/scheduler.ts) |
+| Logger | [src/lib/logging/logger.ts](src/lib/logging/logger.ts) |
+| Error Classes | [src/lib/logging/errors.ts](src/lib/logging/errors.ts) |

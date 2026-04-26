@@ -1,5 +1,5 @@
 import { RateLimiterMemory } from 'rate-limiter-flexible';
-import { logger } from './logger';
+import { logger } from '@/lib/logging/logger';
 
 const log = logger.child({ module: "RateLimit" });
 

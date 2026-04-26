@@ -5,8 +5,8 @@ import fs from "fs/promises";
 import path from "path";
 import { createReadStream, createWriteStream } from "fs";
 import { pipeline } from "stream/promises";
-import { logger } from "@/lib/logger";
-import { wrapError, AdapterError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError, AdapterError } from "@/lib/logging/errors";
 
 const log = logger.child({ adapter: "local-filesystem" });
 

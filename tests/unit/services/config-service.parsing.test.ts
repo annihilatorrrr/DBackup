@@ -32,7 +32,7 @@ vi.mock('zlib', () => {
 });
 
 // 3. Mock Crypto Stream
-vi.mock('@/lib/crypto-stream', () => ({
+vi.mock('@/lib/crypto/stream', () => ({
     createDecryptionStream: vi.fn().mockImplementation(() => {
         const pt = new PassThrough();
         return pt;
@@ -49,7 +49,7 @@ vi.mock('@/lib/prisma', () => ({ default: {} }));
 
 // Imports for assertions
 import { createReadStream } from 'fs';
-import { createDecryptionStream } from '@/lib/crypto-stream';
+import { createDecryptionStream } from '@/lib/crypto/stream';
 import { createGunzip } from 'zlib';
 
 describe('ConfigService Parsing (Offline Restore)', () => {

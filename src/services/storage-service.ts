@@ -5,13 +5,13 @@ import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { pipeline } from "stream/promises";
 import { createReadStream, createWriteStream, promises as fs } from "fs";
 import { getProfileMasterKey } from "@/services/encryption-service";
-import { createDecryptionStream } from "@/lib/crypto-stream";
+import { createDecryptionStream } from "@/lib/crypto/stream";
 import { getTempDir } from "@/lib/temp-dir";
 import path from "path";
 import AdmZip from "adm-zip";
 import { registerAdapters } from "@/lib/adapters";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ service: "StorageService" });
 

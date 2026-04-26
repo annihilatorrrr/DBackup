@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { checkPermission, getCurrentUserWithGroup } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { checkPermission, getCurrentUserWithGroup } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { apiKeyService } from "@/services/api-key-service";
 import { auditService } from "@/services/audit-service";
 import { AUDIT_ACTIONS, AUDIT_RESOURCES } from "@/lib/core/audit-types";
-import { logger } from "@/lib/logger";
-import { wrapError, getErrorMessage } from "@/lib/errors";
-import type { Permission } from "@/lib/permissions";
+import { logger } from "@/lib/logging/logger";
+import { wrapError, getErrorMessage } from "@/lib/logging/errors";
+import type { Permission } from "@/lib/auth/permissions";
 
 const log = logger.child({ action: "api-key" });
 

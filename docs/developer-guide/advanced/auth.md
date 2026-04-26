@@ -180,7 +180,7 @@ Better Auth provides built-in endpoints for session management:
 Client-side usage:
 
 ```typescript
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth/client";
 
 // List sessions
 const { data: sessions } = await authClient.listSessions();
@@ -210,7 +210,7 @@ export async function getServerSession() {
 ### Client-Side Session Access
 
 ```typescript
-import { useSession } from "@/lib/auth-client";
+import { useSession } from "@/lib/auth/client";
 
 function ProfileButton() {
   const { data: session, isPending } = useSession();

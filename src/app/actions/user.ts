@@ -1,14 +1,14 @@
 "use server"
 
 import { revalidatePath } from "next/cache";
-import { checkPermission, getCurrentUserWithGroup } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { checkPermission, getCurrentUserWithGroup } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { userService } from "@/services/user-service";
 import { authService } from "@/services/auth-service";
 import { auditService } from "@/services/audit-service";
 import { AUDIT_ACTIONS, AUDIT_RESOURCES } from "@/lib/core/audit-types";
-import { logger } from "@/lib/logger";
-import { wrapError, getErrorMessage } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError, getErrorMessage } from "@/lib/logging/errors";
 import { notify } from "@/services/system-notification-service";
 import { NOTIFICATION_EVENTS } from "@/lib/notifications";
 

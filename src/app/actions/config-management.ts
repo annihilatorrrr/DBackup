@@ -1,15 +1,15 @@
 "use server";
 
-import { checkPermission } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { checkPermission } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { ConfigService } from "@/services/config-service";
 import { RestoreOptions } from "@/lib/types/config-backup";
 import { runConfigBackup } from "@/lib/runner/config-runner";
 import { getTempDir } from "@/lib/temp-dir";
 import { promises as fs } from "fs";
 import path from "path";
-import { logger } from "@/lib/logger";
-import { wrapError, getErrorMessage } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError, getErrorMessage } from "@/lib/logging/errors";
 
 const log = logger.child({ action: "config-management" });
 const configService = new ConfigService();

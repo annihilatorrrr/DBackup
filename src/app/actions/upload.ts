@@ -7,9 +7,9 @@ import { existsSync, mkdirSync } from "fs";
 import path from "path";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { checkPermission as _checkPermission, getUserPermissions } from "@/lib/access-control";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { checkPermission as _checkPermission, getUserPermissions } from "@/lib/auth/access-control";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ action: "upload" });
 

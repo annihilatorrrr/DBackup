@@ -13,8 +13,8 @@ import { registry } from "@/lib/core/registry";
 import { NotificationAdapter } from "@/lib/core/interfaces";
 import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { registerAdapters } from "@/lib/adapters";
-import { logger } from "@/lib/logger";
-import { wrapError, getErrorMessage } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError, getErrorMessage } from "@/lib/logging/errors";
 import { renderTemplate } from "@/lib/notifications/templates";
 import { getEventDefinition } from "@/lib/notifications/events";
 import {

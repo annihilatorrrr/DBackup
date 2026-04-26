@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { AuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PermissionError, ApiKeyError } from "@/lib/errors";
-import { PERMISSIONS, AVAILABLE_PERMISSIONS } from "@/lib/permissions";
+import { AuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PermissionError, ApiKeyError } from "@/lib/logging/errors";
+import { PERMISSIONS, AVAILABLE_PERMISSIONS } from "@/lib/auth/permissions";
 
 // Mock logger
-vi.mock("@/lib/logger", () => ({
+vi.mock("@/lib/logging/logger", () => ({
   logger: {
     child: () => ({
       info: vi.fn(),
@@ -61,7 +61,7 @@ vi.mock("@/services/api-key-service", () => ({
 }));
 
 // Import getAuthContext after mocks are defined
-const { getAuthContext } = await import("@/lib/access-control");
+const { getAuthContext } = await import("@/lib/auth/access-control");
 
 describe("Access Control", () => {
   beforeEach(() => {

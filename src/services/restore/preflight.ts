@@ -3,8 +3,8 @@ import { registry } from "@/lib/core/registry";
 import { StorageAdapter, DatabaseAdapter, BackupMetadata } from "@/lib/core/interfaces";
 import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { compareVersions } from "@/lib/utils";
-import { logger } from "@/lib/logger";
-import { wrapError, getErrorMessage } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError, getErrorMessage } from "@/lib/logging/errors";
 import type { RestoreInput } from "./types";
 
 const svcLog = logger.child({ service: "RestoreService" });

@@ -1,7 +1,7 @@
 import { createReadStream } from "fs";
 import { Transform } from "stream";
-import { createDecryptionStream } from "@/lib/crypto-stream";
-import { getDecompressionStream, CompressionType } from "@/lib/compression";
+import { createDecryptionStream } from "@/lib/crypto/stream";
+import { getDecompressionStream, CompressionType } from "@/lib/crypto/compression";
 import { getProfileMasterKey, getEncryptionProfiles } from "@/services/encryption-service";
 import { BackupMetadata } from "@/lib/core/interfaces";
 

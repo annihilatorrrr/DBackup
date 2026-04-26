@@ -11,7 +11,7 @@ import {
 } from "@/services/credential-service";
 import prisma from "@/lib/prisma";
 import * as cryptoLib from "@/lib/crypto";
-import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
+import { ConflictError, NotFoundError, ValidationError } from "@/lib/logging/errors";
 
 vi.mock("@/lib/prisma", () => ({
     default: {

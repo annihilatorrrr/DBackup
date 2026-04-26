@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { encrypt, decrypt } from "@/lib/crypto";
-import { logger } from "@/lib/logger";
-import { ConflictError, NotFoundError, ValidationError, wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { ConflictError, NotFoundError, ValidationError, wrapError } from "@/lib/logging/errors";
 import {
     CREDENTIAL_SCHEMAS,
     type CredentialType,

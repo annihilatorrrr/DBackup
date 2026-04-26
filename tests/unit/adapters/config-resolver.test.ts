@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { resolveAdapterConfig, overlayCredentialsOnConfig } from "@/lib/adapters/config-resolver";
 import { registry } from "@/lib/core/registry";
-import { ConfigurationError, NotFoundError } from "@/lib/errors";
+import { ConfigurationError, NotFoundError } from "@/lib/logging/errors";
 
 vi.mock("@/services/credential-service", () => ({
     getDecryptedCredentialData: vi.fn(),
