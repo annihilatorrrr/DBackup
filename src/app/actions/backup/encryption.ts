@@ -2,7 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { getUserPermissions, checkPermission as _checkPermission } from "@/lib/auth/access-control"; // ADDED
+import { getUserPermissions } from "@/lib/auth/access-control";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import * as encryptionService from "@/services/backup/encryption-service";
 import { revalidatePath } from "next/cache";
