@@ -8,6 +8,9 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
+import Link from "next/link";
 import { ADAPTER_DEFINITIONS, AdapterDefinition } from "@/lib/adapters/definitions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataTable } from "@/components/ui/data-table";
@@ -303,6 +306,8 @@ export function AdapterManager({ type, title, description, canManage = true, per
                 </div>
             </div>
 
+            <CredentialUpgradeBanner configs={configs} />
+
             {isLoading ? (
                 <Card>
                     <CardHeader>
@@ -412,5 +417,52 @@ export function AdapterManager({ type, title, description, canManage = true, per
                 />
             )}
         </div>
+    );
+}
+
+/**
+ * Banner shown at the top of the adapter manager when one or more adapters
+ * are flagged OFFLINE due to a missing credential profile assignment.
+ *
+ * The startup-checks job sets `lastError = "No credential profile assigned"`
+ * for adapters that require but don't have a primary credential. This banner
+ * informs the user and links them to the vault to create/assign profiles.
+ */
+function CredentialUpgradeBanner({ configs }: { configs: AdapterConfig[] }) {
+    const affected = configs.filter(
+        (c) => c.lastStatus === "OFFLINE" && c.lastError === "No credential profile assigned"
+    );
+    if (affected.length === 0) return null;
+
+    return (
+        <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Credential profiles required</AlertTitle>
+            <AlertDescription>
+                <p className="mb-2">
+                    {affected.length === 1 ? "1 adapter" : `${affected.length} adapters`} need a credential profile to come back online:
+                </p>
+                <ul className="list-disc pl-5 space-y-0.5 mb-2">
+                    {affected.slice(0, 5).map((a) => (
+                        <li key={a.id}>
+                            <span className="font-medium">{a.name}</span>{" "}
+                            <span className="text-xs">({a.adapterId})</span>
+                        </li>
+                    ))}
+                    {affected.length > 5 && (
+                        <li className="text-xs italic">
+                            ...and {affected.length - 5} more.
+                        </li>
+                    )}
+                </ul>
+                <p className="text-sm">
+                    Create reusable profiles in the{" "}
+                    <Link href="/dashboard/vault" className="underline font-medium">
+                        Security Vault
+                    </Link>
+                    , then assign them by editing each adapter.
+                </p>
+            </AlertDescription>
+        </Alert>
     );
 }

@@ -9,9 +9,11 @@ interface UseAdapterConnectionProps {
     form: UseFormReturn<any>;
     onSuccess?: (data: any) => Promise<void>;
     initialDataId?: string;
+    primaryCredentialId?: string | null;
+    sshCredentialId?: string | null;
 }
 
-export function useAdapterConnection({ adapterId, form, initialDataId }: UseAdapterConnectionProps) {
+export function useAdapterConnection({ adapterId, form, initialDataId, primaryCredentialId, sshCredentialId }: UseAdapterConnectionProps) {
     const [connectionError, setConnectionError] = useState<string | null>(null);
     const [pendingSubmission, setPendingSubmission] = useState<any | null>(null);
     const [detectedVersion, setDetectedVersion] = useState<string | null>(null);
@@ -36,7 +38,9 @@ export function useAdapterConnection({ adapterId, form, initialDataId }: UseAdap
                 body: JSON.stringify({
                     adapterId: resolvedAdapterId,
                     config: data.config,
-                    configId: initialDataId
+                    configId: initialDataId,
+                    primaryCredentialId: primaryCredentialId ?? null,
+                    sshCredentialId: sshCredentialId ?? null
                 })
             });
             const result = await res.json();
@@ -69,7 +73,12 @@ export function useAdapterConnection({ adapterId, form, initialDataId }: UseAdap
              const testRes = await fetch('/api/adapters/test-connection', {
                  method: 'POST',
                  headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({ adapterId: adapterId, config: currentConfig })
+                 body: JSON.stringify({
+                     adapterId: adapterId,
+                     config: currentConfig,
+                     primaryCredentialId: primaryCredentialId ?? null,
+                     sshCredentialId: sshCredentialId ?? null
+                 })
              });
              const testResult = await testRes.json();
 
@@ -84,7 +93,12 @@ export function useAdapterConnection({ adapterId, form, initialDataId }: UseAdap
              const res = await fetch('/api/adapters/access-check', {
                  method: 'POST',
                  headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({ adapterId: adapterId, config: currentConfig })
+                 body: JSON.stringify({
+                     adapterId: adapterId,
+                     config: currentConfig,
+                     primaryCredentialId: primaryCredentialId ?? null,
+                     sshCredentialId: sshCredentialId ?? null
+                 })
              });
              const data = await res.json();
 

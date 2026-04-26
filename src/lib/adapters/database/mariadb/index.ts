@@ -10,6 +10,7 @@ export const MariaDBAdapter: DatabaseAdapter = {
     type: "database",
     name: "MariaDB",
     configSchema: MariaDBSchema,
+    credentials: { primary: "USERNAME_PASSWORD", ssh: "SSH_KEY" },
     dump,
     restore,
     prepareRestore,

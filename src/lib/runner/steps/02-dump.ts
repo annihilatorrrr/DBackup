@@ -1,5 +1,5 @@
 import { RunnerContext } from "../types";
-import { decryptConfig } from "@/lib/crypto";
+import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { getTempDir } from "@/lib/temp-dir";
 import path from "path";
 import fs from "fs/promises";
@@ -30,7 +30,7 @@ export async function stepExecuteDump(ctx: RunnerContext) {
     ctx.log(`Prepared temporary path: ${tempFile}`);
 
     // 2. Prepare Config & Metadata
-    const sourceConfig = decryptConfig(JSON.parse(job.source.config));
+    const sourceConfig = await resolveAdapterConfig(job.source) as any;
     // Inject adapterId as type for Dialect selection (e.g. 'mariadb')
     sourceConfig.type = job.source.adapterId;
 

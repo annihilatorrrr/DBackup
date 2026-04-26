@@ -37,6 +37,7 @@ export const SFTPAdapter: StorageAdapter = {
     type: "storage",
     name: "SFTP (SSH)",
     configSchema: SFTPSchema,
+    credentials: { primary: "SSH_KEY" },
 
     async upload(config: SFTPConfig, localPath: string, remotePath: string, onProgress?: (percent: number) => void, onLog?: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void): Promise<boolean> {
         let sftp: Client | null = null;

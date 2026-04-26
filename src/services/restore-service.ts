@@ -2,7 +2,7 @@ import prisma from "@/lib/prisma";
 import { registry } from "@/lib/core/registry";
 import { registerAdapters } from "@/lib/adapters";
 import { StorageAdapter, DatabaseAdapter, BackupMetadata } from "@/lib/core/interfaces";
-import { decryptConfig } from "@/lib/crypto";
+import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { compareVersions, formatDuration, formatBytes } from "@/lib/utils";
 import { getTempDir } from "@/lib/temp-dir";
 import path from "path";
@@ -65,7 +65,7 @@ export class RestoreService {
                 }
 
                 if (dbsToCheck.length > 0) {
-                    const dbConf = decryptConfig(JSON.parse(targetConfig.config));
+                    const dbConf = await resolveAdapterConfig(targetConfig) as any;
                     if (privilegedAuth) dbConf.privilegedAuth = privilegedAuth;
 
                     await targetAdapter.prepareRestore(dbConf, dbsToCheck);
@@ -81,7 +81,7 @@ export class RestoreService {
 
             if (storageAdapter && storageAdapter.read && targetAdapter && targetAdapter.test) {
                 try {
-                    const storageConf = decryptConfig(JSON.parse(storageConfig.config));
+                    const storageConf = await resolveAdapterConfig(storageConfig) as any;
                     const metaPath = file + ".meta.json";
                     const metadataContent = await storageAdapter.read(storageConf, metaPath);
 
@@ -94,7 +94,7 @@ export class RestoreService {
                         }
 
                         if (metadata.engineVersion) {
-                            const dbConf = decryptConfig(JSON.parse(targetConfig.config));
+                            const dbConf = await resolveAdapterConfig(targetConfig) as any;
                             if (privilegedAuth) dbConf.privilegedAuth = privilegedAuth;
 
                             const testResult = await targetAdapter.test(dbConf) as { success: boolean; version?: string; edition?: string };
@@ -293,7 +293,7 @@ export class RestoreService {
             const tempDir = getTempDir();
             tempFile = path.join(tempDir, path.basename(file));
 
-            const sConf = decryptConfig(JSON.parse(storageConfig.config));
+            const sConf = await resolveAdapterConfig(storageConfig) as any;
 
             // --- METADATA & COMPRESSION/ENCRYPTION CHECK ---
             let isEncrypted = false;
@@ -328,7 +328,7 @@ export class RestoreService {
 
                     // Version Check
                     if (metadata.engineVersion) {
-                        const usageConfig = { ...decryptConfig(JSON.parse(sourceConfig.config)) };
+                        const usageConfig = { ...(await resolveAdapterConfig(sourceConfig) as any) };
                          if (privilegedAuth) {
                            usageConfig.privilegedAuth = privilegedAuth;
                            // Some adapters might need user/pass merged to root
@@ -627,7 +627,7 @@ export class RestoreService {
             setStage("Restoring Database");
             log(`Starting database restore on ${sourceConfig.name}...`, 'info');
 
-            const dbConf = decryptConfig(JSON.parse(sourceConfig.config));
+            const dbConf = await resolveAdapterConfig(sourceConfig) as any;
             // Inject adapterId as type for Dialect selection
             dbConf.type = sourceConfig.adapterId;
 

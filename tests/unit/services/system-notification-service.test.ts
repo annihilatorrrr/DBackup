@@ -140,6 +140,9 @@ describe("SystemNotificationService", () => {
       lastHealthCheck: null,
       lastStatus: "ONLINE",
       consecutiveFailures: 0,
+      lastError: null,
+      primaryCredentialId: null,
+      sshCredentialId: null,
     };
 
     const discordChannel = {
@@ -154,6 +157,9 @@ describe("SystemNotificationService", () => {
       lastHealthCheck: null,
       lastStatus: "ONLINE",
       consecutiveFailures: 0,
+      lastError: null,
+      primaryCredentialId: null,
+      sshCredentialId: null,
     };
 
     it("should skip disabled events", async () => {

@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import fs from "fs/promises";
 import { registry } from "@/lib/core/registry";
 import { NotificationAdapter } from "@/lib/core/interfaces";
-import { decryptConfig } from "@/lib/crypto";
+import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { logger } from "@/lib/logger";
 import { wrapError, getErrorMessage } from "@/lib/errors";
 import { renderTemplate, NOTIFICATION_EVENTS } from "@/lib/notifications";
@@ -88,7 +88,7 @@ export async function stepFinalize(ctx: RunnerContext) {
                     const notifyAdapter = registry.get(channel.adapterId) as NotificationAdapter;
 
                     if (notifyAdapter) {
-                        const channelConfig = decryptConfig(JSON.parse(channel.config));
+                        const channelConfig = await resolveAdapterConfig(channel) as any;
                         const eventType = isSuccess
                             ? NOTIFICATION_EVENTS.BACKUP_SUCCESS
                             : isPartial

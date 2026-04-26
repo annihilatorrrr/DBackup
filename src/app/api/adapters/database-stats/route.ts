@@ -6,7 +6,7 @@ import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control
 import { PERMISSIONS } from "@/lib/permissions";
 import { DatabaseInfo } from "@/lib/core/interfaces";
 import prisma from "@/lib/prisma";
-import { decryptConfig } from "@/lib/crypto";
+import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 
 // Ensure adapters are registered
 registerAdapters();
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
             }
 
             resolvedAdapterId = source.adapterId;
-            resolvedConfig = decryptConfig(JSON.parse(source.config));
+            resolvedConfig = await resolveAdapterConfig(source);
         }
 
         if (!resolvedAdapterId || !resolvedConfig) {

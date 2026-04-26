@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { ADAPTER_CREDENTIAL_REQUIREMENTS } from "@/lib/core/credential-requirements";
+import type { CredentialType } from "@/lib/core/credentials";
 
 export type AdapterDefinition = {
     id: string;
@@ -6,6 +8,7 @@ export type AdapterDefinition = {
     name: string;
     group?: string;
     configSchema: z.ZodObject<any>;
+    credentials?: { primary?: CredentialType; ssh?: CredentialType };
 }
 
 // Validation: Reject paths with null bytes or obvious shell injection patterns
@@ -385,6 +388,12 @@ export const ADAPTER_DEFINITIONS: AdapterDefinition[] = [
     { id: "twilio-sms", type: "notification", name: "SMS (Twilio)", configSchema: TwilioSmsSchema },
     { id: "email", type: "notification", name: "Email (SMTP)", configSchema: EmailSchema },
 ];
+
+// Attach credential requirements to every definition for the client form layer.
+for (const def of ADAPTER_DEFINITIONS) {
+    const reqs = ADAPTER_CREDENTIAL_REQUIREMENTS[def.id];
+    if (reqs) def.credentials = reqs;
+}
 
 export function getAdapterDefinition(id: string) {
     return ADAPTER_DEFINITIONS.find(d => d.id === id);

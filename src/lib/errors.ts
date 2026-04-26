@@ -166,6 +166,19 @@ export class NotFoundError extends ServiceError {
 }
 
 /**
+ * Error thrown when an operation conflicts with current state.
+ * Maps to HTTP 409 Conflict (e.g. trying to delete a resource that is still referenced).
+ */
+export class ConflictError extends DBackupError {
+  constructor(
+    message: string,
+    options?: { cause?: Error; context?: Record<string, unknown> }
+  ) {
+    super(message, "CONFLICT", options);
+  }
+}
+
+/**
  * Error thrown when validation fails
  */
 export class ValidationError extends DBackupError {

@@ -30,6 +30,10 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
     const initialMeta = initialData?.metadata ? JSON.parse(initialData.metadata) : {};
     const [healthNotificationsDisabled, setHealthNotificationsDisabled] = useState<boolean>(initialMeta.healthNotificationsDisabled === true);
 
+    // Credential profile assignments (Phase 4 - Generic Credential Profile System)
+    const [primaryCredentialId, setPrimaryCredentialId] = useState<string | null>(initialData?.primaryCredentialId ?? null);
+    const [sshCredentialId, setSshCredentialId] = useState<string | null>(initialData?.sshCredentialId ?? null);
+
     const selectedAdapter = adapters.find(a => a.id === selectedAdapterId);
 
     // Group adapters by their group field (preserves insertion order)
@@ -82,7 +86,9 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
     } = useAdapterConnection({
         adapterId: selectedAdapterId,
         form,
-        initialDataId: initialData?.id
+        initialDataId: initialData?.id,
+        primaryCredentialId,
+        sshCredentialId
     });
 
     // Update form schema/values when adapter changes
@@ -112,6 +118,8 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
                 config: data.config,
                 type: type, // ensure type is sent
                 metadata,
+                primaryCredentialId,
+                sshCredentialId,
             };
 
             const res = await fetch(url, {
@@ -139,7 +147,7 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
                  const testRes = await fetch('/api/adapters/test-connection', {
                      method: 'POST',
                      headers: { 'Content-Type': 'application/json' },
-                     body: JSON.stringify({ adapterId: data.adapterId, config: data.config })
+                     body: JSON.stringify({ adapterId: data.adapterId, config: data.config, primaryCredentialId, sshCredentialId })
                  });
 
                  const testResult = await testRes.json();
@@ -292,6 +300,10 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
                         detectedVersion={detectedVersion}
                         healthNotificationsDisabled={healthNotificationsDisabled}
                         onHealthNotificationsDisabledChange={setHealthNotificationsDisabled}
+                        primaryCredentialId={primaryCredentialId}
+                        sshCredentialId={sshCredentialId}
+                        onPrimaryChange={setPrimaryCredentialId}
+                        onSshChange={setSshCredentialId}
                     />
                 )}
 
@@ -301,11 +313,19 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
                         initialData={initialData}
                         healthNotificationsDisabled={healthNotificationsDisabled}
                         onHealthNotificationsDisabledChange={setHealthNotificationsDisabled}
+                        primaryCredentialId={primaryCredentialId}
+                        sshCredentialId={sshCredentialId}
+                        onPrimaryChange={setPrimaryCredentialId}
+                        onSshChange={setSshCredentialId}
                     />
                 )}
 
                 {selectedAdapter && type === 'notification' && (
-                    <NotificationFormContent adapter={selectedAdapter} />
+                    <NotificationFormContent
+                        adapter={selectedAdapter}
+                        primaryCredentialId={primaryCredentialId}
+                        onPrimaryChange={setPrimaryCredentialId}
+                    />
                 )}
 
                 {selectedAdapter && type !== 'database' && type !== 'storage' && type !== 'notification' && (

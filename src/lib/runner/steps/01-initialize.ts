@@ -3,7 +3,7 @@ import { RunnerContext, DestinationContext } from "../types";
 import { registry } from "@/lib/core/registry";
 import { DatabaseAdapter, StorageAdapter } from "@/lib/core/interfaces";
 import { registerAdapters } from "@/lib/adapters";
-import { decryptConfig } from "@/lib/crypto";
+import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { RetentionConfiguration } from "@/lib/core/retention";
 
 // Ensure adapters are loaded
@@ -79,7 +79,7 @@ export async function stepInitialize(ctx: RunnerContext) {
             configId: dest.config.id,
             configName: dest.config.name,
             adapter,
-            config: decryptConfig(JSON.parse(dest.config.config)),
+            config: await resolveAdapterConfig(dest.config) as any,
             retention,
             priority: dest.priority,
             adapterId: dest.config.adapterId,

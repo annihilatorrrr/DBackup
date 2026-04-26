@@ -64,6 +64,7 @@ export const FTPAdapter: StorageAdapter = {
     type: "storage",
     name: "FTP / FTPS",
     configSchema: FTPSchema,
+    credentials: { primary: "USERNAME_PASSWORD" },
 
     async upload(config: FTPConfig, localPath: string, remotePath: string, onProgress?: (percent: number) => void, onLog?: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void): Promise<boolean> {
         let client: Client | null = null;

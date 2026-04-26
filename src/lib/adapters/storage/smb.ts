@@ -62,6 +62,7 @@ export const SMBAdapter: StorageAdapter = {
     type: "storage",
     name: "SMB (Samba)",
     configSchema: SMBSchema,
+    credentials: { primary: "USERNAME_PASSWORD" },
 
     async upload(config: SMBConfig, localPath: string, remotePath: string, onProgress?: (percent: number) => void, onLog?: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void): Promise<boolean> {
         try {

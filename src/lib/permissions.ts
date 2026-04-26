@@ -41,6 +41,12 @@ export const PERMISSIONS = {
     READ: "vault:read",
     WRITE: "vault:write",
   },
+  CREDENTIALS: {
+    READ: "credentials:read",
+    WRITE: "credentials:write",
+    DELETE: "credentials:delete",
+    REVEAL: "credentials:reveal",
+  },
   PROFILE: {
     UPDATE_NAME: "profile:update_name",
     UPDATE_EMAIL: "profile:update_email",
@@ -80,6 +86,10 @@ export type Permission =
   | typeof PERMISSIONS.NOTIFICATIONS.WRITE
   | typeof PERMISSIONS.VAULT.READ
   | typeof PERMISSIONS.VAULT.WRITE
+  | typeof PERMISSIONS.CREDENTIALS.READ
+  | typeof PERMISSIONS.CREDENTIALS.WRITE
+  | typeof PERMISSIONS.CREDENTIALS.DELETE
+  | typeof PERMISSIONS.CREDENTIALS.REVEAL
   | typeof PERMISSIONS.PROFILE.UPDATE_NAME
   | typeof PERMISSIONS.PROFILE.UPDATE_EMAIL
   | typeof PERMISSIONS.PROFILE.UPDATE_PASSWORD
@@ -123,6 +133,12 @@ export const AVAILABLE_PERMISSIONS = [
   // Vault
   { id: PERMISSIONS.VAULT.READ, label: "View Vault (Encryption Profiles)", category: "Vault" },
   { id: PERMISSIONS.VAULT.WRITE, label: "Manage Vault (Create/Delete Keys)", category: "Vault" },
+
+  // Credentials
+  { id: PERMISSIONS.CREDENTIALS.READ, label: "View Credential Profiles", category: "Credentials" },
+  { id: PERMISSIONS.CREDENTIALS.WRITE, label: "Manage Credential Profiles (Create/Edit)", category: "Credentials" },
+  { id: PERMISSIONS.CREDENTIALS.DELETE, label: "Delete Credential Profiles", category: "Credentials" },
+  { id: PERMISSIONS.CREDENTIALS.REVEAL, label: "Reveal Credential Secrets", category: "Credentials" },
 
   // Profile & Security
   { id: PERMISSIONS.PROFILE.UPDATE_NAME, label: "Update Own Name", category: "Profile" },

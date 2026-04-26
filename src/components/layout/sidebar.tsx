@@ -115,7 +115,7 @@ export function Sidebar({ permissions = [], isSuperAdmin = false, updateAvailabl
     };
 
     return (
-        <div className="w-64 border-r bg-background h-screen flex flex-col hidden md:flex sticky top-0 overflow-hidden">
+        <div className="w-64 border-r bg-background h-screen hidden md:flex flex-col sticky top-0 overflow-hidden">
             <div className="h-16 flex items-center px-6 border-b gap-3">
                 <Image
                     src="/logo.svg"

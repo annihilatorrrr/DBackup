@@ -9,6 +9,7 @@ export const SQLiteAdapter: DatabaseAdapter = {
     type: "database",
     name: "SQLite",
     configSchema: SQLiteSchema,
+    credentials: { ssh: "SSH_KEY" },
     dump,
     restore,
     prepareRestore,

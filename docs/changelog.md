@@ -5,6 +5,10 @@ All notable changes to DBackup are documented here.
 ## v1.5.0
 *Release: In Progress*
 
+### ✨ Features
+
+- **credentials**: Added the Generic Credential Profile System - reusable, AES-256-GCM encrypted credential profiles (Username/Password, SSH Key, Access Key, Token, SMTP) that adapters reference instead of storing secrets inline. Profiles are managed in the Security Vault, assigned via a searchable picker in the adapter form, and automatically merged into every backup, restore, health check, and notification at runtime.
+
 ### 🎨 Improvements
 
 - **jobs**: Renamed "Security" tab to "Advanced" in the backup job form - the tab contains both Compression and Encryption settings, so "Advanced" is more accurate
@@ -12,6 +16,16 @@ All notable changes to DBackup are documented here.
 ### 🔄 Changed
 
 - **docs**: Renamed `wiki/` folder to `docs/` and moved documentation domain from `dbackup.app` to `docs.dbackup.app` across all configuration files, app source code, CI/CD workflows, and docs content
+
+### 📝 Documentation
+
+- **credentials**: Added a new user-guide page `security/credential-profiles.md` documenting types, slots, inline creation flow, reference tracking, REVEAL semantics, and the REST surface; added a top-of-page note to `security/encryption.md` clarifying that the Vault now hosts both an Encryption tab and a Credentials tab; added the page to the security sidebar in `.vitepress/config.mts`
+- **api**: Documented the full `/api/credentials` REST surface in `public/openapi.yaml` under the `Vault` tag, including a `CredentialType` enum and per-type `data` schemas (`UsernamePasswordData`, `SshKeyData`, `AccessKeyData`, `TokenData`, `SmtpData`), plus a new `BadRequest` shared response
+
+### 🧪 Tests
+
+- **credentials**: Added unit tests for the credential service (CRUD, uniqueness, reference counts, deletion guards), all per-type Zod schemas, `resolveAdapterConfig` and `overlayCredentialsOnConfig` overlay rules, and `validateCredentialAssignments` - 61 new tests total. Updated runner, restore-service, and fixture stubs to reflect the new resolver contract.
+- **crypto**: Added `tests/unit/lib/crypto.test.ts` with 13 tests covering the AES-256-GCM `encrypt`/`decrypt` implementation - round-trip correctness, random IV uniqueness, tamper detection (auth-tag, ciphertext, IV), key validation, and cross-key isolation.
 
 ### 🐳 Docker
 

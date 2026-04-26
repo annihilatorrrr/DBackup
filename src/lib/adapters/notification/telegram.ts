@@ -53,6 +53,7 @@ export const TelegramAdapter: NotificationAdapter = {
     type: "notification",
     name: "Telegram",
     configSchema: TelegramSchema,
+    credentials: { primary: "TOKEN" },
 
     async test(config: TelegramConfig): Promise<{ success: boolean; message: string }> {
         try {

@@ -2,6 +2,10 @@
 
 Protect your backups with AES-256-GCM encryption.
 
+> The Vault page hosts two tabs: **Encryption** (covered here) and
+> **Credentials** (see [Credential Profiles](/user-guide/security/credential-profiles)).
+> This page describes the Encryption tab only.
+
 ## Overview
 
 DBackup uses a **two-layer encryption architecture**:

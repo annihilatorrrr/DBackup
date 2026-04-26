@@ -518,7 +518,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                                     </div>
                                 )}
                                 {fields.length > 0 && (
-                                    <ScrollArea className="[&>[data-slot=scroll-area-viewport]]:max-h-[400px]">
+                                    <ScrollArea className="*:data-[slot=scroll-area-viewport]:max-h-100">
                                         <div className="space-y-3 pr-3">
                                             {fields.map((field, index) => (
                                                 <DestinationRow

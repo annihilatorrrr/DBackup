@@ -313,7 +313,7 @@ export function JobsClient({ canManage, canExecute }: JobsClientProps) {
 
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-[700px]">
+                <DialogContent className="max-w-175">
                     <DialogHeader>
                         <DialogTitle>{editingJob ? "Edit Backup Job" : "Create New Backup Job"}</DialogTitle>
                     </DialogHeader>
