@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
+import { resolveAdapterConfig, overlayCredentialsOnConfig } from "@/lib/adapters/config-resolver";
 import { registry } from "@/lib/core/registry";
 import { ConfigurationError, NotFoundError } from "@/lib/errors";
 
@@ -237,5 +237,78 @@ describe("Adapter credential declarations", () => {
         expect(registry.get("local-filesystem")?.credentials).toBeUndefined();
         expect(registry.get("discord")?.credentials).toBeUndefined();
         expect(registry.get("google-drive")?.credentials).toBeUndefined();
+    });
+});
+
+describe("overlayCredentialsOnConfig", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it("throws NotFoundError for unknown adapter", async () => {
+        await expect(
+            overlayCredentialsOnConfig("no-such-adapter", {}, null, null)
+        ).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it("returns config unchanged when adapter has no credential requirements", async () => {
+        const config = { path: "/tmp" };
+        const result = await overlayCredentialsOnConfig("local-filesystem", config, null, null);
+        expect(result).toEqual({ path: "/tmp" });
+        expect(getDecryptedCredentialData).not.toHaveBeenCalled();
+    });
+
+    it("does NOT throw when primary credential is missing (unlike resolveAdapterConfig)", async () => {
+        const config = { host: "db.local" };
+        await expect(
+            overlayCredentialsOnConfig("mysql", config, null, null)
+        ).resolves.not.toThrow();
+        expect(getDecryptedCredentialData).not.toHaveBeenCalled();
+    });
+
+    it("overlays primary credential when provided", async () => {
+        (getDecryptedCredentialData as any).mockResolvedValue({
+            username: "alice",
+            password: "pw",
+        });
+
+        const config: Record<string, unknown> = { host: "db.local" };
+        const result = await overlayCredentialsOnConfig("mysql", config, "cred-1", null);
+
+        expect(result.user).toBe("alice");
+        expect(result.username).toBe("alice");
+        expect(result.password).toBe("pw");
+        expect(result.host).toBe("db.local");
+    });
+
+    it("overlays SSH credential with ssh* prefix when adapter also has primary slot", async () => {
+        (getDecryptedCredentialData as any)
+            .mockResolvedValueOnce({ username: "dbuser", password: "dbpw" })
+            .mockResolvedValueOnce({
+                username: "tunneluser",
+                authType: "privateKey",
+                privateKey: "KEY",
+            });
+
+        const config: Record<string, unknown> = { host: "db.local" };
+        const result = await overlayCredentialsOnConfig("mysql", config, "cred-1", "cred-ssh");
+
+        expect(result.user).toBe("dbuser");
+        expect(result.sshUsername).toBe("tunneluser");
+        expect(result.sshAuthType).toBe("privateKey");
+        expect(result.sshPrivateKey).toBe("KEY");
+        // Primary must not be clobbered by SSH
+        expect(result.username).toBe("dbuser");
+    });
+
+    it("mutates and returns the same config object reference", async () => {
+        (getDecryptedCredentialData as any).mockResolvedValue({
+            username: "u",
+            password: "p",
+        });
+
+        const config: Record<string, unknown> = { host: "db.local" };
+        const result = await overlayCredentialsOnConfig("mysql", config, "cred-1", null);
+        expect(result).toBe(config);
     });
 });

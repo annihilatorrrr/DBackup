@@ -24,10 +24,8 @@ All notable changes to DBackup are documented here.
 
 ### 🧪 Tests
 
-- **credentials**: Added unit tests for the credential service (CRUD, uniqueness, reference counting, deletion guards, sanitized output) and for every per-type Zod schema including the SSH key conditional `authType` rules - 36 new tests total
-- **credentials**: Added 19 new unit tests for the Phase 2 adapter integration - covers `resolveAdapterConfig` (overlay rules per type, SSH-prefix logic with/without primary slot, missing profile = `ConfigurationError`, structural-only adapters) and `validateCredentialAssignments` (unknown adapter, slot-not-accepted, type mismatch, missing profile)
-- **fixtures**: Updated `storage-service` and `system-notification-service` test fixtures with the new `AdapterConfig` fields (`lastError`, `primaryCredentialId`, `sshCredentialId`)
-- **credentials**: Updated the runner notification-logic and restore-service test suites to mock `resolveAdapterConfig` alongside `decryptConfig`, reflecting that all runtime callsites now go through the resolver
+- **credentials**: Added unit tests for the credential service (CRUD, uniqueness, reference counts, deletion guards), all per-type Zod schemas, `resolveAdapterConfig` and `overlayCredentialsOnConfig` overlay rules, and `validateCredentialAssignments` - 61 new tests total. Updated runner, restore-service, and fixture stubs to reflect the new resolver contract.
+- **crypto**: Added `tests/unit/lib/crypto.test.ts` with 13 tests covering the AES-256-GCM `encrypt`/`decrypt` implementation - round-trip correctness, random IV uniqueness, tamper detection (auth-tag, ciphertext, IV), key validation, and cross-key isolation.
 
 ### 🐳 Docker
 

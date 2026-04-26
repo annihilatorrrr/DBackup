@@ -604,9 +604,9 @@ export function StorageFormContent({
     healthNotificationsDisabled,
     onHealthNotificationsDisabledChange,
     primaryCredentialId,
-    sshCredentialId,
+    sshCredentialId: _sshCredentialId,
     onPrimaryChange,
-    onSshChange,
+    onSshChange: _onSshChange,
 }: { adapter: AdapterDefinition; initialData?: AdapterConfig; healthNotificationsDisabled?: boolean; onHealthNotificationsDisabledChange?: (disabled: boolean) => void } & CredentialPickerHostProps) {
     const { watch } = useFormContext();
     const authType = watch("config.authType");
