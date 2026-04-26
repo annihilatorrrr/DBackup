@@ -316,13 +316,23 @@ function TypeFields({
                     <>
                         <div className="space-y-1.5">
                             <Label className="text-xs">Private key (PEM)</Label>
-                            <Textarea
-                                value={data.privateKey ?? ""}
-                                onChange={(e) => update("privateKey", e.target.value)}
-                                rows={5}
-                                className="font-mono text-xs"
-                                placeholder="-----BEGIN RSA PRIVATE KEY-----"
-                            />
+                            {showSecrets ? (
+                                <Textarea
+                                    value={data.privateKey ?? ""}
+                                    onChange={(e) => update("privateKey", e.target.value)}
+                                    rows={5}
+                                    className="font-mono text-xs"
+                                    placeholder="-----BEGIN RSA PRIVATE KEY-----"
+                                />
+                            ) : (
+                                <Input
+                                    type="password"
+                                    value={data.privateKey ?? ""}
+                                    onChange={(e) => update("privateKey", e.target.value)}
+                                    className="font-mono text-xs"
+                                    placeholder="-----BEGIN RSA PRIVATE KEY-----"
+                                />
+                            )}
                         </div>
                         <Field label="Key passphrase (optional)" type={secret} value={data.passphrase ?? ""} onChange={(v) => update("passphrase", v)} />
                     </>
