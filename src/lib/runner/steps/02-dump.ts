@@ -4,8 +4,8 @@ import { getTempDir } from "@/lib/temp-dir";
 import path from "path";
 import fs from "fs/promises";
 import { isMultiDbTar, readTarManifest } from "@/lib/adapters/database/common/tar-utils";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 import { getBackupFileExtension } from "@/lib/backup-extensions";
 import { formatBytes } from "@/lib/utils";
 

@@ -6,11 +6,11 @@ import { NOTIFICATION_EVENTS } from "@/lib/notifications/types";
 
 const mockNotify = vi.fn().mockResolvedValue(undefined);
 
-vi.mock("@/services/system-notification-service", () => ({
+vi.mock("@/services/notifications/system-notification-service", () => ({
   notify: (...args: any[]) => mockNotify(...args),
 }));
 
-vi.mock("@/lib/logger", () => ({
+vi.mock("@/lib/logging/logger", () => ({
   logger: {
     child: () => ({
       debug: vi.fn(),
@@ -21,7 +21,7 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
-vi.mock("@/lib/errors", () => ({
+vi.mock("@/lib/logging/errors", () => ({
   wrapError: vi.fn((e: any) => e),
 }));
 
@@ -36,7 +36,7 @@ import {
   ALERT_COOLDOWN_MS,
   type StorageAlertConfig,
   type StorageAlertStates,
-} from "@/services/storage-alert-service";
+} from "@/services/storage/storage-alert-service";
 
 // ── Helpers ────────────────────────────────────────────────────
 

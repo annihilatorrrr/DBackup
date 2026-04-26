@@ -152,7 +152,7 @@ export const backupService = new BackupService();
 
 The `runJob` function in [src/lib/runner.ts](src/lib/runner.ts):
 1. Creates an `Execution` record with status `"Pending"`
-2. Triggers `processQueue()` from `src/lib/queue-manager.ts`
+2. Triggers `processQueue()` from `src/lib/execution/queue-manager.ts`
 3. Returns immediately with the `executionId`
 
 ### RestoreService

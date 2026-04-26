@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { validateCredentialAssignments } from "@/lib/adapters/credential-validation";
-import { ValidationError, NotFoundError } from "@/lib/errors";
+import { ValidationError, NotFoundError } from "@/lib/logging/errors";
 import { registerAdapters } from "@/lib/adapters";
 
 vi.mock("@/lib/prisma", () => ({

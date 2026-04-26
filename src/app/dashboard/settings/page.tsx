@@ -1,8 +1,8 @@
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { getUserPermissions } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { getUserPermissions } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import prisma from "@/lib/prisma";
 import { SystemSettingsForm } from "@/components/settings/system-settings-form";
 import { SystemTasksSettings } from "@/components/settings/system-tasks-settings";
@@ -11,7 +11,7 @@ import { NotificationSettings } from "@/components/settings/notification-setting
 import { RateLimitSettings } from "@/components/settings/rate-limit-settings";
 import { CertificateSettings } from "@/components/settings/certificate-settings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getRateLimitConfig } from "@/lib/rate-limit-server";
+import { getRateLimitConfig } from "@/lib/rate-limit/server";
 
 export default async function SettingsPage() {
     const headersList = await headers();

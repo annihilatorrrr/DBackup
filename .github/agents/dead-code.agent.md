@@ -10,13 +10,13 @@ You are a senior software engineer specializing in codebase hygiene. Your job is
 This is a **Next.js 16 (App Router)** + **TypeScript** + **Prisma** project. Key architecture:
 
 - **Path alias**: `@/` maps to `src/`
-- **Server Actions**: `src/app/actions/*.ts` - thin wrappers calling services
-- **Services**: `src/services/*.ts` - all business logic (23 service files)
+- **Server Actions**: `src/app/actions/**/*.ts` - thin wrappers calling services, organized in subdirs: `audit/`, `auth/`, `backup/`, `settings/`, `storage/`
+- **Services**: `src/services/**/*.ts` - all business logic, organized in subdirs: `auth/`, `backup/`, `jobs/`, `notifications/`, `restore/`, `sso/`, `storage/`, `system/`, `user/`, `config/`; root-level: `audit-service.ts`, `dashboard-service.ts`
 - **Adapters**: `src/lib/adapters/` - plugin system with registry pattern (`registry.register()`)
-- **Components**: `src/components/` - no barrel exports, direct path imports
-- **Runner pipeline**: `src/lib/runner/steps/` - step-based backup execution
-- **Hooks**: `src/hooks/` - custom React hooks
-- **Tests**: `tests/unit/`, `tests/integration/`
+- **Components**: `src/components/` - no barrel exports, direct path imports; subdirs: `adapter/`, `api-keys/`, `audit/`, `auth/`, `dashboard/`, `email/`, `execution/`, `hooks/`, `layout/`, `oidc/`, `permissions/`, `settings/`, `system/`, `theme/`, `ui/`, `utils/`
+- **Runner pipeline**: `src/lib/runner/steps/` - step-based backup execution (5 steps: 01-initialize, 02-dump, 03-upload, 04-completion, 05-retention)
+- **Hooks**: `src/hooks/` - custom React hooks (`use-date-formatter.ts`, `use-user-preferences.ts`); component-scoped hooks in `src/components/hooks/`
+- **Tests**: `tests/unit/` (6 subdirs), `tests/integration/`, `tests/audit/`
 
 ## What Counts as Dead Code
 
@@ -30,7 +30,7 @@ This is a **Next.js 16 (App Router)** + **TypeScript** + **Prisma** project. Key
 
 ### Medium Confidence (Report with Context)
 7. **Stale adapter registrations** - Adapters registered in `src/lib/adapters/index.ts` but whose class is never instantiated via the registry
-8. **Unused Zod schemas** - Schemas defined in `src/lib/adapters/definitions.ts` but never used for validation
+8. **Unused Zod schemas** - Schemas defined in `src/lib/adapters/definitions/` (`database.ts`, `storage.ts`, `notification.ts`, `shared.ts`) but never used for validation
 9. **Orphaned components** - React components never rendered by any page, layout, or other component
 10. **Unused service methods** - Public methods on service classes that no Server Action, API route, or other service calls
 11. **Dead API routes** - Route handlers in `src/app/api/` that no client code or external consumer calls

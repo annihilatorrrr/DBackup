@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
 import { registry } from "@/lib/core/registry";
-import { ValidationError, NotFoundError } from "@/lib/errors";
+import { ValidationError, NotFoundError } from "@/lib/logging/errors";
 import type { CredentialType } from "@/lib/core/credentials";
 
 /**

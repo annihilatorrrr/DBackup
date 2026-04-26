@@ -4,9 +4,9 @@ import { registry } from "@/lib/core/registry";
 import { StorageAdapter } from "@/lib/core/interfaces";
 import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { registerAdapters } from "@/lib/adapters";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
-import { checkStorageAlerts } from "@/services/storage-alert-service";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
+import { checkStorageAlerts } from "@/services/storage/storage-alert-service";
 
 export interface DashboardStats {
   totalJobs: number;

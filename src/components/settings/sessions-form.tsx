@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Icon, type IconifyIcon } from "@iconify/react"
-import { authClient } from "@/lib/auth-client"
+import { authClient } from "@/lib/auth/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"

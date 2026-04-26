@@ -23,7 +23,7 @@ vi.mock("@/lib/core/registry", () => ({
   },
 }));
 
-vi.mock("@/lib/logger", () => ({
+vi.mock("@/lib/logging/logger", () => ({
   logger: {
     child: () => ({
       debug: vi.fn(),
@@ -34,7 +34,7 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
-vi.mock("@/lib/errors", () => ({
+vi.mock("@/lib/logging/errors", () => ({
   wrapError: vi.fn((e: any) => e),
 }));
 
@@ -42,7 +42,7 @@ import {
   getNotificationConfig,
   saveNotificationConfig,
   notify,
-} from "@/services/system-notification-service";
+} from "@/services/notifications/system-notification-service";
 
 describe("SystemNotificationService", () => {
   beforeEach(() => {

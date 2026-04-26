@@ -9,8 +9,8 @@ import { getTempDir } from "@/lib/temp-dir";
 import path from "path";
 import fs from "fs";
 import { headers } from "next/headers";
-import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 registerAdapters();
 

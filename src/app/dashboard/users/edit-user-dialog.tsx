@@ -31,7 +31,7 @@ import * as z from "zod"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { Loader2, ShieldAlert } from "lucide-react"
-import { updateUser, updateUserGroup, resetUserTwoFactor } from "@/app/actions/user"
+import { updateUser, updateUserGroup, resetUserTwoFactor } from "@/app/actions/auth/user"
 import { User, Group } from "@prisma/client"
 import { GroupWithStats } from "@/types"
 

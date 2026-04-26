@@ -37,11 +37,11 @@ vi.mock("node:fs", () => ({
   renameSync: mockRenameSync,
 }));
 
-vi.mock("@/lib/logger", () => ({
+vi.mock("@/lib/logging/logger", () => ({
   logger: { child: () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn() }) },
 }));
 
-vi.mock("@/lib/errors", () => ({
+vi.mock("@/lib/logging/errors", () => ({
   wrapError: (e: unknown) => e,
 }));
 
@@ -51,7 +51,7 @@ import {
   getCertificateInfo,
   uploadCertificate,
   regenerateSelfSignedCert,
-} from "@/services/certificate-service";
+} from "@/services/system/certificate-service";
 
 describe("CertificateService", () => {
   const originalEnv = { ...process.env };

@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { DropboxAuth } from "dropbox";
 import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
-import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { decryptConfig } from "@/lib/crypto";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/logging/logger";
 
 const log = logger.child({ route: "adapters/dropbox/auth" });
 

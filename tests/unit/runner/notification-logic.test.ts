@@ -34,7 +34,7 @@ vi.mock('@/services/dashboard-service', () => ({
     refreshStorageStatsCache: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('@/services/notification-log-service', () => ({
+vi.mock('@/services/notifications/notification-log-service', () => ({
     recordNotificationLog: vi.fn().mockResolvedValue(undefined),
 }));
 

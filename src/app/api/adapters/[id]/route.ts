@@ -4,10 +4,10 @@ import { encryptConfig } from "@/lib/crypto";
 import { headers } from "next/headers";
 import { auditService } from "@/services/audit-service";
 import { AUDIT_ACTIONS, AUDIT_RESOURCES } from "@/lib/core/audit-types";
-import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PERMISSIONS, Permission } from "@/lib/permissions";
-import { logger } from "@/lib/logger";
-import { wrapError, getErrorMessage, ValidationError, NotFoundError } from "@/lib/errors";
+import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PERMISSIONS, Permission } from "@/lib/auth/permissions";
+import { logger } from "@/lib/logging/logger";
+import { wrapError, getErrorMessage, ValidationError, NotFoundError } from "@/lib/logging/errors";
 import { registerAdapters } from "@/lib/adapters";
 import { validateCredentialAssignments } from "@/lib/adapters/credential-validation";
 

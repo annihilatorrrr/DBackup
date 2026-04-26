@@ -4,7 +4,7 @@ import {
     consumeDownloadToken,
     markTokenUsed,
     getTokenStoreSize
-} from '@/lib/download-tokens';
+} from '@/lib/auth/download-tokens';
 
 describe('Download Tokens', () => {
     beforeEach(() => {

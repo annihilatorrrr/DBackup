@@ -4,7 +4,7 @@ import { useState, useTransition } from "react"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { updateUserPreferences } from "@/app/actions/user"
+import { updateUserPreferences } from "@/app/actions/auth/user"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 

@@ -22,7 +22,7 @@ import { AdapterIcon } from "@/components/adapter/adapter-icon";
 import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { getEncryptionProfiles } from "@/app/actions/encryption";
+import { getEncryptionProfiles } from "@/app/actions/backup/encryption";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";

@@ -1,8 +1,8 @@
 import { decryptConfig } from "@/lib/crypto";
 import { registry } from "@/lib/core/registry";
-import { ConfigurationError, NotFoundError, wrapError } from "@/lib/errors";
-import { logger } from "@/lib/logger";
-import { getDecryptedCredentialData } from "@/services/credential-service";
+import { ConfigurationError, NotFoundError, wrapError } from "@/lib/logging/errors";
+import { logger } from "@/lib/logging/logger";
+import { getDecryptedCredentialData } from "@/services/auth/credential-service";
 import type {
     CredentialData,
     CredentialType,

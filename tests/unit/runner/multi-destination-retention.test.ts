@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { stepRetention } from '@/lib/runner/steps/05-retention';
 import { RunnerContext, DestinationContext } from '@/lib/runner/types';
-import { RetentionService } from '@/services/retention-service';
+import { RetentionService } from '@/services/backup/retention-service';
 
 // Mock dependencies
 vi.mock('@/lib/prisma', () => ({
     default: { execution: { update: vi.fn() } }
 }));
-vi.mock('@/lib/logger', () => ({
+vi.mock('@/lib/logging/logger', () => ({
     logger: { child: () => ({ warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() }) },
 }));
-vi.mock('@/services/retention-service');
+vi.mock('@/services/backup/retention-service');
 vi.mock('@/services/dashboard-service', () => ({
     refreshStorageStatsCache: vi.fn().mockResolvedValue(undefined),
 }));

@@ -13,10 +13,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { OIDC_ADAPTERS } from "@/services/oidc-registry";
+import { OIDC_ADAPTERS } from "@/services/sso/oidc-registry";
 import { DynamicOidcForm } from "./dynamic-oidc-form";
 import { toast } from "sonner";
-import { createSsoProvider } from "@/app/actions/oidc";
+import { createSsoProvider } from "@/app/actions/auth/oidc";
 import { OIDCAdapter } from "@/lib/core/oidc-adapter";
 import { PlusCircle, ShieldCheck, Box, Settings2, Globe, Key } from "lucide-react";
 import { cn } from "@/lib/utils";

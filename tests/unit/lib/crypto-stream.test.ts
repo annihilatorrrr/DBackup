@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createEncryptionStream, createDecryptionStream } from '@/lib/crypto-stream';
+import { createEncryptionStream, createDecryptionStream } from '@/lib/crypto/stream';
 import { pipeline } from 'stream/promises';
 import { Readable, Writable } from 'stream';
 

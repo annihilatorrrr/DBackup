@@ -9,7 +9,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { deleteGroup } from "@/app/actions/group"
+import { deleteGroup } from "@/app/actions/auth/group"
 import { toast } from "sonner"
 import { DateDisplay } from "@/components/utils/date-display"
 import { DataTable } from "@/components/ui/data-table"

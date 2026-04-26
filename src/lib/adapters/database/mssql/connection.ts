@@ -1,6 +1,6 @@
 import sql from "mssql";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 import { MSSQLConfig } from "@/lib/adapters/definitions";
 
 const log = logger.child({ adapter: "mssql" });

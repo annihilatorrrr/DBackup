@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
-import { getNotificationLogs } from "@/services/notification-log-service";
+import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { getNotificationLogs } from "@/services/notifications/notification-log-service";
 
 export async function GET(req: NextRequest) {
   const ctx = await getAuthContext(await headers());

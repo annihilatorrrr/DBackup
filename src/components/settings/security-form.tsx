@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { authClient } from "@/lib/auth-client"
+import { authClient } from "@/lib/auth/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -22,7 +22,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { togglePasskeyTwoFactor as togglePasskeyAction, updateOwnPassword } from "@/app/actions/user"
+import { togglePasskeyTwoFactor as togglePasskeyAction, updateOwnPassword } from "@/app/actions/auth/user"
 import { User, Passkey } from "@prisma/client"
 import { formatTwoFactorCode } from "@/lib/utils"
 

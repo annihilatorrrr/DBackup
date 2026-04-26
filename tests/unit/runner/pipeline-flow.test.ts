@@ -27,7 +27,7 @@ vi.mock('@/lib/core/registry', () => ({
     }
 }));
 
-vi.mock('@/lib/queue-manager', () => ({
+vi.mock('@/lib/execution/queue-manager', () => ({
     processQueue: vi.fn().mockResolvedValue(undefined),
 }));
 

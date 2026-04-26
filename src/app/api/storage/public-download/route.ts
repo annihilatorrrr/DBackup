@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { registerAdapters } from "@/lib/adapters";
-import { storageService } from "@/services/storage-service";
-import { consumeDownloadToken, markTokenUsed } from "@/lib/download-tokens";
+import { storageService } from "@/services/storage/storage-service";
+import { consumeDownloadToken, markTokenUsed } from "@/lib/auth/download-tokens";
 import path from "path";
 import os from "os";
 import fs from "fs";
 import fsPromises from "fs/promises";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ route: "storage/public-download" });
 registerAdapters();

@@ -19,7 +19,7 @@ vi.mock('@/lib/prisma', () => ({
     }
 }));
 
-vi.mock("@/lib/queue-manager", () => ({
+vi.mock("@/lib/execution/queue-manager", () => ({
     processQueue: vi.fn().mockResolvedValue(undefined)
 }));
 

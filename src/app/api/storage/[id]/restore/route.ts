@@ -1,11 +1,11 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { restoreService } from "@/services/restore-service";
+import { restoreService } from "@/services/restore/restore-service";
 import { headers } from "next/headers";
-import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
-import { logger } from "@/lib/logger";
-import { wrapError, getErrorMessage } from "@/lib/errors";
+import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { logger } from "@/lib/logging/logger";
+import { wrapError, getErrorMessage } from "@/lib/logging/errors";
 
 const log = logger.child({ route: "storage/restore" });
 

@@ -1,5 +1,5 @@
-import { getUserPermissions } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { getUserPermissions } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { JobsClient } from "./jobs-client";
 
 export default async function JobsPage() {

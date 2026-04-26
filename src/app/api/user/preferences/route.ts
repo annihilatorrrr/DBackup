@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { getAuthContext } from "@/lib/access-control";
+import { getAuthContext } from "@/lib/auth/access-control";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 

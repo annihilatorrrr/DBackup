@@ -601,8 +601,8 @@ Create `src/lib/adapters/notification/<id>.ts`:
 ```typescript
 import { NotificationAdapter } from "@/lib/core/interfaces";
 import { MyServiceSchema, MyServiceConfig } from "@/lib/adapters/definitions";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ adapter: "my-service" });
 
@@ -1032,7 +1032,7 @@ case NOTIFICATION_EVENTS.MY_NEW_EVENT:
 ### 5. Fire the Event
 
 ```typescript
-import { notify } from "@/services/system-notification-service";
+import { notify } from "@/services/notifications/system-notification-service";
 import { NOTIFICATION_EVENTS } from "@/lib/notifications/types";
 
 notify({

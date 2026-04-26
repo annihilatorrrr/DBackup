@@ -1,20 +1,20 @@
 // src/lib/runner/config-runner.ts
 
-import { ConfigService } from "@/services/config-service";
+import { ConfigService } from "@/services/config/config-service";
 import fs from "fs";
 import path from "path";
 import { getTempDir } from "@/lib/temp-dir";
 import { Readable, Transform, pipeline } from "stream";
 import { promisify } from "util";
 import { createGzip } from "zlib";
-import { createEncryptionStream } from "@/lib/crypto-stream";
+import { createEncryptionStream } from "@/lib/crypto/stream";
 import prisma from "@/lib/prisma";
 import { registry } from "@/lib/core/registry";
 import { StorageAdapter } from "@/lib/core/interfaces";
 import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
-import { logger } from "@/lib/logger";
-import { wrapError, EncryptionError, ConfigurationError } from "@/lib/errors";
-import { notify } from "@/services/system-notification-service";
+import { logger } from "@/lib/logging/logger";
+import { wrapError, EncryptionError, ConfigurationError } from "@/lib/logging/errors";
+import { notify } from "@/services/notifications/system-notification-service";
 import { NOTIFICATION_EVENTS } from "@/lib/notifications";
 
 const pipelineAsync = promisify(pipeline);

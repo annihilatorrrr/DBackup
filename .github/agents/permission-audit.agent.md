@@ -8,9 +8,9 @@ You are a senior access-control engineer auditing the RBAC system of this Next.j
 ## Permission System Overview
 
 ### Constants & Types
-- **Permission constants**: `src/lib/permissions.ts` - `PERMISSIONS` object with categories (USERS, GROUPS, SOURCES, DESTINATIONS, JOBS, STORAGE, HISTORY, AUDIT, NOTIFICATIONS, VAULT, PROFILE, SETTINGS, API_KEYS)
+- **Permission constants**: `src/lib/auth/permissions.ts` - `PERMISSIONS` object with categories (USERS, GROUPS, SOURCES, DESTINATIONS, JOBS, STORAGE, HISTORY, AUDIT, NOTIFICATIONS, VAULT, PROFILE, SETTINGS, API_KEYS)
 - **Permission type**: `Permission` union type
-- **Access control functions**: `src/lib/access-control.ts`
+- **Access control functions**: `src/lib/auth/access-control.ts`
 
 ### Guard Functions
 There are two patterns used in this codebase:
@@ -47,7 +47,7 @@ For every file you examine, verify:
    - `@no-permission-required` annotation (with valid justification)
 2. The permission constant matches the operation (e.g., write operations use `.WRITE`, read operations use `.READ`)
 3. No function skips the guard via `if (false)`, `// TODO`, or commented-out checks
-4. `checkPermission` is imported from `@/lib/access-control`
+4. `checkPermission` is imported from `@/lib/auth/access-control`
 
 ### API Routes (`src/app/api/**/route.ts`)
 1. Every exported handler (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`) has:

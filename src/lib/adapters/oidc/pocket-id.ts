@@ -1,7 +1,7 @@
 import { OIDCAdapter } from "@/lib/core/oidc-adapter";
 import { z } from "zod";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 import { validateOutboundUrl } from "@/lib/url-validation";
 
 const log = logger.child({ adapter: "pocket-id" });

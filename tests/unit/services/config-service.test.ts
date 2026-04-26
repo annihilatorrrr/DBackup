@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ConfigService } from '../../../src/services/config-service';
+import { ConfigService } from '../../../src/services/config/config-service';
 // Mock Prisma
 vi.mock('@/lib/prisma', () => ({
   default: {

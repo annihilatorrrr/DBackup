@@ -16,12 +16,12 @@ The centralized logging system was introduced to replace scattered `console.log`
 
 The system logger provides consistent, level-based logging across the entire application.
 
-**Location**: `src/lib/logger.ts`
+**Location**: `src/lib/logging/logger.ts`
 
 ### Basic Usage
 
 ```typescript
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/logging/logger";
 
 // Simple logging
 logger.info("Backup started");
@@ -35,7 +35,7 @@ logger.error("Operation failed", { operation: "upload" }, error);
 For component-specific logging, create a child logger with context:
 
 ```typescript
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/logging/logger";
 
 const log = logger.child({ service: "BackupService" });
 
@@ -82,8 +82,8 @@ LOG_LEVEL=error   # Only errors
 The logger integrates with the custom error system:
 
 ```typescript
-import { logger } from "@/lib/logger";
-import { wrapError, AdapterError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError, AdapterError } from "@/lib/logging/errors";
 
 const log = logger.child({ adapter: "mysql" });
 
@@ -163,7 +163,7 @@ For privacy compliance (GDPR), IP addresses are anonymized in logs:
 
 ## Custom Error Classes
 
-**Location**: `src/lib/errors.ts`
+**Location**: `src/lib/logging/errors.ts`
 
 DBackup provides a hierarchy of custom error classes for consistent error handling:
 
@@ -188,7 +188,7 @@ DBackupError (base)
 ### Creating Custom Errors
 
 ```typescript
-import { AdapterError, BackupError, wrapError } from "@/lib/errors";
+import { AdapterError, BackupError, wrapError } from "@/lib/logging/errors";
 
 // Adapter-specific error
 throw new AdapterError("mysql", "Connection timeout after 30s");
@@ -212,7 +212,7 @@ import {
   getErrorMessage,
   getErrorCode,
   withContext
-} from "@/lib/errors";
+} from "@/lib/logging/errors";
 
 // Type guard
 if (isDBackupError(error)) {
@@ -490,7 +490,7 @@ Every notification sent through the system (per-job and system-wide) is logged t
 Logging happens transparently in both dispatch points:
 
 ```typescript
-import { recordNotificationLog } from "@/services/notification-log-service";
+import { recordNotificationLog } from "@/services/notifications/notification-log-service";
 
 // After sending a notification
 await recordNotificationLog({

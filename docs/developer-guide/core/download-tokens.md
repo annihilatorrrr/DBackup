@@ -35,7 +35,7 @@ File streamed (decrypted if requested)
 
 ```typescript
 // src/lib/download-tokens.ts
-import { generateDownloadToken } from "@/lib/download-tokens";
+import { generateDownloadToken } from "@/lib/auth/download-tokens";
 
 // Parameters:
 // - storageId: Storage adapter config ID
@@ -60,7 +60,7 @@ interface DownloadToken {
 ### Consumption
 
 ```typescript
-import { consumeDownloadToken, markTokenUsed } from "@/lib/download-tokens";
+import { consumeDownloadToken, markTokenUsed } from "@/lib/auth/download-tokens";
 
 // Step 1: Validate token (does NOT mark as used yet)
 const data = consumeDownloadToken(token);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { getAuditLogs, getAuditFilterStats } from "@/app/actions/audit";
+import { getAuditLogs, getAuditFilterStats } from "@/app/actions/audit/audit";
 import { DataTable } from "@/components/ui/data-table";
 import { AuditLogWithUser, columns } from "./columns";
 import { toast } from "sonner";
