@@ -1,17 +1,25 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, Plus, KeyRound } from "lucide-react";
+import { Loader2, Plus, KeyRound, ChevronsUpDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+    CommandSeparator,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
     CredentialProfileDialog,
@@ -47,6 +55,7 @@ export function CredentialPicker({
 }: Props) {
     const [profiles, setProfiles] = useState<CredentialProfileSummary[]>([]);
     const [loading, setLoading] = useState(true);
+    const [open, setOpen] = useState(false);
     const [createOpen, setCreateOpen] = useState(false);
 
     const fetchProfiles = useCallback(async () => {
@@ -69,19 +78,12 @@ export function CredentialPicker({
         fetchProfiles();
     }, [fetchProfiles]);
 
-    const handleSelect = (next: string) => {
-        if (next === "__create__") {
-            setCreateOpen(true);
-            return;
-        }
-        onChange(next === "__none__" ? null : next);
-    };
-
     const onCreated = (profile: CredentialProfileSummary) => {
         setProfiles((prev) => [profile, ...prev.filter((p) => p.id !== profile.id)]);
         onChange(profile.id);
     };
 
+    const selected = profiles.find((p) => p.id === value);
     const defaultLabel = slot === "ssh" ? "SSH Credential Profile" : "Credential Profile";
     const finalLabel = label ?? defaultLabel;
 
@@ -100,36 +102,76 @@ export function CredentialPicker({
                 <p className="text-xs text-muted-foreground">{description}</p>
             )}
 
-            <Select value={value ?? "__none__"} onValueChange={handleSelect} disabled={loading}>
-                <SelectTrigger>
-                    <SelectValue
-                        placeholder={loading ? "Loading..." : "Select a profile"}
-                    />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="__none__">
-                        <span className="text-muted-foreground">- None -</span>
-                    </SelectItem>
-                    {profiles.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                            {p.name}
-                        </SelectItem>
-                    ))}
-                    <SelectItem value="__create__" className="font-medium">
-                        <span className="flex items-center gap-2">
-                            <Plus className="h-3.5 w-3.5" />
-                            Create new profile...
-                        </span>
-                    </SelectItem>
-                </SelectContent>
-            </Select>
-
-            {loading && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Loading profiles...
-                </div>
-            )}
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        disabled={loading}
+                        className="w-full justify-between font-normal"
+                    >
+                        {loading ? (
+                            <span className="flex items-center gap-2 text-muted-foreground">
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                Loading...
+                            </span>
+                        ) : selected ? (
+                            selected.name
+                        ) : (
+                            <span className="text-muted-foreground">None</span>
+                        )}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <Command>
+                        <CommandInput placeholder="Search profile..." />
+                        <CommandList>
+                            <CommandEmpty>No profiles found.</CommandEmpty>
+                            <CommandGroup>
+                                <CommandItem
+                                    value="__none__"
+                                    onSelect={() => {
+                                        onChange(null);
+                                        setOpen(false);
+                                    }}
+                                >
+                                    <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
+                                    <span className="text-muted-foreground">None</span>
+                                </CommandItem>
+                                {profiles.map((p) => (
+                                    <CommandItem
+                                        key={p.id}
+                                        value={p.name}
+                                        onSelect={() => {
+                                            onChange(p.id);
+                                            setOpen(false);
+                                        }}
+                                    >
+                                        <Check className={cn("mr-2 h-4 w-4", value === p.id ? "opacity-100" : "opacity-0")} />
+                                        {p.name}
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                            <CommandSeparator />
+                            <CommandGroup>
+                                <CommandItem
+                                    value="__create__"
+                                    onSelect={() => {
+                                        setOpen(false);
+                                        setCreateOpen(true);
+                                    }}
+                                    className="font-medium"
+                                >
+                                    <Plus className="mr-2 h-3.5 w-3.5" />
+                                    Create new profile...
+                                </CommandItem>
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                </PopoverContent>
+            </Popover>
 
             {!loading && profiles.length === 0 && (
                 <p className="text-xs text-muted-foreground">
@@ -155,3 +197,5 @@ export function CredentialPicker({
         </div>
     );
 }
+
+
