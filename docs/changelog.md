@@ -5,6 +5,10 @@ All notable changes to DBackup are documented here.
 ## v1.5.0
 *Release: In Progress*
 
+### ✨ Features
+
+- **credentials**: Added Phase 1 of the Generic Credential Profile System - centralized, reusable credential storage. Introduces a new `CredentialProfile` model (typed: `USERNAME_PASSWORD`, `SSH_KEY`, `ACCESS_KEY`, `TOKEN`, `SMTP`) with AES-256-GCM encrypted payloads, two new reference slots on `AdapterConfig` (`primaryCredentialId`, `sshCredentialId`), a `lastError` field for status diagnostics, dedicated `CREDENTIALS` permissions (`READ`, `WRITE`, `DELETE`, `REVEAL`), and a full REST API under `/api/credentials` (list/create/get/update/delete/usage/reveal) with audit logging for create, update, delete and reveal actions
+
 ### 🎨 Improvements
 
 - **jobs**: Renamed "Security" tab to "Advanced" in the backup job form - the tab contains both Compression and Encryption settings, so "Advanced" is more accurate
@@ -12,6 +16,11 @@ All notable changes to DBackup are documented here.
 ### 🔄 Changed
 
 - **docs**: Renamed `wiki/` folder to `docs/` and moved documentation domain from `dbackup.app` to `docs.dbackup.app` across all configuration files, app source code, CI/CD workflows, and docs content
+
+### 🧪 Tests
+
+- **credentials**: Added unit tests for the credential service (CRUD, uniqueness, reference counting, deletion guards, sanitized output) and for every per-type Zod schema including the SSH key conditional `authType` rules - 36 new tests total
+- **fixtures**: Updated `storage-service` and `system-notification-service` test fixtures with the new `AdapterConfig` fields (`lastError`, `primaryCredentialId`, `sshCredentialId`)
 
 ### 🐳 Docker
 

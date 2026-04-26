@@ -56,6 +56,9 @@ describe('StorageService', () => {
                 lastHealthCheck: null,
                 lastStatus: 'ONLINE',
                 consecutiveFailures: 0,
+                lastError: null,
+                primaryCredentialId: null,
+                sshCredentialId: null,
             };
 
             // Prisma Mock
@@ -94,6 +97,9 @@ describe('StorageService', () => {
                 lastHealthCheck: null,
                 lastStatus: 'ONLINE',
                 consecutiveFailures: 0,
+                lastError: null,
+                primaryCredentialId: null,
+                sshCredentialId: null,
             });
 
             await expect(service.listFiles('db-conf'))
@@ -113,6 +119,9 @@ describe('StorageService', () => {
                 lastHealthCheck: null,
                 lastStatus: 'ONLINE',
                 consecutiveFailures: 0,
+                lastError: null,
+                primaryCredentialId: null,
+                sshCredentialId: null,
             });
 
             vi.mocked(registry.get).mockReturnValue(undefined);
@@ -155,6 +164,9 @@ describe('StorageService', () => {
                 lastHealthCheck: null,
                 lastStatus: 'ONLINE',
                 consecutiveFailures: 0,
+                lastError: null,
+                primaryCredentialId: null,
+                sshCredentialId: null,
             };
 
             // Prisma Mocks
@@ -193,6 +205,9 @@ describe('StorageService', () => {
                 lastHealthCheck: null,
                 lastStatus: 'ONLINE',
                 consecutiveFailures: 0,
+                lastError: null,
+                primaryCredentialId: null,
+                sshCredentialId: null,
             };
 
             prismaMock.adapterConfig.findUnique.mockResolvedValue(mockDbConfig);
@@ -223,6 +238,9 @@ describe('StorageService', () => {
                lastHealthCheck: null,
                lastStatus: 'ONLINE',
                consecutiveFailures: 0,
+                lastError: null,
+                primaryCredentialId: null,
+                sshCredentialId: null,
            };
 
            prismaMock.adapterConfig.findUnique.mockResolvedValue(mockDbConfig);

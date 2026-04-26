@@ -20,12 +20,32 @@ model AdapterConfig {
   jobsNotification Job[]    @relation("Notifications")
   jobDestinations  JobDestination[]
 
+  // Credential profile references (Phase 1: nullable; app enforces required-ness based on adapter type)
+  primaryCredentialId String?
+  primaryCredential   CredentialProfile? @relation("PrimaryCredential", fields: [primaryCredentialId], references: [id], onDelete: Restrict)
+  sshCredentialId     String?
+  sshCredential       CredentialProfile? @relation("SshCredential", fields: [sshCredentialId], references: [id], onDelete: Restrict)
+
   // Caching-Felder für schnelle UI-Anzeige ohne Joins
   lastHealthCheck      DateTime?
   lastStatus           String        @default("ONLINE") // ONLINE, DEGRADED, OFFLINE
+  lastError            String?       // Human-readable reason when lastStatus != ONLINE (e.g. "No credential profile assigned")
   consecutiveFailures  Int           @default(0) // Zähler für Logik (Grün -> Orange -> Rot)
 
   healthLogs           HealthCheckLog[]
+}
+
+model CredentialProfile {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  type        String   // USERNAME_PASSWORD | SSH_KEY | ACCESS_KEY | TOKEN | SMTP
+  data        String   // Encrypted JSON payload (encrypt(JSON.stringify(payload)))
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  primaryAdapters AdapterConfig[] @relation("PrimaryCredential")
+  sshAdapters     AdapterConfig[] @relation("SshCredential")
 }
 
 model EncryptionProfile {
