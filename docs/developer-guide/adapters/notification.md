@@ -555,14 +555,14 @@ Every new notification adapter touches these files:
 | 6 | `src/components/adapter/adapter-manager.tsx` | Add `case` to `getSummary()` for the Details column |
 | 7 | `src/components/adapter/schema-field.tsx` | Update `isTextArea` check (only if adapter has multi-line fields) |
 | 8 | `src/app/dashboard/history/notification-preview.tsx` | Add adapter-specific preview component and register in `PREVIEW_COMPONENTS` map (optional) |
-| 9 | `wiki/user-guide/notifications/<id>.md` | Create wiki page with setup guide |
-| 10 | `wiki/.vitepress/config.mts` | Add sidebar entry under "Notification Channels" |
-| 11 | `wiki/user-guide/notifications/index.md` | Add to supported channels table and "Choosing a Channel" section |
-| 12 | `wiki/user-guide/features/notifications.md` | Add to channels table and best practices |
+| 9 | `docs/user-guide/notifications/<id>.md` | Create docs page with setup guide |
+| 10 | `docs/.vitepress/config.mts` | Add sidebar entry under "Notification Channels" |
+| 11 | `docs/user-guide/notifications/index.md` | Add to supported channels table and "Choosing a Channel" section |
+| 12 | `docs/user-guide/features/notifications.md` | Add to channels table and best practices |
 | 13 | `README.md` | Update notification feature line and channels table |
-| 14 | `wiki/index.md` | Update feature card and supported notifications table |
-| 15 | `wiki/changelog.md` | Add changelog entry |
-| 16 | `wiki/developer-guide/adapters/notification.md` | Update "Available Adapters" table (this file) |
+| 14 | `docs/index.md` | Update feature card and supported notifications table |
+| 15 | `docs/changelog.md` | Add changelog entry |
+| 16 | `docs/developer-guide/adapters/notification.md` | Update "Available Adapters" table (this file) |
 | 17 | `tests/unit/adapters/notification/<id>.test.ts` | Write unit tests for `test()` and `send()` |
 
 ### Step 1 - Define the Zod Schema
@@ -791,7 +791,7 @@ const getSummary = (adapterId: string, configJson: string) => {
 
 Create the following documentation:
 
-**a) Wiki page** - `wiki/user-guide/notifications/<id>.md`
+**a) Docs page** - `docs/user-guide/notifications/<id>.md`
 
 Follow the structure of existing adapter pages:
 - Overview (bullet points with key features)
@@ -893,7 +893,7 @@ pnpm test -- tests/unit/adapters/notification/
 ```
 :::
 
-**b) VitePress sidebar** - `wiki/.vitepress/config.mts`
+**b) VitePress sidebar** - `docs/.vitepress/config.mts`
 
 Add the entry under the "Notification Channels" section:
 
@@ -911,12 +911,12 @@ Add the entry under the "Notification Channels" section:
 
 | File | Section to update |
 | :--- | :--- |
-| `wiki/user-guide/notifications/index.md` | Supported Channels table, "Choosing a Channel" section, "Next Steps" links |
-| `wiki/user-guide/features/notifications.md` | Supported Channels table, Best Practices |
+| `docs/user-guide/notifications/index.md` | Supported Channels table, "Choosing a Channel" section, "Next Steps" links |
+| `docs/user-guide/features/notifications.md` | Supported Channels table, Best Practices |
 | `README.md` | Feature bullet point, Supported Notifications table |
-| `wiki/index.md` | Feature card description, Supported Notifications table |
-| `wiki/changelog.md` | Release entry |
-| `wiki/developer-guide/adapters/notification.md` | Available Adapters table (this file) |
+| `docs/index.md` | Feature card description, Supported Notifications table |
+| `docs/changelog.md` | Release entry |
+| `docs/developer-guide/adapters/notification.md` | Available Adapters table (this file) |
 
 ### Summary: File Touch Map
 
@@ -933,7 +933,7 @@ src/components/adapter/
 ├── form-constants.ts       ← CONNECTION_KEYS + CONFIG_KEYS + PLACEHOLDERS
 └── schema-field.tsx        ← isTextArea check (only if multi-line fields)
 
-wiki/
+docs/
 ├── user-guide/
 │   ├── notifications/
 │   │   ├── <id>.md         ← NEW: User-facing setup guide

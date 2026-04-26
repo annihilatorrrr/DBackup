@@ -258,10 +258,10 @@ jobs:
             /^## v[0-9]/ {if(flag) exit}
             flag && /^\*Released:/ {next}
             flag {print}
-          ' wiki/changelog.md > release_notes.md
+          ' docs/changelog.md > release_notes.md
 
           if [ ! -s release_notes.md ]; then
-            echo "No release notes found for $TAG in wiki/changelog.md"
+            echo "No release notes found for $TAG in docs/changelog.md"
             exit 1
           fi
 

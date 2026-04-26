@@ -277,7 +277,7 @@ export function Sidebar({ permissions = [], isSuperAdmin = false, updateAvailabl
                                 </DropdownMenuSubTrigger>
                                 <DropdownMenuPortal>
                                     <DropdownMenuSubContent>
-                                        <DropdownMenuItem onClick={() => window.open('https://dbackup.app', '_blank')}>
+                                        <DropdownMenuItem onClick={() => window.open('https://docs.dbackup.app', '_blank')}>
                                             <BookOpen className="mr-2 h-4 w-4" />
                                             <span>Dokumentation</span>
                                         </DropdownMenuItem>

@@ -22,7 +22,7 @@ ignore:
   - "tests/**"
   - "scripts/**"
   - "prisma/**"
-  - "wiki/**"
+  - "docs/**"
   - "src/components/**"
   - "src/app/**"
   - "src/hooks/**"

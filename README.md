@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/Skyfay/DBackup/main/wiki/public/logo.svg" alt="DBackup Logo" width="120">
+  <img src="https://raw.githubusercontent.com/Skyfay/DBackup/main/docs/public/logo.svg" alt="DBackup Logo" width="120">
 </div>
 
 <h1 align="center">DBackup</h1>
@@ -31,11 +31,11 @@
 </p>
 
 <p align="center">
-  <a href="https://dbackup.app">Documentation</a> •
-  <a href="https://dbackup.app/user-guide/getting-started">Quick Start</a> •
+  <a href="https://docs.dbackup.app">Documentation</a> •
+  <a href="https://docs.dbackup.app/user-guide/getting-started">Quick Start</a> •
   <a href="https://api.dbackup.app">API Reference</a> •
-  <a href="https://dbackup.app/changelog">Changelog</a> •
-  <a href="https://dbackup.app/roadmap">Roadmap</a>
+  <a href="https://docs.dbackup.app/changelog">Changelog</a> •
+  <a href="https://docs.dbackup.app/roadmap">Roadmap</a>
 </p>
 
 
@@ -134,7 +134,7 @@ services:
       - ENCRYPTION_KEY=       # openssl rand -hex 32
       - BETTER_AUTH_URL=https://localhost:3000
       - BETTER_AUTH_SECRET=   # openssl rand -base64 32
-      # All additional environment variables: https://dbackup.app/user-guide/installation#environment-variables
+      # All additional environment variables: https://docs.dbackup.app/user-guide/installation#environment-variables
     volumes:
       - ./data:/data              # All persistent data (db, storage, certs)
       - ./backups:/backups        # Optional: used for local backups
@@ -146,7 +146,7 @@ docker-compose up -d
 
 Open [https://localhost:3000](https://localhost:3000) and create your admin account (accept the self-signed certificate warning on first visit).
 
-📖 **Full installation guide**: [dbackup.app/user-guide/getting-started](https://dbackup.app/user-guide/getting-started)
+📖 **Full installation guide**: [docs.dbackup.app/user-guide/getting-started](https://docs.dbackup.app/user-guide/getting-started)
 
 ## 🗄️ Supported Databases
 
@@ -194,13 +194,13 @@ Open [https://localhost:3000](https://localhost:3000) and create your admin acco
 
 ## 📚 Documentation
 
-Full documentation is available at **[dbackup.app](https://dbackup.app)**:
+Full documentation is available at **[docs.dbackup.app](https://docs.dbackup.app)**:
 
-- [User Guide](https://dbackup.app/user-guide/getting-started) - Installation, configuration, usage
+- [User Guide](https://docs.dbackup.app/user-guide/getting-started) - Installation, configuration, usage
 - [API Reference](https://api.dbackup.app) - Interactive REST API documentation
-- [Developer Guide](https://dbackup.app/developer-guide/) - Architecture, adapters, contributing
-- [Changelog](https://dbackup.app/changelog) - Release history
-- [Roadmap](https://dbackup.app/roadmap) - Planned features
+- [Developer Guide](https://docs.dbackup.app/developer-guide/) - Architecture, adapters, contributing
+- [Changelog](https://docs.dbackup.app/changelog) - Release history
+- [Roadmap](https://docs.dbackup.app/roadmap) - Planned features
 
 ## 🛠️ Development
 
@@ -219,12 +219,12 @@ npx prisma db push
 pnpm dev
 ```
 
-For testing infrastructure and contribution guidelines, see the [Developer Guide](https://dbackup.app/developer-guide/).
+For testing infrastructure and contribution guidelines, see the [Developer Guide](https://docs.dbackup.app/developer-guide/).
 
 ## 💬 Community & Support
 
 - 💬 **Discord**: Join our community at [https://dc.skyfay.ch](https://dc.skyfay.ch)
-- 📝 **Documentation**: Full guides and API reference at [dbackup.app](https://dbackup.app)
+- 📝 **Documentation**: Full guides and API reference at [docs.dbackup.app](https://docs.dbackup.app)
 - 🔗 **API Reference**: Interactive API docs at [api.dbackup.app](https://api.dbackup.app) or in-app at `/docs/api`
 - 🐛 **Issues**: Report bugs or request features on [GitHub Issues](https://github.com/Skyfay/DBackup/issues)
 - 📧 **Support**: General questions and support via [support@dbackup.app](mailto:support@dbackup.app)

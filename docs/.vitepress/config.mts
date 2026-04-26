@@ -9,7 +9,7 @@ export default defineConfig({
   cleanUrls: true, // Remove .html from URLs for better SEO
   lastUpdated: true, // Show last updated timestamp (uses git commit timestamps)
   sitemap: {
-    hostname: 'https://dbackup.app'
+    hostname: 'https://docs.dbackup.app'
   },
   ignoreDeadLinks: [
     /localhost/
@@ -33,13 +33,13 @@ export default defineConfig({
     ['meta', { name: 'robots', content: 'index, follow' }],
     // Open Graph / Facebook
     ['meta', { property: 'og:type', content: 'website' }],
-    ['meta', { property: 'og:url', content: 'https://dbackup.app' }],
+    ['meta', { property: 'og:url', content: 'https://docs.dbackup.app' }],
     ['meta', { property: 'og:title', content: 'DBackup - Database Backup Automation' }],
     ['meta', { property: 'og:description', content: 'Self-hosted database backup automation with encryption, compression, and retention policies for MySQL, PostgreSQL, MongoDB, and more.' }],
-    ['meta', { property: 'og:image', content: 'https://dbackup.app/overview.png' }],
+    ['meta', { property: 'og:image', content: 'https://docs.dbackup.app/overview.png' }],
     // Twitter Card
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
-    ['meta', { name: 'twitter:url', content: 'https://dbackup.app' }],
+    ['meta', { name: 'twitter:url', content: 'https://docs.dbackup.app' }],
     ['meta', { name: 'twitter:title', content: 'DBackup - Database Backup Automation' }],
     ['meta', { name: 'twitter:description', content: 'Self-hosted database backup automation with encryption, compression, and retention policies.' }],
     // Structured Data (JSON-LD)
@@ -265,7 +265,7 @@ export default defineConfig({
     },
 
     editLink: {
-      pattern: 'https://github.com/Skyfay/DBackup/edit/main/wiki/:path',
+      pattern: 'https://github.com/Skyfay/DBackup/edit/main/docs/:path',
       text: 'Edit this page on GitHub'
     }
   },

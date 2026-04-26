@@ -2,6 +2,20 @@
 
 All notable changes to DBackup are documented here.
 
+## v1.5.0
+*Release: In Progress*
+
+### 🔄 Changed
+
+- **docs**: Renamed `wiki/` folder to `docs/` and moved documentation domain from `dbackup.app` to `docs.dbackup.app` across all configuration files, app source code, CI/CD workflows, and docs content
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v1.5.0`
+- **Also tagged as**: `latest`, `v1`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v1.4.8 - Scheduler, Runner & TLS Fixes
 *Released: April 24, 2026*
 
@@ -374,6 +388,7 @@ All notable changes to DBackup are documented here.
 ### ✨ Features
 
 - **UI**: Documentation menu in the profile dropdown now expands into a submenu with three options: Dokumentation (external docs), API Docs Local (`/docs/api`), and API Docs Remote (`api.dbackup.app`)
+  > **Note**: Dokumentation link updated to `docs.dbackup.app` in this release
 
 ### 🐛 Bug Fixes
 
@@ -461,7 +476,7 @@ All notable changes to DBackup are documented here.
 
 ### 📝 Documentation
 
-- **wiki**: New user guide article - [Encryption Key](https://dbackup.app/user-guide/security/encryption-key): explains what `ENCRYPTION_KEY` protects, what happens when the key is lost or mismatched, and recovery options
+- **wiki**: New user guide article - [Encryption Key](https://docs.dbackup.app/user-guide/security/encryption-key): explains what `ENCRYPTION_KEY` protects, what happens when the key is lost or mismatched, and recovery options
 
 ### 🐳 Docker
 
@@ -807,7 +822,7 @@ All notable changes to DBackup are documented here.
 ### ✨ Features
 
 - **branding**: Official DBackup logo with multi-resolution favicon support and brand integration (login, sidebar, browser tab)
-- **docs**: Documentation portal launched at [dbackup.app](https://dbackup.app) with in-app link and Discord community
+- **docs**: Documentation portal launched at [docs.dbackup.app](https://docs.dbackup.app) with in-app link and Discord community
 - **SEO**: Meta tags, Open Graph, Twitter Cards, and structured data
 
 ### 🐳 Docker

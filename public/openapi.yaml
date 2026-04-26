@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: DBackup API
-  version: 1.4.8
+  version: 1.5.0
   description: |
     REST API for DBackup - a self-hosted database backup automation platform with encryption, compression, and smart retention.
 
@@ -28,7 +28,7 @@ info:
     url: https://www.gnu.org/licenses/gpl-3.0.html
 externalDocs:
   description: DBackup Support
-  url: https://dbackup.app/#community-support
+  url: https://docs.dbackup.app/#community-support
 
 servers:
   - url: "{protocol}://{host}/api"

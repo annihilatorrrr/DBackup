@@ -6,7 +6,7 @@ applyTo: "**/*"
 
 ## Changelog - Always Update on Every Change
 
-**Whenever you make any change** - feature, bug fix, wiki article, CI/CD, refactor, or docs update - you **must** add a corresponding entry to `wiki/changelog.md` in the same response. Do not defer it.
+**Whenever you make any change** - feature, bug fix, docs article, CI/CD, refactor, or docs update - you **must** add a corresponding entry to `docs/changelog.md` in the same response. Do not defer it.
 
 ### Finding the active version
 

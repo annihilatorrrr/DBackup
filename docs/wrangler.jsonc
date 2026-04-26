@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
-  "name": "dbackup",
+  "name": "dbackup-docs",
   "compatibility_date": "2026-01-31",
   "workers_dev": true,
   "preview_urls": false,

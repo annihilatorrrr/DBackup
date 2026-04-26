@@ -140,7 +140,7 @@ describe("Email Adapter", () => {
       });
 
       const html = mockSendMail.mock.calls[0][0].html;
-      expect(html).toContain("https://dbackup.app/logo.png");
+      expect(html).toContain("https://docs.dbackup.app/logo.png");
     });
 
     it("should render HTML with DBackup footer", async () => {

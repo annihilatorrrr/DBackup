@@ -103,7 +103,7 @@ export function validateEnvironment(): ValidatedEnv {
                 "╠══════════════════════════════════════════════════════════╣",
                 ...critical.map(e => `║  ✗ ${e.padEnd(54)}║`),
                 "╠══════════════════════════════════════════════════════════╣",
-                "║  See: https://dbackup.app/user-guide/installation      ║",
+                "║  See: https://docs.dbackup.app/user-guide/installation      ║",
                 "╚══════════════════════════════════════════════════════════╝",
             ].join("\n");
 
