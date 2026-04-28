@@ -62,31 +62,17 @@ export function CredentialProfilesList({ canReveal }: { canReveal: boolean }) {
     const fetchProfiles = async () => {
         setLoading(true);
         try {
-            const res = await fetch("/api/credentials");
+            const res = await fetch("/api/credentials?includeCounts=true");
             const result = await res.json();
             if (!res.ok || !result.success) {
                 toast.error(result.error || "Failed to load credential profiles");
                 setProfiles([]);
                 return;
             }
-            const list = result.data as CredentialProfileSummary[];
+            const list = result.data as Array<CredentialProfileSummary & { usageCount: number }>;
             setProfiles(list);
-
-            // Fetch reference counts in parallel
             const counts: Record<string, number> = {};
-            await Promise.all(
-                list.map(async (p) => {
-                    try {
-                        const r = await fetch(`/api/credentials/${p.id}/usage`);
-                        const j = await r.json();
-                        if (r.ok && j.success) {
-                            counts[p.id] = j.data.count ?? 0;
-                        }
-                    } catch {
-                        /* ignore */
-                    }
-                })
-            );
+            for (const p of list) counts[p.id] = p.usageCount ?? 0;
             setReferenceCounts(counts);
         } finally {
             setLoading(false);

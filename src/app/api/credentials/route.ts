@@ -49,7 +49,10 @@ export async function GET(req: NextRequest) {
                 ? (typeParam as CredentialType)
                 : undefined;
 
-        const profiles = await credentialService.listCredentialProfiles(type);
+        const includeCounts = req.nextUrl.searchParams.get("includeCounts") === "true";
+        const profiles = includeCounts
+            ? await credentialService.listCredentialProfilesWithCounts(type)
+            : await credentialService.listCredentialProfiles(type);
         return NextResponse.json({ success: true, data: profiles });
     } catch (e) {
         return errorResponse(e);

@@ -94,6 +94,28 @@ export async function listCredentialProfiles(
 }
 
 /**
+ * Lists credential profiles with pre-computed usage counts.
+ * Avoids the N+1 pattern of fetching counts individually per profile.
+ */
+export async function listCredentialProfilesWithCounts(
+    type?: CredentialType
+): Promise<Array<CredentialProfileShape & { usageCount: number }>> {
+    const profiles = await prisma.credentialProfile.findMany({
+        where: type ? { type } : undefined,
+        orderBy: { createdAt: "desc" },
+        include: {
+            _count: {
+                select: { primaryAdapters: true, sshAdapters: true },
+            },
+        },
+    });
+    return profiles.map((p) => ({
+        ...sanitize(p),
+        usageCount: p._count.primaryAdapters + p._count.sshAdapters,
+    }));
+}
+
+/**
  * Returns a single credential profile (sanitized) or throws `NotFoundError`.
  */
 export async function getCredentialProfile(id: string): Promise<CredentialProfileShape> {
@@ -107,14 +129,28 @@ export async function getCredentialProfile(id: string): Promise<CredentialProfil
 /**
  * Returns the decrypted credential payload.
  *
+ * Pass `expectedType` to guard against type mismatches at the call site
+ * (e.g. the config resolver knows which type it needs). The check is done
+ * in the same DB round-trip, so there is no extra query cost.
+ *
  * SECURITY: This function exposes plaintext secrets. Only call from:
  * - The runner / restore pipeline (via `resolveAdapterConfig`)
  * - The reveal API endpoint (gated behind `CREDENTIALS.REVEAL` permission)
  */
-export async function getDecryptedCredentialData(id: string): Promise<CredentialData> {
+export async function getDecryptedCredentialData(
+    id: string,
+    expectedType?: CredentialType
+): Promise<CredentialData> {
     const profile = await prisma.credentialProfile.findUnique({ where: { id } });
     if (!profile) {
         throw new NotFoundError("CredentialProfile", id);
+    }
+
+    if (expectedType && profile.type !== expectedType) {
+        throw new ValidationError(
+            `Credential type mismatch: expected ${expectedType}, got ${profile.type}`,
+            { field: "type", context: { id, expectedType, actualType: profile.type } }
+        );
     }
 
     let parsed: unknown;
@@ -209,11 +245,11 @@ export async function getCredentialUsage(
     const [primary, ssh] = await Promise.all([
         prisma.adapterConfig.findMany({
             where: { primaryCredentialId: id },
-            select: { id: true, name: true, type: true, adapterId: true },
+            select: { id: true, name: true, type: true },
         }),
         prisma.adapterConfig.findMany({
             where: { sshCredentialId: id },
-            select: { id: true, name: true, type: true, adapterId: true },
+            select: { id: true, name: true, type: true },
         }),
     ]);
 
@@ -221,13 +257,13 @@ export async function getCredentialUsage(
         ...primary.map((a) => ({
             adapterId: a.id,
             name: a.name,
-            type: a.adapterId,
+            type: a.type,
             slot: "primary" as const,
         })),
         ...ssh.map((a) => ({
             adapterId: a.id,
             name: a.name,
-            type: a.adapterId,
+            type: a.type,
             slot: "ssh" as const,
         })),
     ];

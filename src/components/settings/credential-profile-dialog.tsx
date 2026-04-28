@@ -83,7 +83,6 @@ export function CredentialProfileDialog({
     const [data, setData] = useState<FormState>(DEFAULTS.USERNAME_PASSWORD);
     const [showSecrets, setShowSecrets] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [isLoadingData, setIsLoadingData] = useState(false);
 
     // Reset / hydrate when dialog opens
     useEffect(() => {
@@ -149,13 +148,8 @@ export function CredentialProfileDialog({
             toast.error("Network error while saving credential profile.");
         } finally {
             setIsSaving(false);
-            setIsLoadingData(false);
         }
     };
-
-    // Avoid unused-warning lint
-    void isLoadingData;
-    void setIsLoadingData;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>

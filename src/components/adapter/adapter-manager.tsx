@@ -427,6 +427,10 @@ export function AdapterManager({ type, title, description, canManage = true, per
  * The startup-checks job sets `lastError = "No credential profile assigned"`
  * for adapters that require but don't have a primary credential. This banner
  * informs the user and links them to the vault to create/assign profiles.
+ *
+ * TODO(2026-06-28): Remove this migration banner. It was added for the v1.5
+ * credential profiles rollout to guide users through reassigning their
+ * credentials. By this point all active installs should have migrated.
  */
 function CredentialUpgradeBanner({ configs }: { configs: AdapterConfig[] }) {
     const affected = configs.filter(

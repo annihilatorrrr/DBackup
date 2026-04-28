@@ -57,10 +57,12 @@ export async function validateAdapterCredentials(): Promise<void> {
                     });
                 }
             } else if (cfg.lastError === NO_PROFILE_MESSAGE) {
-                // Recovery: was missing before, now has a profile (or no longer requires one)
+                // Recovery: was missing before, now has a profile (or no longer requires one).
+                // Set ONLINE optimistically and reset the failure counter; the next health
+                // check cycle will correct the status if the adapter is still unreachable.
                 await prisma.adapterConfig.update({
                     where: { id: cfg.id },
-                    data: { lastStatus: "ONLINE", lastError: null },
+                    data: { lastStatus: "ONLINE", lastError: null, consecutiveFailures: 0 },
                 });
                 cleared++;
                 log.info("Adapter credential profile recovered - cleared OFFLINE flag", {

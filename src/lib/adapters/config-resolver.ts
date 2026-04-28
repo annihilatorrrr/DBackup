@@ -42,9 +42,6 @@ export interface AdapterConfigInput {
  * credential but no profile is assigned. The structural config is still
  * decrypted via `decryptConfig` because legacy structural fields (e.g.
  * `clientSecret`, `refreshToken` for OAuth adapters) live there.
- *
- * NOTE: This is the only sanctioned caller of `decryptConfig` going forward
- * (Phase 5 will migrate all other callsites to use this resolver).
  */
 export async function resolveAdapterConfig(adapter: AdapterConfigInput): Promise<unknown> {
     const adapterDef = registry.get(adapter.adapterId);
@@ -157,8 +154,7 @@ async function loadAndValidate(
     slot: "primary" | "ssh"
 ): Promise<CredentialData> {
     try {
-        // The service throws NotFoundError on missing and re-validates the payload
-        const data = await getDecryptedCredentialData(profileId);
+        const data = await getDecryptedCredentialData(profileId, expected);
         return data;
     } catch (e) {
         log.error(
