@@ -14,7 +14,7 @@ const log = logger.child({ route: "adapters/dropbox/callback" });
  * Redirects back to the destinations page with success/error status.
  */
 export async function GET(req: NextRequest) {
-    const origin = req.nextUrl.origin;
+    const origin = process.env.BETTER_AUTH_URL || req.nextUrl.origin;
 
     // Verify the user is authenticated before processing the OAuth callback
     const session = await auth.api.getSession({ headers: await headers() });

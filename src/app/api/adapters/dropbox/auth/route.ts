@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Build callback URL from the request origin
-        const origin = req.nextUrl.origin;
+        const origin = process.env.BETTER_AUTH_URL || req.nextUrl.origin;
         const redirectUri = `${origin}/api/adapters/dropbox/callback`;
 
         const dbxAuth = new DropboxAuth({
