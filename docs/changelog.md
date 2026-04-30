@@ -11,6 +11,7 @@ All notable changes to DBackup are documented here.
 
 ### 🐛 Bug Fixes
 
+- **notifications**: Fixed Email (SMTP) `From` and `To` fields appearing in both the Connection and Configuration tabs - removed `from` and `to` from `NOTIFICATION_CONNECTION_KEYS` so they only render in the Configuration tab
 - **storage**: Fixed Google Drive, OneDrive, and Dropbox OAuth redirect URIs using `req.nextUrl.origin` (resolves to `0.0.0.0:3000` internally) instead of `BETTER_AUTH_URL` when deployed behind a reverse proxy, causing OAuth failures - Thanks @garrettstoupe
 
 ### 🎨 Improvements
