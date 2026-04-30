@@ -18,6 +18,15 @@ All notable changes to DBackup are documented here.
 - **storage**: Fixed Google Drive, OneDrive, and Dropbox OAuth redirect URIs using `req.nextUrl.origin` (resolves to `0.0.0.0:3000` internally) instead of `BETTER_AUTH_URL` when deployed behind a reverse proxy, causing OAuth failures - Thanks @garrettstoupe
 - **jobs**: Fixed pipeline Compression selector being permanently disabled for all adapter types on the job form - `isNativeCompressionActive` now only evaluates to true when a PostgreSQL source is selected and a native compression algorithm (Legacy, Gzip, LZ4, ZSTD) is active. Non-PostgreSQL adapters can always choose a compression algorithm.
 
+### 🔒 Security
+
+- **deps**: Updated `next` from `16.2.2` to `16.2.4` - fixes DoS with Server Components (GHSA-q4gf-8mx6-v5v3)
+- **deps**: Updated `basic-ftp` from `5.2.0` to `5.3.1` - fixes 3 FTP command injection and DoS vulnerabilities (GHSA-chqc-8p9q-pq6q, GHSA-6v7q-wjvx-w8wg, GHSA-rp42-5vxx-qpwr)
+- **deps**: Updated `@scalar/api-reference-react` from `0.9.18` to `0.9.31` - resolves critical `protobufjs` arbitrary code execution (GHSA-xq3m-2v4x-88gg) via transitive dependency update
+- **deps**: Updated `better-auth` and `@better-auth/sso` from `1.5.6` to `1.6.9` - resolves `drizzle-orm` SQL injection (GHSA-gpj5-g38j-94v9) and 4 `@xmldom/xmldom` XML injection/DoS vulnerabilities via transitive dependency updates
+- **deps**: Added `vite@^7.3.2` as direct devDependency - fixes 3 high-severity path traversal and arbitrary file read vulnerabilities in dev server (GHSA-v2wj-q39q-566r, GHSA-p9ff-h696-f583, GHSA-4w7w-66w2-5vf9)
+- **deps**: Updated `nodemailer` from `7.0.13` to `8.0.7` - fixes SMTP command injection via CRLF in transport name and envelope size (GHSA-vvjj-xcjg-gr5g, GHSA-c7w3-x93f-qmm8)
+
 ### 🎨 Improvements
 
 - **history**: Replaced native browser scrollbar with Shadcn `ScrollArea` in the Notification Log preview dialog, consistent with the Activity Log dialog

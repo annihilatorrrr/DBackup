@@ -149,7 +149,7 @@ export async function getDecryptedCredentialData(
     if (expectedType && profile.type !== expectedType) {
         throw new ValidationError(
             `Credential type mismatch: expected ${expectedType}, got ${profile.type}`,
-            { field: "type", context: { id, expectedType, actualType: profile.type } }
+            { field: "type" }
         );
     }
 

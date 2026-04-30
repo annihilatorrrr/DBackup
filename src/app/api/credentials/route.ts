@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
             name,
             type,
             data,
-            description
+            description ?? undefined
         );
 
         await auditService.log(
