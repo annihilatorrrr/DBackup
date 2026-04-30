@@ -2,7 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { getUserPermissions } from "@/lib/auth/access-control";
+import { checkPermission, getUserPermissions } from "@/lib/auth/access-control";
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import * as encryptionService from "@/services/backup/encryption-service";
 import { revalidatePath } from "next/cache";
@@ -48,18 +48,14 @@ export async function getEncryptionProfiles() {
 
 /**
  * Revels the decrypted master key for a profile.
- * Requires SETTINGS:WRITE permission (highly sensitive).
+ * Requires VAULT:WRITE permission (highly sensitive).
  */
 export async function revealMasterKey(id: string) {
     const headersList = await headers();
     const session = await auth.api.getSession({ headers: headersList });
     if (!session) return { success: false, error: "Unauthorized" };
 
-    const permissions = await getUserPermissions();
-    // Revealing the key is a sensitive operation, effectively admin access to that key
-    if (!permissions.includes(PERMISSIONS.VAULT.WRITE) && !permissions.includes(PERMISSIONS.SETTINGS.WRITE)) {
-        return { success: false, error: "Insufficient permissions" };
-    }
+    await checkPermission(PERMISSIONS.VAULT.WRITE);
 
     try {
         const key = await encryptionService.getDecryptedMasterKey(id);
@@ -71,17 +67,14 @@ export async function revealMasterKey(id: string) {
 
 /**
  * Creates a new encryption profile.
- * Requires SETTINGS:WRITE permission.
+ * Requires VAULT:WRITE permission.
  */
 export async function createEncryptionProfile(name: string, description?: string) {
     const headersList = await headers();
     const session = await auth.api.getSession({ headers: headersList });
     if (!session) return { success: false, error: "Unauthorized" };
 
-    const permissions = await getUserPermissions();
-    if (!permissions.includes(PERMISSIONS.VAULT.WRITE) && !permissions.includes(PERMISSIONS.SETTINGS.WRITE)) {
-        return { success: false, error: "Insufficient permissions" };
-    }
+    await checkPermission(PERMISSIONS.VAULT.WRITE);
 
     try {
         const profile = await encryptionService.createEncryptionProfile(name, description);
@@ -105,17 +98,14 @@ export async function createEncryptionProfile(name: string, description?: string
 
 /**
  * Imports an existing encryption profile from a master key.
- * Requires VAULT:WRITE or SETTINGS:WRITE permission.
+ * Requires VAULT:WRITE permission.
  */
 export async function importEncryptionProfile(name: string, keyHex: string, description?: string) {
     const headersList = await headers();
     const session = await auth.api.getSession({ headers: headersList });
     if (!session) return { success: false, error: "Unauthorized" };
 
-    const permissions = await getUserPermissions();
-    if (!permissions.includes(PERMISSIONS.VAULT.WRITE) && !permissions.includes(PERMISSIONS.SETTINGS.WRITE)) {
-        return { success: false, error: "Insufficient permissions" };
-    }
+    await checkPermission(PERMISSIONS.VAULT.WRITE);
 
     try {
         const profile = await encryptionService.importEncryptionProfile(name, keyHex, description);
@@ -139,17 +129,14 @@ export async function importEncryptionProfile(name: string, keyHex: string, desc
 
 /**
  * Deletes an encryption profile.
- * Requires VAULT:WRITE or SETTINGS:WRITE permission.
+ * Requires VAULT:WRITE permission.
  */
 export async function deleteEncryptionProfile(id: string) {
     const headersList = await headers();
     const session = await auth.api.getSession({ headers: headersList });
     if (!session) return { success: false, error: "Unauthorized" };
 
-    const permissions = await getUserPermissions();
-    if (!permissions.includes(PERMISSIONS.VAULT.WRITE) && !permissions.includes(PERMISSIONS.SETTINGS.WRITE)) {
-        return { success: false, error: "Insufficient permissions" };
-    }
+    await checkPermission(PERMISSIONS.VAULT.WRITE);
 
     try {
         // Warning: This action is destructive and might brick backups.

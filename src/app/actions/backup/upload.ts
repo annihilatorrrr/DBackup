@@ -7,7 +7,6 @@ import { existsSync, mkdirSync } from "fs";
 import path from "path";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { getUserPermissions } from "@/lib/auth/access-control";
 import { logger } from "@/lib/logging/logger";
 import { wrapError } from "@/lib/logging/errors";
 
@@ -68,6 +67,9 @@ async function deleteOldAvatar(userImage: string | null) {
     }
 }
 
+/**
+ * @no-permission-required Self-service action: users can only upload their own avatar.
+ */
 export async function uploadAvatar(formData: FormData) {
     const headersList = await headers();
     const session = await auth.api.getSession({
@@ -135,14 +137,14 @@ export async function uploadAvatar(formData: FormData) {
     }
 }
 
+/**
+ * @no-permission-required Self-service action: users can only remove their own avatar.
+ */
 export async function removeAvatar() {
     const headersList = await headers();
     const session = await auth.api.getSession({
         headers: headersList
     });
-
-    // Audit compliance
-    await getUserPermissions();
 
     if (!session) {
         return { success: false, error: "Unauthorized" };

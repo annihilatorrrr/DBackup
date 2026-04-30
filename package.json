@@ -26,7 +26,8 @@
     "docs:install": "cd docs && pnpm install",
     "docs:dev": "cd docs && pnpm dev",
     "docs:build": "cd docs && pnpm build",
-    "docs:preview": "cd docs && pnpm preview"
+    "docs:preview": "cd docs && pnpm preview",
+    "update:check": "pnpm outdated --recursive 2>&1"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1022.0",

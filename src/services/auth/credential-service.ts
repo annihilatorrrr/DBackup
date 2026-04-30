@@ -245,11 +245,11 @@ export async function getCredentialUsage(
     const [primary, ssh] = await Promise.all([
         prisma.adapterConfig.findMany({
             where: { primaryCredentialId: id },
-            select: { id: true, name: true, type: true },
+            select: { id: true, name: true, adapterId: true },
         }),
         prisma.adapterConfig.findMany({
             where: { sshCredentialId: id },
-            select: { id: true, name: true, type: true },
+            select: { id: true, name: true, adapterId: true },
         }),
     ]);
 
@@ -257,13 +257,13 @@ export async function getCredentialUsage(
         ...primary.map((a) => ({
             adapterId: a.id,
             name: a.name,
-            type: a.type,
+            type: a.adapterId,
             slot: "primary" as const,
         })),
         ...ssh.map((a) => ({
             adapterId: a.id,
             name: a.name,
-            type: a.type,
+            type: a.adapterId,
             slot: "ssh" as const,
         })),
     ];
