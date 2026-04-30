@@ -15,7 +15,7 @@ const log = logger.child({ route: "credentials" });
 const CreateCredentialSchema = z.object({
     name: z.string().min(1, "Name is required").max(100),
     type: z.enum(CREDENTIAL_TYPES),
-    description: z.string().max(500).optional(),
+    description: z.string().max(500).nullish(),
     data: z.unknown(),
 });
 
