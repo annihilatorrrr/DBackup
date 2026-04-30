@@ -232,7 +232,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
     const pgMajorVersion = isPgSource ? parsePgMajorVersion(selectedSource?.metadata) : null;
 
     const pgCompressionAlgo = (form.watch("pgCompressionAlgo") ?? "LEGACY") as PgCompressionAlgo;
-    const isNativeCompressionActive = ["LEGACY", "GZIP", "LZ4", "ZSTD"].includes(pgCompressionAlgo);
+    const isNativeCompressionActive = isPgSource && ["LEGACY", "GZIP", "LZ4", "ZSTD"].includes(pgCompressionAlgo);
 
     // Auto-disable external compression when native pg compression is active
     useEffect(() => {

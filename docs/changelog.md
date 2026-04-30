@@ -5,6 +5,8 @@ All notable changes to DBackup are documented here.
 ## v1.5.0
 *Release: In Progress*
 
+> ⚠️ **Breaking:** Existing Sources, Destinations and Notifications that store credentials inline will require a Credential Profile to be assigned before they come back online. Create the matching profiles in the Security Vault, then assign them to each adapter via the edit form.
+
 ### ✨ Features
 
 - **credentials**: Added the Generic Credential Profile System - reusable, AES-256-GCM encrypted credential profiles (Username/Password, SSH Key, Access Key, Token, SMTP) that adapters reference instead of storing secrets inline. Profiles are managed in the Security Vault, assigned via a searchable picker in the adapter form, and automatically merged into every backup, restore, health check, and notification at runtime.
@@ -14,6 +16,7 @@ All notable changes to DBackup are documented here.
 
 - **notifications**: Fixed Email (SMTP) `From` and `To` fields appearing in both the Connection and Configuration tabs - removed `from` and `to` from `NOTIFICATION_CONNECTION_KEYS` so they only render in the Configuration tab
 - **storage**: Fixed Google Drive, OneDrive, and Dropbox OAuth redirect URIs using `req.nextUrl.origin` (resolves to `0.0.0.0:3000` internally) instead of `BETTER_AUTH_URL` when deployed behind a reverse proxy, causing OAuth failures - Thanks @garrettstoupe
+- **jobs**: Fixed pipeline Compression selector being permanently disabled for all adapter types on the job form - `isNativeCompressionActive` now only evaluates to true when a PostgreSQL source is selected and a native compression algorithm (Legacy, Gzip, LZ4, ZSTD) is active. Non-PostgreSQL adapters can always choose a compression algorithm.
 
 ### 🎨 Improvements
 

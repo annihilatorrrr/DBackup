@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -316,6 +316,9 @@ export function JobsClient({ canManage, canExecute }: JobsClientProps) {
                 <DialogContent className="max-w-175">
                     <DialogHeader>
                         <DialogTitle>{editingJob ? "Edit Backup Job" : "Create New Backup Job"}</DialogTitle>
+                        <DialogDescription>
+                            {editingJob ? "Update the configuration for this backup job." : "Configure a new backup job with source, destinations, and schedule."}
+                        </DialogDescription>
                     </DialogHeader>
                     {isDialogOpen && (
                         <JobForm
