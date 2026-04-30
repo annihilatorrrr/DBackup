@@ -20,7 +20,7 @@ import { uploadAvatar, removeAvatar } from "@/app/actions/backup/upload"
 import { User } from "@prisma/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useRef, useState } from "react"
+import { useRef, useState, useTransition } from "react"
 import { Loader2, Upload, Trash2, Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -64,6 +64,7 @@ interface ProfileFormProps {
 
 export function ProfileForm({ user, canUpdateName, canUpdateEmail }: ProfileFormProps) {
     const [isUploading, setIsUploading] = useState(false);
+    const [isSaving, startSaveTransition] = useTransition();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(user.image);
     const [openTimezone, setOpenTimezone] = useState(false)
@@ -85,19 +86,21 @@ export function ProfileForm({ user, canUpdateName, canUpdateEmail }: ProfileForm
         },
     })
 
-    async function onSubmit(values: z.infer<typeof formSchema>) {
-        toast.promise(updateUser(user.id, values), {
-            loading: 'Updating profile...',
-            success: (data) => {
-                if(data.success) {
-                    // Force a hard reload to update session data globally
-                    window.location.reload();
-                    return 'Profile updated successfully';
-                } else {
-                    throw new Error(data.error)
-                }
-            },
-            error: (err) => `Error: ${err.message}`
+    function onSubmit(values: z.infer<typeof formSchema>) {
+        startSaveTransition(async () => {
+            toast.promise(updateUser(user.id, values), {
+                loading: 'Updating profile...',
+                success: (data) => {
+                    if(data.success) {
+                        // Force a hard reload to update session data globally
+                        window.location.reload();
+                        return 'Profile updated successfully';
+                    } else {
+                        throw new Error(data.error)
+                    }
+                },
+                error: (err) => `Error: ${err.message}`
+            });
         });
     }
 
@@ -364,7 +367,10 @@ export function ProfileForm({ user, canUpdateName, canUpdateEmail }: ProfileForm
                                 )}
                             />
                         </div>
-                        <Button type="submit">Save Changes</Button>
+                        <Button type="submit" disabled={isSaving}>
+                            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Save Changes
+                        </Button>
                     </form>
                 </Form>
             </CardContent>

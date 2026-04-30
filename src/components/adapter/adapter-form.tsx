@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 
+import { Loader2 } from "lucide-react";
 import { AdapterDefinition } from "@/lib/adapters/definitions";
 import { AdapterConfig } from "./types";
 import { useAdapterConnection } from "./use-adapter-connection";
@@ -82,6 +83,7 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
         pendingSubmission,
         setPendingSubmission,
         detectedVersion,
+        isTesting,
         testConnection,
     } = useAdapterConnection({
         adapterId: selectedAdapterId,
@@ -347,12 +349,14 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
                                 type="button"
                                 variant="secondary"
                                 onClick={testConnection}
-                                disabled={!selectedAdapter}
+                                disabled={!selectedAdapter || isTesting || form.formState.isSubmitting}
                             >
+                                {isTesting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Test Connection
                             </Button>
                         )}
-                        <Button type="submit" disabled={!selectedAdapter}>
+                        <Button type="submit" disabled={!selectedAdapter || form.formState.isSubmitting || isTesting}>
+                            {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {initialData ? "Save Changes" : "Create"}
                         </Button>
                     </div>

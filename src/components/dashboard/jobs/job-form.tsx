@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Lock, History, ChevronsUpDown, Plus, Trash2, ChevronDown, ChevronRight, Database, Info } from "lucide-react";
+import { Lock, History, ChevronsUpDown, Plus, Trash2, ChevronDown, ChevronRight, Database, Info, Loader2 } from "lucide-react";
 import { SchedulePicker } from "./schedule-picker";
 import { AdapterIcon } from "@/components/adapter/adapter-icon";
 import { DatabasePicker } from "@/components/adapter/database-picker";
@@ -791,7 +791,10 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                 </Tabs>
 
                 <div className="pt-4 border-t">
-                    <Button type="submit" className="w-full">Save Job Configuration</Button>
+                    <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                        {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Save Job Configuration
+                    </Button>
                 </div>
             </form>
         </Form>

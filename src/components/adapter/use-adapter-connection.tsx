@@ -20,8 +20,10 @@ export function useAdapterConnection({ adapterId, form, initialDataId, primaryCr
     const [availableDatabases, setAvailableDatabases] = useState<string[]>([]);
     const [isLoadingDbs, setIsLoadingDbs] = useState(false);
     const [isDbListOpen, setIsDbListOpen] = useState(false);
+    const [isTesting, setIsTesting] = useState(false);
 
     const testConnection = async () => {
+        setIsTesting(true);
         const data = form.getValues();
         // Use adapterId from form (regular form) or fall back to hook prop (Quick Setup)
         const resolvedAdapterId = data.adapterId || adapterId;
@@ -61,6 +63,8 @@ export function useAdapterConnection({ adapterId, form, initialDataId, primaryCr
             toast.dismiss(toastId);
             toast.error("Failed to test connection");
             return false;
+        } finally {
+            setIsTesting(false);
         }
     };
 
@@ -144,6 +148,7 @@ export function useAdapterConnection({ adapterId, form, initialDataId, primaryCr
         isLoadingDbs,
         isDbListOpen,
         setIsDbListOpen,
+        isTesting,
         testConnection,
         fetchDatabases
     };
