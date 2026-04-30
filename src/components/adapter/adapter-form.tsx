@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -23,6 +23,34 @@ import { AdapterConfig } from "./types";
 import { useAdapterConnection } from "./use-adapter-connection";
 import { DatabaseFormContent, GenericFormContent, NotificationFormContent, StorageFormContent } from "./form-sections";
 import { SchemaField } from "./schema-field";
+
+/**
+ * Walks a Zod schema shape and calls form.setValue for every field that has a
+ * Zod .default(...) value AND whose current form value is undefined.
+ * This seeds enum/boolean/number defaults without wiping values already typed.
+ */
+function seedSchemaDefaults(schema: z.ZodTypeAny, form: any) {
+    if (!(schema instanceof z.ZodObject)) return;
+    const shape = (schema as z.ZodObject<any>).shape;
+    for (const [key, raw] of Object.entries(shape)) {
+        const currentVal = form.getValues(`config.${key}`);
+        if (currentVal !== undefined) continue;
+        // Walk wrappers (Optional, Nullable) to find ZodDefault
+        let s = raw as z.ZodTypeAny;
+        while (s) {
+            const typeName = (s as any)._def?.typeName;
+            if (typeName === "ZodDefault") {
+                form.setValue(`config.${key}`, (s as any)._def.defaultValue());
+                break;
+            }
+            if ((s as any)._def?.innerType) {
+                s = (s as any)._def.innerType;
+            } else {
+                break;
+            }
+        }
+    }
+}
 
 export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: { type: string, adapters: AdapterDefinition[], onSuccess: () => void, initialData?: AdapterConfig, onBack?: () => void }) {
     const [selectedAdapterId, setSelectedAdapterId] = useState<string>(initialData?.adapterId || "");
@@ -62,10 +90,52 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
         }
     }, [initialData, type]);
 
+    // When a credential profile is assigned, the fields it covers are hidden from
+    // the form and will never be populated - so we strip them from the config
+    // schema before validation to avoid a silent required-field failure.
+    const configSchema = useMemo(() => {
+        if (!selectedAdapter) return z.any();
+        const base = selectedAdapter.configSchema;
+        if (!(base instanceof z.ZodObject)) return base;
+
+        const credentialKeys: string[] = [];
+        if (primaryCredentialId && selectedAdapter.credentials?.primary === "ACCESS_KEY") {
+            credentialKeys.push("accessKeyId", "secretAccessKey");
+        }
+        if (primaryCredentialId && selectedAdapter.credentials?.primary === "USERNAME_PASSWORD") {
+            credentialKeys.push("user", "username", "password");
+        }
+        if (primaryCredentialId && selectedAdapter.credentials?.primary === "TOKEN") {
+            credentialKeys.push("token", "appToken", "accessToken", "botToken");
+        }
+        if (primaryCredentialId && selectedAdapter.credentials?.primary === "SMTP") {
+            credentialKeys.push("user", "password");
+        }
+        if (sshCredentialId && selectedAdapter.credentials?.ssh === "SSH_KEY") {
+            credentialKeys.push(
+                "sshUsername", "sshAuthType", "sshPassword", "sshPrivateKey", "sshPassphrase",
+                "username", "authType", "privateKey", "passphrase"
+            );
+        }
+
+        if (credentialKeys.length === 0) return base;
+
+        // Make each credential-managed field optional so validation passes
+        // even though those inputs are hidden.
+        const shape = (base as z.ZodObject<any>).shape;
+        const patchedShape: Record<string, z.ZodTypeAny> = { ...shape };
+        for (const key of credentialKeys) {
+            if (patchedShape[key]) {
+                patchedShape[key] = patchedShape[key].optional();
+            }
+        }
+        return z.object(patchedShape);
+    }, [selectedAdapter, primaryCredentialId, sshCredentialId]);
+
     const schema = z.object({
         name: z.string().min(1, "Name is required"),
         adapterId: z.string().min(1, "Type is required"),
-        config: selectedAdapter ? selectedAdapter.configSchema : z.any()
+        config: configSchema,
     });
 
     const form = useForm({
@@ -93,6 +163,11 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
         sshCredentialId
     });
 
+    // Track which adapter we have already seeded defaults for, to avoid
+    // overwriting values the user has already typed when the parent re-renders
+    // and passes a new (but equivalent) adapters array reference.
+    const seededAdapterRef = useRef<string | null>(null);
+
     // Update form schema/values when adapter changes
     useEffect(() => {
         if (!initialData && adapters.length === 1) {
@@ -100,6 +175,13 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setSelectedAdapterId(firstId);
             form.setValue("adapterId", firstId);
+
+            // Only seed enum/default values once per adapter - never wipe the whole
+            // config object, which would destroy values the user has already typed.
+            if (seededAdapterRef.current !== firstId) {
+                seededAdapterRef.current = firstId;
+                seedSchemaDefaults(adapters[0].configSchema, form);
+            }
         }
     }, [adapters, initialData, form]);
 
@@ -253,8 +335,14 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
                                                                     value={adapter.name}
                                                                     key={adapter.id}
                                                                     onSelect={() => {
-                                                                        form.setValue("adapterId", adapter.id)
+                                                                        form.setValue("adapterId", adapter.id);
                                                                         setSelectedAdapterId(adapter.id);
+                                                                        if (!initialData) {
+                                                                            // User actively switched adapter: reset config and re-seed defaults
+                                                                            form.setValue("config", {});
+                                                                            seededAdapterRef.current = adapter.id;
+                                                                            seedSchemaDefaults(adapter.configSchema, form);
+                                                                        }
                                                                     }}
                                                                     className={cn(adapter.id === field.value && "bg-accent")}
                                                                 >

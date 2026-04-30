@@ -320,6 +320,12 @@ export const S3AWSAdapter: StorageAdapter = {
     }, ...args)
 };
 
+function r2Endpoint(accountId: string, jurisdiction?: string): string {
+    if (jurisdiction === "eu") return `https://${accountId}.eu.r2.cloudflarestorage.com`;
+    if (jurisdiction === "fedramp") return `https://${accountId}.fedramp.r2.cloudflarestorage.com`;
+    return `https://${accountId}.r2.cloudflarestorage.com`;
+}
+
 // 3. Cloudflare R2
 export const S3R2Adapter: StorageAdapter = {
     id: "s3-r2",
@@ -328,39 +334,39 @@ export const S3R2Adapter: StorageAdapter = {
     configSchema: S3R2Schema,
     credentials: { primary: "ACCESS_KEY" },
     upload: (config, ...args) => s3Upload({
-        endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
+        endpoint: r2Endpoint(config.accountId, config.jurisdiction),
         region: "auto",
         bucket: config.bucket,
         credentials: { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey },
         pathPrefix: config.pathPrefix
     }, ...args),
     list: (config, ...args) => s3List({
-        endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
+        endpoint: r2Endpoint(config.accountId, config.jurisdiction),
         region: "auto",
         bucket: config.bucket,
         credentials: { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey },
         pathPrefix: config.pathPrefix
     }, ...args),
     download: (config, ...args) => s3Download({
-        endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
+        endpoint: r2Endpoint(config.accountId, config.jurisdiction),
         region: "auto",
         bucket: config.bucket,
         credentials: { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey },
     }, ...args),
     delete: (config, ...args) => s3Delete({
-        endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
+        endpoint: r2Endpoint(config.accountId, config.jurisdiction),
         region: "auto",
         bucket: config.bucket,
         credentials: { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey },
     }, ...args),
     test: (config) => s3Test({
-        endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
+        endpoint: r2Endpoint(config.accountId, config.jurisdiction),
         region: "auto",
         bucket: config.bucket,
         credentials: { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey },
     }),
     read: (config, ...args) => s3Read({
-        endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
+        endpoint: r2Endpoint(config.accountId, config.jurisdiction),
         region: "auto",
         bucket: config.bucket,
         credentials: { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey },

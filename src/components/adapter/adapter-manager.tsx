@@ -297,6 +297,16 @@ export function AdapterManager({ type, title, description, canManage = true, per
         return [{ id: "adapterId", title: "Type", options }];
     }, [configs, availableAdapters]);
 
+    // Stable reference for the adapter list passed to AdapterForm - prevents the
+    // useEffect inside AdapterForm from re-running (and wiping typed values) when
+    // unrelated state changes cause the parent to re-render.
+    const adapterFormList = useMemo(
+        () => selectedAdapterForNew
+            ? availableAdapters.filter(a => a.id === selectedAdapterForNew)
+            : availableAdapters,
+        [selectedAdapterForNew, availableAdapters]
+    );
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -381,7 +391,7 @@ export function AdapterManager({ type, title, description, canManage = true, per
                         {isDialogOpen && (
                             <AdapterForm
                                 type={type}
-                                adapters={selectedAdapterForNew ? availableAdapters.filter(a => a.id === selectedAdapterForNew) : availableAdapters}
+                                adapters={adapterFormList}
                                 onSuccess={() => { setIsDialogOpen(false); setSelectedAdapterForNew(null); fetchConfigs(); }}
                                 initialData={editingId ? configs.find(c => c.id === editingId) : undefined}
                                 onBack={!editingId ? () => { setIsDialogOpen(false); setSelectedAdapterForNew(null); setIsPickerOpen(true); } : undefined}

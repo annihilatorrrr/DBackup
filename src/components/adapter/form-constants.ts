@@ -1,7 +1,7 @@
 export const STORAGE_CONNECTION_KEYS = [
     'host', 'port',
     'endpoint', 'region',
-    'accountId', 'bucket', 'basePath',
+    'accountId', 'bucket', 'jurisdiction', 'basePath',
     'address', 'domain', 'url',
     'user', 'username',
     'password', 'accessKeyId', 'secretAccessKey',

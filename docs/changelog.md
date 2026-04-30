@@ -8,6 +8,7 @@ All notable changes to DBackup are documented here.
 ### ✨ Features
 
 - **credentials**: Added the Generic Credential Profile System - reusable, AES-256-GCM encrypted credential profiles (Username/Password, SSH Key, Access Key, Token, SMTP) that adapters reference instead of storing secrets inline. Profiles are managed in the Security Vault, assigned via a searchable picker in the adapter form, and automatically merged into every backup, restore, health check, and notification at runtime.
+- **storage**: Added `jurisdiction` field to the Cloudflare R2 adapter (`Standard`, `EU`, `FedRAMP`) - EU-jurisdiction buckets require the `*.eu.r2.cloudflarestorage.com` endpoint, without this setting they return "Access Denied" or "bucket does not exist"
 
 ### 🐛 Bug Fixes
 
@@ -18,7 +19,7 @@ All notable changes to DBackup are documented here.
 
 - **history**: Replaced native browser scrollbar with Shadcn `ScrollArea` in the Notification Log preview dialog, consistent with the Activity Log dialog
 - **jobs**: Renamed "Security" tab to "Advanced" in the backup job form - the tab contains both Compression and Encryption settings, so "Advanced" is more accurate
-- **refactor**: Major codebase reorganization - split three oversized files (`config-service.ts`, `restore-service.ts`, `adapters/definitions.ts`) into focused sub-modules via the Facade Pattern, and grouped all loose files in `src/lib/` (20 files into 6 folders), `src/services/` (19 files into 9 folders), and `src/app/actions/` (14 files into 5 folders) into a clear directory structure. Also consolidated `src/types.ts` into `src/types/index.ts`; all ~600 import paths across source, tests, and docs were updated and public APIs remain unchanged
+- **refactor**: Major codebase reorganization - split three oversized files (`config-service.ts`, `restore-service.ts`, `adapters/definitions.ts`) into focused sub-modules via the Facade Pattern, and grouped all loose files in `src/lib/` (20 files into 6 folders), `src/services/` (19 files into 9 folders), and `src/app/actions/` (14 files into 5 folders) into a clear directory structure. Also consolidated `src/types.ts` into `src/types/index.ts`, all ~600 import paths across source, tests, and docs were updated and public APIs remain unchanged
 
 ### 🔄 Changed
 
@@ -26,7 +27,7 @@ All notable changes to DBackup are documented here.
 
 ### 📝 Documentation
 
-- **credentials**: Added a new user-guide page `security/credential-profiles.md` documenting types, slots, inline creation flow, reference tracking, REVEAL semantics, and the REST surface; added a top-of-page note to `security/encryption.md` clarifying that the Vault now hosts both an Encryption tab and a Credentials tab; added the page to the security sidebar in `.vitepress/config.mts`
+- **credentials**: Added a new user-guide page `security/credential-profiles.md` documenting types, slots, inline creation flow, reference tracking, REVEAL semantics, and the REST surface, added a top-of-page note to `security/encryption.md` clarifying that the Vault now hosts both an Encryption tab and a Credentials tab, added the page to the security sidebar in `.vitepress/config.mts`
 - **api**: Documented the full `/api/credentials` REST surface in `public/openapi.yaml` under the `Vault` tag, including a `CredentialType` enum and per-type `data` schemas (`UsernamePasswordData`, `SshKeyData`, `AccessKeyData`, `TokenData`, `SmtpData`), plus a new `BadRequest` shared response
 
 ### 🗑️ Removed
@@ -53,7 +54,7 @@ All notable changes to DBackup are documented here.
 
 - **scheduler**: Fixed a race condition where concurrent `scheduler.refresh()` calls (e.g. saving a job while config-backup settings are updated simultaneously) could create orphaned `node-cron` tasks that are never stopped. These ghost tasks could cause scheduled jobs to fire more than once per cron interval
 - **scheduler**: Fixed the scheduler singleton not being stored on `globalThis` in production mode (`NODE_ENV=production`). If the module was re-imported in a fresh module scope (a known Next.js standalone behavior), a second independent `BackupScheduler` instance with its own cron tasks was created
-- **runner**: Fixed a TOCTOU race condition in `performExecution` that caused duplicate backup files when two or more jobs are scheduled at the same cron minute. Both `processQueue()` calls ran concurrently, both found the same `Pending` execution, and both ran the full backup pipeline. The execution is now claimed atomically via a conditional `updateMany` (`status: "Pending" → "Running"`); the call that gets `count=0` back exits immediately without running the backup (#32)
+- **runner**: Fixed a TOCTOU race condition in `performExecution` that caused duplicate backup files when two or more jobs are scheduled at the same cron minute. Both `processQueue()` calls ran concurrently, both found the same `Pending` execution, and both ran the full backup pipeline. The execution is now claimed atomically via a conditional `updateMany` (`status: "Pending" → "Running"`), the call that gets `count=0` back exits immediately without running the backup (#32)
 - **tls**: Fixed self-signed certificate not including the hostname from `BETTER_AUTH_URL` as a SubjectAltName (SAN). Browsers like Brave (and per RFC, all browsers) block `fetch()` API calls when the SAN does not match the accessed hostname, even after manually accepting the certificate warning for the page itself. The generated SAN now includes the hostname/IP extracted from `BETTER_AUTH_URL` in addition to `localhost` and `127.0.0.1`. On startup, if an existing self-signed cert is missing the configured hostname, it is automatically regenerated. The "Regenerate" button in Settings also benefits from this fix
 
 ### 🎨 Improvements
@@ -263,7 +264,7 @@ All notable changes to DBackup are documented here.
 
 ### 🐛 Bug Fixes
 
-- **backup**: MySQL, PostgreSQL, and MongoDB backup jobs with no database selected now auto-discover all databases at runtime - MySQL no longer fails with "No database specified", PostgreSQL no longer defaults to the username as database name, and MongoDB SSH listing was fixed by switching `mongosh --eval` to single quotes to prevent bash `!` history expansion from silently corrupting the command; backup metadata is now correctly populated for restore mapping.
+- **backup**: MySQL, PostgreSQL, and MongoDB backup jobs with no database selected now auto-discover all databases at runtime - MySQL no longer fails with "No database specified", PostgreSQL no longer defaults to the username as database name, and MongoDB SSH listing was fixed by switching `mongosh --eval` to single quotes to prevent bash `!` history expansion from silently corrupting the command, backup metadata is now correctly populated for restore mapping.
 - **restore**: Restore page no longer shows SQLite-style "Overwrite / Restore as New" UI for server-based adapters - now shows a target database name input when database names are unknown, and auto-discovers database names in backup metadata for future backups
 - **ssh**: Fixed MySQL/MongoDB SSH restore not consuming stdout, which could cause backpressure and hang/crash the remote process
 - **restore**: Fixed MySQL SSH restore crashing the Node.js process with OOM (16 GB heap) when restoring large databases - stderr log output is now rate-limited (max 50 messages, 500 chars each) to prevent unbounded memory growth
@@ -282,7 +283,7 @@ All notable changes to DBackup are documented here.
 - **ui**: Restore page now shows skeleton loading while target databases are fetched via SSH - version compatibility, database mapping, and action buttons are blocked until loading completes
 - **ui**: Sources and Destinations pages now auto-refresh every 10 seconds to keep health status up to date
 - **sqlite**: Refactored SQLite SSH client into shared SSH module for code reuse across all database adapters
-- **sqlite**: SQLite SSH connection test now uses `remoteBinaryCheck()` from the shared SSH library instead of manual binary checks; `try/finally` pattern ensures SSH connections are always closed; exit code null handling fixed in dump
+- **sqlite**: SQLite SSH connection test now uses `remoteBinaryCheck()` from the shared SSH library instead of manual binary checks, `try/finally` pattern ensures SSH connections are always closed, exit code null handling fixed in dump
 
 ### 📝 Documentation
 
@@ -339,7 +340,7 @@ All notable changes to DBackup are documented here.
 - **security**: Built-in HTTPS support - DBackup now defaults to HTTPS with an auto-generated self-signed certificate on first start, protecting all traffic including database passwords, encryption keys, and session cookies
 - **security**: Certificate management UI - new "Certificate" tab in System Settings to view certificate details (issuer, expiry, fingerprint), upload custom PEM certificates, or regenerate self-signed certs
 - **security**: HSTS header - when accessed via HTTPS, DBackup now sends `Strict-Transport-Security` to enforce future HTTPS connections in the browser
-- **security**: Auto-renewal for self-signed certificates - expired self-signed certs are automatically regenerated on container start; custom certificates are never replaced, only a warning is logged
+- **security**: Auto-renewal for self-signed certificates - expired self-signed certs are automatically regenerated on container start, custom certificates are never replaced, only a warning is logged
 
 ### 🔄 Changed
 
@@ -609,7 +610,7 @@ All notable changes to DBackup are documented here.
 
 - **Redis**: Replaced incorrect multi-select database picker with 0–15 dropdown
 - **ui**: Fixed database icon showing red instead of yellow for `Pending` executions
-- **API**: Bash trigger script checks `success: true` before parsing; documented `history:read` requirement
+- **API**: Bash trigger script checks `success: true` before parsing, documented `history:read` requirement
 - **auth**: Split rate limit module into Edge-safe and server-only to avoid `node:crypto` import in Edge Runtime
 - **config backup**: Fixed 7 issues including missing Zod field, download crash, meta format detection, and FK violations
 
@@ -913,7 +914,7 @@ All notable changes to DBackup are documented here.
 
 - **config backup**: Self-backup of app configuration (Users, Jobs, Settings) to storage adapters with full restore flow
 - **encryption**: Profile portability - export/import secret keys for server migration with Smart Recovery
-- **settings**: System task management - admins can enable/disable background tasks; config backup moved into standard scheduler
+- **settings**: System task management - admins can enable/disable background tasks, config backup moved into standard scheduler
 
 ### 🐳 Docker
 

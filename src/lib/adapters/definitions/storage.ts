@@ -29,6 +29,7 @@ export const S3AWSSchema = z.object({
 export const S3R2Schema = z.object({
     accountId: z.string().min(1, "Cloudflare Account ID is required"),
     bucket: z.string().min(1, "Bucket name is required"),
+    jurisdiction: z.enum(["default", "eu", "fedramp"]).default("default").describe("Bucket Jurisdiction (Standard, EU, or FedRAMP - must match the bucket's location)"),
     accessKeyId: z.string().min(1, "Access Key is required"),
     secretAccessKey: z.string().min(1, "Secret Key is required"),
     pathPrefix: z.string().optional().describe("Optional folder prefix"),
