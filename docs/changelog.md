@@ -21,7 +21,6 @@ All notable changes to DBackup are documented here.
 ### 🔒 Security
 
 - **deps**: Updated `next` from `16.2.2` to `16.2.4` - fixes DoS with Server Components (GHSA-q4gf-8mx6-v5v3)
-- **deps**: Updated `basic-ftp` from `5.2.0` to `5.3.1` - fixes 3 FTP command injection and DoS vulnerabilities (GHSA-chqc-8p9q-pq6q, GHSA-6v7q-wjvx-w8wg, GHSA-rp42-5vxx-qpwr)
 - **deps**: Updated `@scalar/api-reference-react` from `0.9.18` to `0.9.31` - resolves critical `protobufjs` arbitrary code execution (GHSA-xq3m-2v4x-88gg) via transitive dependency update
 - **deps**: Updated `better-auth` and `@better-auth/sso` from `1.5.6` to `1.6.9` - resolves `drizzle-orm` SQL injection (GHSA-gpj5-g38j-94v9) and 4 `@xmldom/xmldom` XML injection/DoS vulnerabilities via transitive dependency updates
 - **deps**: Added `vite@^7.3.2` as direct devDependency - fixes 3 high-severity path traversal and arbitrary file read vulnerabilities in dev server (GHSA-v2wj-q39q-566r, GHSA-p9ff-h696-f583, GHSA-4w7w-66w2-5vf9)
@@ -29,7 +28,7 @@ All notable changes to DBackup are documented here.
 
 ### 🔄 Changed
 
-- **deps**: Bumped `react` + `react-dom` `19.2.4` → `19.2.5`, `tailwindcss` + `@tailwindcss/postcss` `4.2.2` → `4.2.4`, `eslint-config-next` `16.2.2` → `16.2.4`, `vitest` `4.1.2` → `4.1.5`, `@aws-sdk/client-s3` + `@aws-sdk/lib-storage` `3.1022` → `3.1039`, `jsdom` `29.0.1` → `29.1.1`, `mongodb` `7.1.1` → `7.2.0`, `mssql` `12.2.1` → `12.5.0`, `tar-stream` `3.1.8` → `3.2.0`, `zod` `4.3.6` → `4.4.1`, `react-hook-form` `7.72.0` → `7.74.0`, `lucide-react` `1.7.0` → `1.14.0` - all minor/patch updates with no breaking changes
+- **deps**: Bumped minor/patch versions for `react`, `react-dom`, `tailwindcss`, `@tailwindcss/postcss`, `eslint-config-next`, `vitest`, `basic-ftp`, `@aws-sdk/client-s3`, `@aws-sdk/lib-storage`, `jsdom`, `mongodb`, `mssql`, `tar-stream`, `zod`, `react-hook-form`, `lucide-react` - no breaking changes
 
 ### 🎨 Improvements
 
