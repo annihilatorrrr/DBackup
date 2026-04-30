@@ -16,6 +16,7 @@ All notable changes to DBackup are documented here.
 
 ### 🎨 Improvements
 
+- **history**: Replaced native browser scrollbar with Shadcn `ScrollArea` in the Notification Log preview dialog, consistent with the Activity Log dialog
 - **jobs**: Renamed "Security" tab to "Advanced" in the backup job form - the tab contains both Compression and Encryption settings, so "Advanced" is more accurate
 - **refactor**: Major codebase reorganization - split three oversized files (`config-service.ts`, `restore-service.ts`, `adapters/definitions.ts`) into focused sub-modules via the Facade Pattern, and grouped all loose files in `src/lib/` (20 files into 6 folders), `src/services/` (19 files into 9 folders), and `src/app/actions/` (14 files into 5 folders) into a clear directory structure. Also consolidated `src/types.ts` into `src/types/index.ts`; all ~600 import paths across source, tests, and docs were updated and public APIs remain unchanged
 
