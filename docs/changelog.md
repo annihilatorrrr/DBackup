@@ -2,7 +2,7 @@
 
 All notable changes to DBackup are documented here.
 
-## v1.5.0
+## v2.0.0
 *Release: In Progress*
 
 > ⚠️ **Breaking:** Existing Sources, Destinations and Notifications that store credentials inline will require a Credential Profile to be assigned before they come back online. Create the matching profiles in the Security Vault, then assign them to each adapter via the edit form.
@@ -26,6 +26,10 @@ All notable changes to DBackup are documented here.
 - **deps**: Updated `better-auth` and `@better-auth/sso` from `1.5.6` to `1.6.9` - resolves `drizzle-orm` SQL injection (GHSA-gpj5-g38j-94v9) and 4 `@xmldom/xmldom` XML injection/DoS vulnerabilities via transitive dependency updates
 - **deps**: Added `vite@^7.3.2` as direct devDependency - fixes 3 high-severity path traversal and arbitrary file read vulnerabilities in dev server (GHSA-v2wj-q39q-566r, GHSA-p9ff-h696-f583, GHSA-4w7w-66w2-5vf9)
 - **deps**: Updated `nodemailer` from `7.0.13` to `8.0.7` - fixes SMTP command injection via CRLF in transport name and envelope size (GHSA-vvjj-xcjg-gr5g, GHSA-c7w3-x93f-qmm8)
+
+### 🔄 Changed
+
+- **deps**: Bumped `react` + `react-dom` `19.2.4` → `19.2.5`, `tailwindcss` + `@tailwindcss/postcss` `4.2.2` → `4.2.4`, `eslint-config-next` `16.2.2` → `16.2.4`, `vitest` `4.1.2` → `4.1.5`, `@aws-sdk/client-s3` + `@aws-sdk/lib-storage` `3.1022` → `3.1039`, `jsdom` `29.0.1` → `29.1.1`, `mongodb` `7.1.1` → `7.2.0`, `mssql` `12.2.1` → `12.5.0`, `tar-stream` `3.1.8` → `3.2.0`, `zod` `4.3.6` → `4.4.1`, `react-hook-form` `7.72.0` → `7.74.0`, `lucide-react` `1.7.0` → `1.14.0` - all minor/patch updates with no breaking changes
 
 ### 🎨 Improvements
 
@@ -54,8 +58,8 @@ All notable changes to DBackup are documented here.
 
 ### 🐳 Docker
 
-- **Image**: `skyfay/dbackup:v1.5.0`
-- **Also tagged as**: `latest`, `v1`
+- **Image**: `skyfay/dbackup:v2.0.0`
+- **Also tagged as**: `latest`, `v2`
 - **Platforms**: linux/amd64, linux/arm64
 
 
