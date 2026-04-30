@@ -49,6 +49,7 @@ export function GroupTable({ data, canManage }: GroupTableProps) {
             cell: ({ row }) => <span className="font-medium">{row.getValue("name")}</span>
         },
         {
+            id: "members",
             accessorKey: "_count.users",
             header: "Members",
             cell: ({ row }) => (
