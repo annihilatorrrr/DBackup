@@ -1,0 +1,270 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { WebDAVAdapter } from "@/lib/adapters/storage/webdav";
+
+// --- Hoisted mocks ---
+const { mockClient, mockPipeline } = vi.hoisted(() => ({
+    mockClient: {
+        putFileContents: vi.fn(),
+        getFileContents: vi.fn(),
+        getDirectoryContents: vi.fn(),
+        deleteFile: vi.fn(),
+        exists: vi.fn(),
+        createDirectory: vi.fn(),
+        createReadStream: vi.fn(),
+        stat: vi.fn(),
+    },
+    mockPipeline: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("webdav", () => ({
+    createClient: vi.fn(() => mockClient),
+}));
+
+vi.mock("fs/promises", () => ({
+    default: {
+        readFile: vi.fn().mockResolvedValue(Buffer.from("backup data")),
+    },
+    readFile: vi.fn().mockResolvedValue(Buffer.from("backup data")),
+}));
+
+vi.mock("fs", () => ({
+    createWriteStream: vi.fn(() => ({ on: vi.fn(), end: vi.fn() })),
+    default: { createWriteStream: vi.fn(() => ({ on: vi.fn(), end: vi.fn() })) },
+}));
+
+vi.mock("stream/promises", () => ({
+    pipeline: mockPipeline,
+    default: { pipeline: mockPipeline },
+}));
+
+vi.mock("@/lib/logging/logger", () => ({
+    logger: {
+        child: vi.fn().mockReturnValue({
+            info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn(),
+        }),
+    },
+}));
+
+vi.mock("@/lib/logging/errors", () => ({
+    wrapError: vi.fn((e) => e),
+}));
+
+// --- Config ---
+const config = {
+    url: "https://dav.example.com",
+    username: "admin",
+    password: "secret",
+    pathPrefix: "backups",
+};
+
+describe("WebDAVAdapter", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockClient.exists.mockResolvedValue(true);
+        mockClient.createDirectory.mockResolvedValue(undefined);
+        mockPipeline.mockResolvedValue(undefined);
+    });
+
+    // ===== upload() =====
+
+    describe("upload()", () => {
+        it("returns true on successful upload", async () => {
+            mockClient.putFileContents.mockResolvedValue(undefined);
+
+            const result = await WebDAVAdapter.upload(config, "/tmp/backup.sql", "Job/backup.sql");
+
+            expect(result).toBe(true);
+            expect(mockClient.putFileContents).toHaveBeenCalled();
+        });
+
+        it("creates parent directory when it does not exist", async () => {
+            mockClient.exists.mockResolvedValue(false);
+            mockClient.putFileContents.mockResolvedValue(undefined);
+
+            await WebDAVAdapter.upload(config, "/tmp/backup.sql", "Job/backup.sql");
+
+            expect(mockClient.createDirectory).toHaveBeenCalled();
+        });
+
+        it("returns false when putFileContents throws", async () => {
+            mockClient.putFileContents.mockRejectedValue(new Error("Server Error"));
+
+            const result = await WebDAVAdapter.upload(config, "/tmp/backup.sql", "Job/backup.sql");
+
+            expect(result).toBe(false);
+        });
+
+        it("calls onProgress(100) after successful upload", async () => {
+            mockClient.putFileContents.mockResolvedValue(undefined);
+            const onProgress = vi.fn();
+
+            await WebDAVAdapter.upload(config, "/tmp/backup.sql", "Job/backup.sql", onProgress);
+
+            expect(onProgress).toHaveBeenCalledWith(100);
+        });
+
+        it("respects pathPrefix in destination path", async () => {
+            mockClient.putFileContents.mockResolvedValue(undefined);
+
+            await WebDAVAdapter.upload(config, "/tmp/backup.sql", "Job/backup.sql");
+
+            const destinationArg = mockClient.putFileContents.mock.calls[0][0];
+            expect(destinationArg).toContain("backups");
+        });
+    });
+
+    // ===== download() =====
+
+    describe("download()", () => {
+        it("returns true on successful download", async () => {
+            mockClient.createReadStream.mockReturnValue({ pipe: vi.fn() });
+
+            const result = await WebDAVAdapter.download(config, "Job/backup.sql", "/tmp/out.sql");
+
+            expect(result).toBe(true);
+        });
+
+        it("returns false when createReadStream pipeline throws", async () => {
+            mockPipeline.mockRejectedValueOnce(new Error("Stream error"));
+            mockClient.createReadStream.mockReturnValue({ pipe: vi.fn() });
+
+            const result = await WebDAVAdapter.download(config, "Job/backup.sql", "/tmp/out.sql");
+
+            expect(result).toBe(false);
+        });
+
+        it("uses progress tracking when onProgress is provided and stat succeeds", async () => {
+            mockClient.stat.mockResolvedValue({ size: 2048 });
+            mockClient.createReadStream.mockReturnValue({ pipe: vi.fn() });
+
+            const onProgress = vi.fn();
+            await WebDAVAdapter.download(config, "Job/backup.sql", "/tmp/out.sql", onProgress);
+
+            // pipeline should have been called with a tracker stream
+            expect(mockPipeline).toHaveBeenCalled();
+        });
+    });
+
+    // ===== read() =====
+
+    describe("read()", () => {
+        it("returns file content as string", async () => {
+            mockClient.getFileContents.mockResolvedValue('{"checksum":"abc"}');
+
+            const result = await WebDAVAdapter.read!(config, "Job/backup.sql.meta.json");
+
+            expect(result).toBe('{"checksum":"abc"}');
+        });
+
+        it("returns null when getFileContents throws", async () => {
+            mockClient.getFileContents.mockRejectedValue(new Error("404 Not Found"));
+
+            const result = await WebDAVAdapter.read!(config, "Job/missing.meta.json");
+
+            expect(result).toBeNull();
+        });
+    });
+
+    // ===== list() =====
+
+    describe("list()", () => {
+        it("returns files from directory walk", async () => {
+            mockClient.getDirectoryContents.mockResolvedValue([
+                {
+                    type: "file",
+                    filename: "/backups/Job/backup.sql",
+                    basename: "backup.sql",
+                    size: 1024,
+                    lastmod: "2026-01-01T00:00:00Z",
+                },
+            ]);
+
+            const result = await WebDAVAdapter.list(config, "Job");
+
+            expect(result).toHaveLength(1);
+            expect(result[0].name).toBe("backup.sql");
+            expect(result[0].size).toBe(1024);
+        });
+
+        it("recurses into subdirectories", async () => {
+            mockClient.getDirectoryContents
+                .mockResolvedValueOnce([
+                    { type: "directory", filename: "/backups/Job/sub", basename: "sub", size: 0, lastmod: "2026-01-01" },
+                ])
+                .mockResolvedValueOnce([
+                    { type: "file", filename: "/backups/Job/sub/nested.sql", basename: "nested.sql", size: 512, lastmod: "2026-01-01" },
+                ]);
+
+            const result = await WebDAVAdapter.list(config, "Job");
+
+            expect(result).toHaveLength(1);
+            expect(result[0].name).toBe("nested.sql");
+        });
+
+        it("strips pathPrefix from returned paths", async () => {
+            mockClient.getDirectoryContents.mockResolvedValue([
+                {
+                    type: "file",
+                    filename: "/backups/Job/backup.sql",
+                    basename: "backup.sql",
+                    size: 100,
+                    lastmod: "2026-01-01",
+                },
+            ]);
+
+            const result = await WebDAVAdapter.list(config, "Job");
+
+            expect(result[0].path).not.toContain("/backups/");
+        });
+
+        it("returns empty array on getDirectoryContents error", async () => {
+            mockClient.getDirectoryContents.mockRejectedValue(new Error("Connection refused"));
+
+            const result = await WebDAVAdapter.list(config, "Job");
+
+            expect(result).toEqual([]);
+        });
+    });
+
+    // ===== delete() =====
+
+    describe("delete()", () => {
+        it("returns true on successful delete", async () => {
+            mockClient.deleteFile.mockResolvedValue(undefined);
+
+            const result = await WebDAVAdapter.delete(config, "Job/backup.sql");
+
+            expect(result).toBe(true);
+        });
+
+        it("returns false when deleteFile throws", async () => {
+            mockClient.deleteFile.mockRejectedValue(new Error("Not found"));
+
+            const result = await WebDAVAdapter.delete(config, "Job/backup.sql");
+
+            expect(result).toBe(false);
+        });
+    });
+
+    // ===== test() =====
+
+    describe("test()", () => {
+        it("returns success when put+delete succeed", async () => {
+            mockClient.putFileContents.mockResolvedValue(undefined);
+            mockClient.deleteFile.mockResolvedValue(undefined);
+
+            const result = await WebDAVAdapter.test!(config);
+
+            expect(result.success).toBe(true);
+        });
+
+        it("returns failure when server throws", async () => {
+            mockClient.putFileContents.mockRejectedValue(new Error("Unauthorized"));
+
+            const result = await WebDAVAdapter.test!(config);
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain("Unauthorized");
+        });
+    });
+});
