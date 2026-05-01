@@ -321,7 +321,7 @@ function TypeFields({
                             <Textarea
                                 value={data.privateKey ?? ""}
                                 onChange={(e) => update("privateKey", e.target.value)}
-                                className="font-mono text-xs resize-none h-16 overflow-y-auto field-sizing-fixed"
+                                className="font-mono text-xs resize-y h-16 field-sizing-fixed"
                                 placeholder="-----BEGIN RSA PRIVATE KEY-----"
                                 style={!showSecrets ? { WebkitTextSecurity: "disc", textSecurity: "disc" } as React.CSSProperties : undefined}
                             />
