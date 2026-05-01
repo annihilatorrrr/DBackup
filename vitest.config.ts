@@ -25,6 +25,7 @@ export default defineConfig({
         'src/lib/auth/index.ts',
         'src/lib/auth/client.ts',
         'src/lib/prisma.ts',
+        'src/lib/adapters/database/common/types.ts',
       ],
     },
   },

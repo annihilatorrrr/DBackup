@@ -363,4 +363,196 @@ describe("MssqlSshTransfer", () => {
             await expect(transfer.exists("/any")).rejects.toThrow("Failed to initialize SFTP");
         });
     });
+
+    describe("download (error paths)", () => {
+        it("should reject when SFTP read stream emits an error", async () => {
+            const mockSftpReadStream = new PassThrough();
+            const mockSftp = {
+                createReadStream: vi.fn(() => mockSftpReadStream),
+            };
+
+            mockSftpFn.mockImplementation((cb: (err: null, sftp: any) => void) => {
+                cb(null, mockSftp);
+            });
+
+            const config = buildSSHConfig();
+            await transfer.connect(config);
+
+            process.nextTick(() => {
+                mockSftpReadStream.emit("error", new Error("Remote read failed"));
+            });
+
+            await expect(
+                transfer.download("/var/opt/mssql/backup/missing.bak", "/tmp/missing.bak")
+            ).rejects.toThrow("Failed to download /var/opt/mssql/backup/missing.bak");
+        });
+
+        it("should reject when local write stream emits an error", async () => {
+            const mockSftpReadStream = new PassThrough();
+            const mockSftp = {
+                createReadStream: vi.fn(() => mockSftpReadStream),
+            };
+
+            mockSftpFn.mockImplementation((cb: (err: null, sftp: any) => void) => {
+                cb(null, mockSftp);
+            });
+
+            // Override the fs mock for this test: write stream that emits error
+            const { createWriteStream } = await vi.importMock<any>("fs");
+            const errorStream = new PassThrough();
+            createWriteStream.mockReturnValueOnce(errorStream);
+
+            const config = buildSSHConfig();
+            await transfer.connect(config);
+
+            process.nextTick(() => {
+                errorStream.emit("error", new Error("Disk full"));
+            });
+
+            await expect(
+                transfer.download("/remote/file.bak", "/tmp/file.bak")
+            ).rejects.toThrow("Failed to write to /tmp/file.bak");
+        });
+    });
+
+    describe("upload (error paths)", () => {
+        it("should reject when local read stream emits an error", async () => {
+            const mockSftpWriteStream = new PassThrough();
+            const mockSftp = {
+                createWriteStream: vi.fn(() => mockSftpWriteStream),
+            };
+
+            mockSftpFn.mockImplementation((cb: (err: null, sftp: any) => void) => {
+                cb(null, mockSftp);
+            });
+
+            const { createReadStream } = await vi.importMock<any>("fs");
+            const errorReadStream = new PassThrough();
+            createReadStream.mockReturnValueOnce(errorReadStream);
+
+            const config = buildSSHConfig();
+            await transfer.connect(config);
+
+            process.nextTick(() => {
+                errorReadStream.emit("error", new Error("File not found"));
+            });
+
+            await expect(
+                transfer.upload("/tmp/missing.bak", "/remote/missing.bak")
+            ).rejects.toThrow("Failed to read /tmp/missing.bak");
+        });
+
+        it("should reject when SFTP write stream emits an error", async () => {
+            const mockSftpWriteStream = new PassThrough();
+            const mockSftp = {
+                createWriteStream: vi.fn(() => mockSftpWriteStream),
+            };
+
+            mockSftpFn.mockImplementation((cb: (err: null, sftp: any) => void) => {
+                cb(null, mockSftp);
+            });
+
+            // Return the mock sftp write stream (default createReadStream sends data)
+            const config = buildSSHConfig();
+            await transfer.connect(config);
+
+            process.nextTick(() => {
+                mockSftpWriteStream.emit("error", new Error("Remote write failed"));
+            });
+
+            await expect(
+                transfer.upload("/tmp/local.bak", "/remote/local.bak")
+            ).rejects.toThrow("Failed to upload to /remote/local.bak");
+        });
+    });
+
+    describe("testBackupPath", () => {
+        it("should return readable and writable when directory exists and write succeeds", async () => {
+            const mockSftp = {
+                stat: vi.fn((_path: string, cb: (err: null, stats: any) => void) =>
+                    cb(null, { isDirectory: () => true })
+                ),
+                writeFile: vi.fn((_path: string, _data: any, cb: (err: null) => void) => cb(null)),
+                unlink: vi.fn((_path: string, cb: () => void) => cb()),
+            };
+
+            mockSftpFn.mockImplementation((cb: (err: null, sftp: any) => void) => {
+                cb(null, mockSftp);
+            });
+
+            const config = buildSSHConfig();
+            await transfer.connect(config);
+
+            const result = await transfer.testBackupPath("/var/opt/mssql/backup");
+
+            expect(result.readable).toBe(true);
+            expect(result.writable).toBe(true);
+            expect(result.error).toBeUndefined();
+        });
+
+        it("should return not readable when directory does not exist", async () => {
+            const mockSftp = {
+                stat: vi.fn((_path: string, cb: (err: Error) => void) =>
+                    cb(new Error("No such file or directory"))
+                ),
+            };
+
+            mockSftpFn.mockImplementation((cb: (err: null, sftp: any) => void) => {
+                cb(null, mockSftp);
+            });
+
+            const config = buildSSHConfig();
+            await transfer.connect(config);
+
+            const result = await transfer.testBackupPath("/nonexistent/path");
+
+            expect(result.readable).toBe(false);
+            expect(result.writable).toBe(false);
+            expect(result.error).toContain("does not exist");
+        });
+
+        it("should return readable but not writable when directory exists but write fails", async () => {
+            const mockSftp = {
+                stat: vi.fn((_path: string, cb: (err: null, stats: any) => void) =>
+                    cb(null, { isDirectory: () => true })
+                ),
+                writeFile: vi.fn((_path: string, _data: any, cb: (err: Error) => void) =>
+                    cb(new Error("Permission denied"))
+                ),
+            };
+
+            mockSftpFn.mockImplementation((cb: (err: null, sftp: any) => void) => {
+                cb(null, mockSftp);
+            });
+
+            const config = buildSSHConfig();
+            await transfer.connect(config);
+
+            const result = await transfer.testBackupPath("/readonly/backup");
+
+            expect(result.readable).toBe(true);
+            expect(result.writable).toBe(false);
+            expect(result.error).toContain("readable but not writable");
+        });
+
+        it("should return not readable when stat path is a file not a directory", async () => {
+            const mockSftp = {
+                stat: vi.fn((_path: string, cb: (err: null, stats: any) => void) =>
+                    cb(null, { isDirectory: () => false })
+                ),
+            };
+
+            mockSftpFn.mockImplementation((cb: (err: null, sftp: any) => void) => {
+                cb(null, mockSftp);
+            });
+
+            const config = buildSSHConfig();
+            await transfer.connect(config);
+
+            const result = await transfer.testBackupPath("/some/file.bak");
+
+            expect(result.readable).toBe(false);
+            expect(result.writable).toBe(false);
+        });
+    });
 });

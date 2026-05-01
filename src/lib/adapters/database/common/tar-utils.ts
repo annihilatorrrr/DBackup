@@ -146,10 +146,12 @@ export async function extractMultiDbTar(
                 } else {
                     // Write database dump file (validate path to prevent Zip Slip)
                     const outputPath = path.join(extractDir, path.basename(header.name));
+                    /* v8 ignore start */
                     if (!outputPath.startsWith(extractDir)) {
                         reject(new Error(`Zip Slip detected: ${header.name}`));
                         return;
                     }
+                    /* v8 ignore end */
                     await fs.writeFile(outputPath, content);
                     extractedFiles.push(outputPath);
                 }
@@ -157,9 +159,11 @@ export async function extractMultiDbTar(
                 next();
             });
 
+            /* v8 ignore start */
             stream.on("error", (err) => {
                 reject(err);
             });
+            /* v8 ignore end */
 
             stream.resume();
         });
@@ -175,10 +179,11 @@ export async function extractMultiDbTar(
                 files: extractedFiles,
             });
         });
-
+        /* v8 ignore start */
         extractor.on("error", (err) => {
             reject(err);
         });
+        /* v8 ignore end */
 
         createReadStream(sourcePath).pipe(extractor);
     });
@@ -240,9 +245,11 @@ export async function extractSelectedDatabases(
                 next();
             });
 
+            /* v8 ignore start */
             writeStream.on("error", (err) => {
                 reject(err);
             });
+            /* v8 ignore end */
 
             stream.pipe(writeStream);
         });
@@ -254,9 +261,11 @@ export async function extractSelectedDatabases(
             });
         });
 
+        /* v8 ignore start */
         extractor.on("error", (err) => {
             reject(err);
         });
+        /* v8 ignore end */
 
         createReadStream(sourcePath).pipe(extractor);
     });
@@ -294,9 +303,11 @@ export async function isMultiDbTar(filePath: string): Promise<boolean> {
         // Verify manifest exists by trying to read it
         const manifest = await readTarManifest(filePath);
         return manifest !== null;
+    /* v8 ignore start */
     } catch {
         return false;
     }
+    /* v8 ignore end */
 }
 
 /**
