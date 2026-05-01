@@ -250,4 +250,172 @@ describe('stepExecuteDump', () => {
 
         await expect(stepExecuteDump(ctx)).rejects.toThrow('Context not initialized');
     });
+
+    it('uses All DBs label and fetches DB list when --all-databases option is set', async () => {
+        const { resolveAdapterConfig } = await import('@/lib/adapters/config-resolver');
+        (resolveAdapterConfig as ReturnType<typeof vi.fn>).mockResolvedValue({
+            host: 'localhost',
+            database: '',
+            options: '--all-databases',
+        });
+        const ctx = makeCtx();
+        (ctx.job as any).databases = '[]';
+        (ctx.sourceAdapter as any).getDatabases = vi.fn().mockResolvedValue(['sys', 'mysql', 'app']);
+
+        await stepExecuteDump(ctx);
+
+        expect(ctx.metadata.label).toBe('3 DBs (fetched)');
+        expect(ctx.metadata.names).toEqual(['sys', 'mysql', 'app']);
+    });
+
+    it('falls back gracefully when getDatabases fails for --all-databases option', async () => {
+        const { resolveAdapterConfig } = await import('@/lib/adapters/config-resolver');
+        (resolveAdapterConfig as ReturnType<typeof vi.fn>).mockResolvedValue({
+            host: 'localhost',
+            database: '',
+            options: '--all-databases',
+        });
+        const ctx = makeCtx();
+        (ctx.job as any).databases = '[]';
+        (ctx.sourceAdapter as any).getDatabases = vi.fn().mockRejectedValue(new Error('Access denied'));
+
+        await expect(stepExecuteDump(ctx)).resolves.not.toThrow();
+        expect(ctx.metadata.label).toBe('All DBs');
+    });
+
+    it('resolves All DBs label when adapter returns empty getDatabases list for string DB config', async () => {
+        const { resolveAdapterConfig } = await import('@/lib/adapters/config-resolver');
+        (resolveAdapterConfig as ReturnType<typeof vi.fn>).mockResolvedValue({
+            host: 'localhost',
+            database: 'myapp',
+        });
+        const ctx = makeCtx();
+        (ctx.job as any).databases = '[]';
+        // getDatabases returns nothing - label stays 'All DBs'
+        (ctx.sourceAdapter as any).getDatabases = vi.fn().mockResolvedValue([]);
+
+        await stepExecuteDump(ctx);
+
+        // database gets overwritten to [] by job config logic, so auto-discover path runs
+        expect(ctx.metadata.label).toBe('All DBs');
+    });
+
+    it('handles empty string database from adapter config and tries getDatabases', async () => {
+        const { resolveAdapterConfig } = await import('@/lib/adapters/config-resolver');
+        (resolveAdapterConfig as ReturnType<typeof vi.fn>).mockResolvedValue({
+            host: 'localhost',
+            database: '',
+        });
+        const ctx = makeCtx();
+        (ctx.job as any).databases = '[]';
+        (ctx.sourceAdapter as any).getDatabases = vi.fn().mockResolvedValue(['db_a', 'db_b']);
+
+        await stepExecuteDump(ctx);
+
+        expect(ctx.metadata.label).toBe('2 DBs (fetched)');
+        expect(ctx.metadata.names).toEqual(['db_a', 'db_b']);
+    });
+
+    it('handles null/undefined database in adapter config (e.g. MongoDB)', async () => {
+        const { resolveAdapterConfig } = await import('@/lib/adapters/config-resolver');
+        (resolveAdapterConfig as ReturnType<typeof vi.fn>).mockResolvedValue({
+            host: 'localhost',
+            database: null,
+        });
+        const ctx = makeCtx();
+        (ctx.job as any).databases = '[]';
+        (ctx.sourceAdapter as any).getDatabases = vi.fn().mockResolvedValue(['admin', 'app']);
+
+        await stepExecuteDump(ctx);
+
+        expect(ctx.metadata.label).toBe('2 DBs (fetched)');
+        expect(ctx.metadata.names).toEqual(['admin', 'app']);
+    });
+
+    it('captures engine edition when test() returns it', async () => {
+        const ctx = makeCtx();
+        (ctx.sourceAdapter as any).test = vi.fn().mockResolvedValue({
+            success: true,
+            version: '16.0',
+            edition: 'Express',
+        });
+        (ctx.job as any).databases = JSON.stringify(['testdb']);
+
+        await stepExecuteDump(ctx);
+
+        expect(ctx.metadata.engineEdition).toBe('Express');
+    });
+
+    it('falls back to invalid-JSON databases gracefully', async () => {
+        const ctx = makeCtx();
+        (ctx.job as any).databases = '{not valid json}';
+
+        await expect(stepExecuteDump(ctx)).resolves.not.toThrow();
+        // Empty array fallback means auto-discover path
+    });
+
+    it('runs post-dump DB discovery when metadata names are empty after dump', async () => {
+        const { resolveAdapterConfig } = await import('@/lib/adapters/config-resolver');
+        (resolveAdapterConfig as ReturnType<typeof vi.fn>).mockResolvedValue({
+            host: 'localhost',
+            database: null,
+        });
+        const ctx = makeCtx();
+        (ctx.job as any).databases = '[]';
+        // getDatabases returns empty on metadata calc, then returns data post-dump
+        (ctx.sourceAdapter as any).getDatabases = vi.fn()
+            .mockResolvedValueOnce([])   // during metadata calc
+            .mockResolvedValueOnce(['post_db1', 'post_db2']);  // post-dump
+
+        await stepExecuteDump(ctx);
+
+        expect(ctx.metadata.names).toEqual(['post_db1', 'post_db2']);
+        expect(ctx.metadata.label).toBe('2 DBs (auto-discovered)');
+    });
+
+    it('skips post-dump discovery when dump result already has DB names', async () => {
+        const ctx = makeCtx();
+        (ctx.job as any).databases = JSON.stringify(['mydb']);
+        (ctx.sourceAdapter as any).getDatabases = vi.fn();
+
+        await stepExecuteDump(ctx);
+
+        // getDatabases should not be called post-dump since names were already set
+        expect((ctx.sourceAdapter as any).getDatabases).not.toHaveBeenCalled();
+    });
+
+    it('skips tar rename when file already ends with .tar', async () => {
+        const tarUtils = await import('@/lib/adapters/database/common/tar-utils');
+        const fsPromises = await import('fs/promises');
+        (tarUtils.isMultiDbTar as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+        (tarUtils.readTarManifest as ReturnType<typeof vi.fn>).mockResolvedValue({
+            databases: [{ name: 'db1' }],
+        });
+
+        const ctx = makeCtx();
+        (ctx.job as any).databases = JSON.stringify(['db1']);
+        (ctx.sourceAdapter as any).dump = vi.fn().mockResolvedValue({
+            success: true,
+            path: '/tmp/Test_Job_2026.tar',
+            size: 2048,
+        });
+
+        await stepExecuteDump(ctx);
+
+        expect(fsPromises.default.rename).not.toHaveBeenCalled();
+        expect(ctx.tempFile).toBe('/tmp/Test_Job_2026.tar');
+    });
+
+    it('logs a warning when the multi-DB TAR check itself throws', async () => {
+        const tarUtils = await import('@/lib/adapters/database/common/tar-utils');
+        (tarUtils.isMultiDbTar as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('TAR error'));
+
+        const ctx = makeCtx();
+        (ctx.job as any).databases = JSON.stringify(['db1']);
+
+        await expect(stepExecuteDump(ctx)).resolves.not.toThrow();
+        expect(ctx.log).toHaveBeenCalledWith(
+            expect.stringContaining('Warning: Could not check for Multi-DB TAR format'),
+        );
+    });
 });

@@ -56,15 +56,19 @@ vi.mock("@/lib/temp-dir", () => ({
 }));
 
 vi.mock("@/lib/crypto/stream", () => ({
-    createEncryptionStream: vi.fn().mockReturnValue({
+    createEncryptionStream: vi.fn().mockImplementation(() => ({
         stream: new (require("stream").PassThrough)(),
         getAuthTag: vi.fn().mockReturnValue(Buffer.alloc(16)),
         iv: Buffer.alloc(12),
-    }),
+    })),
 }));
 
 vi.mock("@/services/notifications/system-notification-service", () => ({
     notify: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/lib/crypto", () => ({
+    decrypt: vi.fn().mockReturnValue("aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899"),
 }));
 
 // Intercept the pipeline at the promisified wrapper level
@@ -98,6 +102,10 @@ vi.mock("fs", async (importOriginal) => {
 
 // ── Import SUT ─────────────────────────────────────────────────────────────────
 import { runConfigBackup } from "@/lib/runner/config-runner";
+import { registry } from "@/lib/core/registry";
+import { decrypt } from "@/lib/crypto";
+import fs from "fs";
+import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -228,5 +236,241 @@ describe("runConfigBackup - retention", () => {
         await runConfigBackup();
 
         expect(mockStorageAdapter.delete).not.toHaveBeenCalled();
+    });
+});
+
+// ── Helper: map multiple settings at once ─────────────────────────────────────
+function mockSettings(map: Record<string, string>) {
+    mockPrisma.systemSetting.findUnique.mockImplementation(({ where }: { where: { key: string } }) => {
+        const value = map[where.key];
+        return Promise.resolve(value ? { key: where.key, value } : null);
+    });
+}
+
+// ── Standard storage setup reused across suites ───────────────────────────────
+function setupStorage() {
+    mockPrisma.adapterConfig.findUnique.mockResolvedValue({
+        id: "storage-1",
+        adapterId: "local",
+        name: "Local Storage",
+    });
+}
+
+describe("runConfigBackup - adapter registration error", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it("throws ConfigurationError when adapter class is not registered (line 56)", async () => {
+        mockSettings({
+            "config.backup.enabled": "true",
+            "config.backup.storageId": "storage-1",
+        });
+        setupStorage();
+        vi.mocked(registry.get).mockReturnValueOnce(null as any);
+
+        await expect(runConfigBackup()).rejects.toThrow();
+    });
+});
+
+describe("runConfigBackup - config resolver error", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(registry.get).mockReturnValue(mockStorageAdapter as any);
+    });
+
+    it("logs error but continues when resolveAdapterConfig throws (line 64)", async () => {
+        mockSettings({
+            "config.backup.enabled": "true",
+            "config.backup.storageId": "storage-1",
+        });
+        setupStorage();
+        vi.mocked(resolveAdapterConfig).mockRejectedValueOnce(new Error("Config parse error"));
+
+        // Should not throw - error is caught, backup proceeds with empty config
+        await runConfigBackup();
+
+        expect(mockStorageAdapter.upload).toHaveBeenCalled();
+    });
+});
+
+describe("runConfigBackup - encryption profile paths", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(registry.get).mockReturnValue(mockStorageAdapter as any);
+        vi.mocked(resolveAdapterConfig).mockResolvedValue({ bucket: "test" } as any);
+    });
+
+    it("applies encryption when profile is found and decrypted successfully (lines 74-85, 121-125, 140)", async () => {
+        mockSettings({
+            "config.backup.enabled": "true",
+            "config.backup.storageId": "storage-1",
+            "config.backup.profileId": "profile-1",
+        });
+        setupStorage();
+        mockPrisma.encryptionProfile.findUnique.mockResolvedValue({
+            id: "profile-1",
+            name: "Test Profile",
+            secretKey: "encrypted-key-value",
+        });
+
+        await runConfigBackup();
+
+        // Encryption stream was activated - upload filename should contain .enc
+        expect(mockStorageAdapter.upload).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.any(String),
+            expect.stringContaining(".enc"),
+        );
+    });
+
+    it("throws EncryptionError when profile key decryption fails (lines 83-84)", async () => {
+        mockSettings({
+            "config.backup.enabled": "true",
+            "config.backup.storageId": "storage-1",
+            "config.backup.profileId": "profile-1",
+        });
+        setupStorage();
+        mockPrisma.encryptionProfile.findUnique.mockResolvedValue({
+            id: "profile-1",
+            name: "Test Profile",
+            secretKey: "bad-key",
+        });
+        vi.mocked(decrypt).mockImplementationOnce(() => {
+            throw new Error("Decryption failed");
+        });
+
+        await expect(runConfigBackup()).rejects.toThrow();
+    });
+
+    it("warns and continues without encryption when profile is not found and secrets not included (lines 88-89)", async () => {
+        mockSettings({
+            "config.backup.enabled": "true",
+            "config.backup.storageId": "storage-1",
+            "config.backup.profileId": "profile-1",
+            // includeSecrets not set
+        });
+        setupStorage();
+        mockPrisma.encryptionProfile.findUnique.mockResolvedValue(null);
+
+        // Should not throw, backup proceeds without encryption
+        await runConfigBackup();
+
+        expect(mockStorageAdapter.upload).toHaveBeenCalled();
+        // Upload path should NOT contain .enc
+        const uploadCall = vi.mocked(mockStorageAdapter.upload).mock.calls[0];
+        expect(uploadCall[2]).not.toContain(".enc");
+    });
+
+    it("throws ConfigurationError when profile is not found but secrets are included (line 90)", async () => {
+        mockSettings({
+            "config.backup.enabled": "true",
+            "config.backup.storageId": "storage-1",
+            "config.backup.profileId": "profile-1",
+            "config.backup.includeSecrets": "true",
+        });
+        setupStorage();
+        mockPrisma.encryptionProfile.findUnique.mockResolvedValue(null);
+
+        await expect(runConfigBackup()).rejects.toThrow();
+    });
+
+    it("exports secrets when includeSecrets=true with a working encryption profile (line 99 true-branch)", async () => {
+        mockSettings({
+            "config.backup.enabled": "true",
+            "config.backup.storageId": "storage-1",
+            "config.backup.profileId": "profile-1",
+            "config.backup.includeSecrets": "true",
+        });
+        setupStorage();
+        mockPrisma.encryptionProfile.findUnique.mockResolvedValue({
+            id: "profile-1",
+            name: "Test Profile",
+            secretKey: "encrypted-key-value",
+        });
+
+        await runConfigBackup();
+
+        // Both encryption and secrets are active - upload should include .enc
+        expect(mockStorageAdapter.upload).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.any(String),
+            expect.stringContaining(".enc"),
+        );
+    });
+});
+
+describe("runConfigBackup - temp cleanup failure", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(registry.get).mockReturnValue(mockStorageAdapter as any);
+        vi.mocked(resolveAdapterConfig).mockResolvedValue({ bucket: "test" } as any);
+    });
+
+    it("logs warn but does not throw when temp file unlink fails (line 204)", async () => {
+        mockSettings({
+            "config.backup.enabled": "true",
+            "config.backup.storageId": "storage-1",
+        });
+        setupStorage();
+        vi.mocked(fs.promises.unlink).mockRejectedValueOnce(new Error("ENOENT: no such file"));
+
+        // Should complete without throwing
+        await runConfigBackup();
+
+        expect(mockStorageAdapter.upload).toHaveBeenCalled();
+    });
+});
+
+describe("runConfigBackup - retention error handling", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(registry.get).mockReturnValue(mockStorageAdapter as any);
+        vi.mocked(resolveAdapterConfig).mockResolvedValue({ bucket: "test" } as any);
+    });
+
+    it("logs error and does not throw when adapter.list throws during retention (line 241)", async () => {
+        mockSettings({
+            "config.backup.enabled": "true",
+            "config.backup.storageId": "storage-1",
+            "config.backup.retention": "2",
+        });
+        setupStorage();
+        mockStorageAdapter.list.mockRejectedValueOnce(new Error("Storage unavailable"));
+
+        // Retention errors are swallowed
+        await runConfigBackup();
+    });
+
+    it("logs error per file but continues when adapter.delete throws during retention (line 233)", async () => {
+        mockSettings({
+            "config.backup.enabled": "true",
+            "config.backup.storageId": "storage-1",
+            "config.backup.retention": "1",
+        });
+        setupStorage();
+        mockStorageAdapter.list.mockResolvedValue([
+            { name: "config-backups/config_backup_2026-03-01T00-00-00Z.json.gz" },
+            { name: "config-backups/config_backup_2026-01-01T00-00-00Z.json.gz" },
+        ]);
+        // First delete (the backup file) fails
+        mockStorageAdapter.delete.mockRejectedValueOnce(new Error("Delete failed"));
+
+        // Should not throw - per-file delete errors are caught individually
+        await runConfigBackup();
+    });
+
+    it("skips retention cleanup when retention count is zero (line 208 false-branch)", async () => {
+        mockSettings({
+            "config.backup.enabled": "true",
+            "config.backup.storageId": "storage-1",
+            "config.backup.retention": "0",
+        });
+        setupStorage();
+
+        await runConfigBackup();
+
+        // adapter.list should never be called when retention is disabled
+        expect(mockStorageAdapter.list).not.toHaveBeenCalled();
     });
 });
