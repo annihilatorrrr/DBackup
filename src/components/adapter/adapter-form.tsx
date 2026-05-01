@@ -99,19 +99,23 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
         if (!(base instanceof z.ZodObject)) return base;
 
         const credentialKeys: string[] = [];
-        if (primaryCredentialId && selectedAdapter.credentials?.primary === "ACCESS_KEY") {
+        if (selectedAdapter.credentials?.primary === "ACCESS_KEY") {
             credentialKeys.push("accessKeyId", "secretAccessKey");
         }
-        if (primaryCredentialId && selectedAdapter.credentials?.primary === "USERNAME_PASSWORD") {
+        if (selectedAdapter.credentials?.primary === "USERNAME_PASSWORD") {
             credentialKeys.push("user", "username", "password");
         }
-        if (primaryCredentialId && selectedAdapter.credentials?.primary === "TOKEN") {
+        if (selectedAdapter.credentials?.primary === "SSH_KEY") {
+            // SFTP/Rsync: unprefixed identity fields
+            credentialKeys.push("username", "authType", "password", "privateKey", "passphrase");
+        }
+        if (selectedAdapter.credentials?.primary === "TOKEN") {
             credentialKeys.push("token", "appToken", "accessToken", "botToken");
         }
-        if (primaryCredentialId && selectedAdapter.credentials?.primary === "SMTP") {
+        if (selectedAdapter.credentials?.primary === "SMTP") {
             credentialKeys.push("user", "password");
         }
-        if (sshCredentialId && selectedAdapter.credentials?.ssh === "SSH_KEY") {
+        if (selectedAdapter.credentials?.ssh === "SSH_KEY") {
             credentialKeys.push(
                 "sshUsername", "sshAuthType", "sshPassword", "sshPrivateKey", "sshPassphrase",
                 "username", "authType", "privateKey", "passphrase"

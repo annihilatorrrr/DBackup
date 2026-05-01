@@ -1032,9 +1032,7 @@ function FieldList({
     isDbListOpen?: boolean;
     setIsDbListOpen?: (open: boolean) => void;
 }) {
-    // Hide fields whose values are now sourced from a referenced credential
-    // profile. The set depends on whether the adapter consumes a primary or
-    // SSH credential slot.
+    // Hide fields whose values are now sourced from a referenced credential profile.
     const hidden = getCredentialManagedKeys(adapter);
 
     return (
