@@ -20,6 +20,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { CREDENTIAL_TYPES, type CredentialType } from "@/lib/core/credentials";
@@ -153,19 +154,22 @@ export function CredentialProfileDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                    <DialogTitle>
-                        {isEdit ? "Edit Credential Profile" : "New Credential Profile"}
-                    </DialogTitle>
-                    <DialogDescription>
-                        {isEdit
-                            ? "Update name, description, or rotate the secret payload."
-                            : "Create a reusable credential that adapters can reference instead of inline secrets."}
-                    </DialogDescription>
-                </DialogHeader>
+            <DialogContent className="sm:max-w-xl max-h-[90vh] p-0">
+                <div className="px-6 pt-6 pb-4 shrink-0">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {isEdit ? "Edit Credential Profile" : "New Credential Profile"}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {isEdit
+                                ? "Update name, description, or rotate the secret payload."
+                                : "Create a reusable credential that adapters can reference instead of inline secrets."}
+                        </DialogDescription>
+                    </DialogHeader>
+                </div>
 
-                <div className="space-y-4">
+                <ScrollArea className="max-h-[calc(90vh-10rem)]">
+                <div className="space-y-4 px-6 pb-4">
                     <div className="space-y-2">
                         <Label htmlFor="cred-name">Name</Label>
                         <Input
@@ -183,6 +187,7 @@ export function CredentialProfileDialog({
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             rows={2}
+                            className="resize-none"
                         />
                     </div>
 
@@ -241,16 +246,19 @@ export function CredentialProfileDialog({
                         )}
                     </div>
                 </div>
+                </ScrollArea>
 
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>
-                        Cancel
-                    </Button>
-                    <Button onClick={submit} disabled={isSaving}>
-                        {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {isEdit ? "Save changes" : "Create profile"}
-                    </Button>
-                </DialogFooter>
+                <div className="px-6 pt-2 pb-6">
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => onOpenChange(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={submit} disabled={isSaving}>
+                            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {isEdit ? "Save changes" : "Create profile"}
+                        </Button>
+                    </DialogFooter>
+                </div>
             </DialogContent>
         </Dialog>
     );
@@ -310,23 +318,13 @@ function TypeFields({
                     <>
                         <div className="space-y-1.5">
                             <Label className="text-xs">Private key (PEM)</Label>
-                            {showSecrets ? (
-                                <Textarea
-                                    value={data.privateKey ?? ""}
-                                    onChange={(e) => update("privateKey", e.target.value)}
-                                    rows={5}
-                                    className="font-mono text-xs"
-                                    placeholder="-----BEGIN RSA PRIVATE KEY-----"
-                                />
-                            ) : (
-                                <Input
-                                    type="password"
-                                    value={data.privateKey ?? ""}
-                                    onChange={(e) => update("privateKey", e.target.value)}
-                                    className="font-mono text-xs"
-                                    placeholder="-----BEGIN RSA PRIVATE KEY-----"
-                                />
-                            )}
+                            <Textarea
+                                value={data.privateKey ?? ""}
+                                onChange={(e) => update("privateKey", e.target.value)}
+                                className="font-mono text-xs resize-none h-16 overflow-y-auto field-sizing-fixed"
+                                placeholder="-----BEGIN RSA PRIVATE KEY-----"
+                                style={!showSecrets ? { WebkitTextSecurity: "disc", textSecurity: "disc" } as React.CSSProperties : undefined}
+                            />
                         </div>
                         <Field label="Key passphrase (optional)" type={secret} value={data.passphrase ?? ""} onChange={(v) => update("passphrase", v)} />
                     </>
