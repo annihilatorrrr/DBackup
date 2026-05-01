@@ -133,5 +133,63 @@ describe('AuditService', () => {
 
             expect(result.actions).toEqual([{ value: 'CREATE', count: 3 }]);
         });
+
+        it('applies search filter to the base where clause', async () => {
+            prismaMock.auditLog.groupBy.mockResolvedValue([]);
+
+            await service.getFilterStats({ search: 'admin' });
+
+            expect(prismaMock.auditLog.groupBy).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: expect.objectContaining({ OR: expect.any(Array) }),
+                })
+            );
+        });
+
+        it('applies startDate and endDate to the base where clause', async () => {
+            prismaMock.auditLog.groupBy.mockResolvedValue([]);
+
+            const start = new Date('2026-01-01');
+            const end = new Date('2026-06-30');
+            await service.getFilterStats({ startDate: start, endDate: end });
+
+            expect(prismaMock.auditLog.groupBy).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: expect.objectContaining({
+                        createdAt: { gte: start, lte: end },
+                    }),
+                })
+            );
+        });
+
+        it('applies only startDate when endDate is omitted', async () => {
+            prismaMock.auditLog.groupBy.mockResolvedValue([]);
+
+            const start = new Date('2026-03-01');
+            await service.getFilterStats({ startDate: start });
+
+            expect(prismaMock.auditLog.groupBy).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: expect.objectContaining({
+                        createdAt: { gte: start },
+                    }),
+                })
+            );
+        });
+
+        it('applies only endDate when startDate is omitted', async () => {
+            prismaMock.auditLog.groupBy.mockResolvedValue([]);
+
+            const end = new Date('2026-12-31');
+            await service.getFilterStats({ endDate: end });
+
+            expect(prismaMock.auditLog.groupBy).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: expect.objectContaining({
+                        createdAt: { lte: end },
+                    }),
+                })
+            );
+        });
     });
 });

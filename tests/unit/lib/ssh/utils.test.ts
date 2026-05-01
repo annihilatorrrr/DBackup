@@ -1,7 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
     shellEscape,
     remoteEnv,
+    remoteBinaryCheck,
     isSSHMode,
     extractSshConfig,
     extractSqliteSshConfig,
@@ -9,7 +10,43 @@ import {
     buildPsqlArgs,
     buildMongoArgs,
     buildRedisArgs,
-} from "@/lib/ssh/utils";
+} from "@/lib/ssh";
+import type { SshClient } from "@/lib/ssh";
+
+// ─── remoteBinaryCheck ──────────────────────────────────────────────
+
+describe("remoteBinaryCheck", () => {
+    it("returns trimmed path when the first candidate is found", async () => {
+        const client = {
+            exec: vi.fn().mockResolvedValue({ code: 0, stdout: "/usr/bin/pg_dump\n", stderr: "" }),
+        } as unknown as SshClient;
+
+        const result = await remoteBinaryCheck(client, "pg_dump");
+        expect(result).toBe("/usr/bin/pg_dump");
+    });
+
+    it("tries the next candidate when the first is not found", async () => {
+        const client = {
+            exec: vi
+                .fn()
+                .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "" })
+                .mockResolvedValueOnce({ code: 0, stdout: "/usr/bin/pg_dump14\n", stderr: "" }),
+        } as unknown as SshClient;
+
+        const result = await remoteBinaryCheck(client, "pg_dump", "pg_dump14");
+        expect(result).toBe("/usr/bin/pg_dump14");
+    });
+
+    it("throws when no candidate is found", async () => {
+        const client = {
+            exec: vi.fn().mockResolvedValue({ code: 1, stdout: "", stderr: "" }),
+        } as unknown as SshClient;
+
+        await expect(remoteBinaryCheck(client, "pg_dump", "pg_dump15")).rejects.toThrow(
+            "Required binary not found on remote server. Tried: pg_dump, pg_dump15"
+        );
+    });
+});
 
 // ─── shellEscape ─────────────────────────────────────────────────────
 
