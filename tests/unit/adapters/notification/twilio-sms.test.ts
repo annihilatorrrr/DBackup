@@ -76,6 +76,20 @@ describe("Twilio SMS Adapter", () => {
             expect(result.message).toContain("Authentication Error");
         });
 
+        it("should use statusText when Twilio error JSON cannot be parsed", async () => {
+            mockFetch.mockResolvedValue({
+                ok: false,
+                status: 500,
+                statusText: "Internal Server Error",
+                json: vi.fn().mockRejectedValue(new Error("invalid json")),
+            });
+
+            const result = await TwilioSmsAdapter.test!(baseConfig);
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain("Internal Server Error");
+        });
+
         it("should handle network error", async () => {
             mockFetch.mockRejectedValue(new Error("Network failure"));
 
@@ -83,6 +97,15 @@ describe("Twilio SMS Adapter", () => {
 
             expect(result.success).toBe(false);
             expect(result.message).toContain("Network failure");
+        });
+
+        it("should handle non-Error exceptions", async () => {
+            mockFetch.mockRejectedValue("socket-closed");
+
+            const result = await TwilioSmsAdapter.test!(baseConfig);
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain("socket-closed");
         });
     });
 
@@ -150,6 +173,18 @@ describe("Twilio SMS Adapter", () => {
             const smsBody = body.get("Body")!;
             expect(smsBody).toContain("F4: v4");
             expect(smsBody).not.toContain("F5: v5");
+        });
+
+        it("should use dash for empty field values", async () => {
+            mockFetch.mockResolvedValue({ ok: true, status: 201 });
+
+            await TwilioSmsAdapter.send(baseConfig, "Test", {
+                success: true,
+                fields: [{ name: "Error", value: "" }],
+            });
+
+            const body = new URLSearchParams(mockFetch.mock.calls[0][1].body);
+            expect(body.get("Body")).toContain("Error: -");
         });
 
         it("should accept 201 status as success", async () => {

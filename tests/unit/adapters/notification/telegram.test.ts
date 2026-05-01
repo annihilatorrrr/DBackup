@@ -57,6 +57,20 @@ describe("Telegram Adapter", () => {
             expect(result.message).toContain("invalid bot token");
         });
 
+        it("should use statusText when Telegram error body is missing", async () => {
+            mockFetch.mockResolvedValue({
+                ok: false,
+                status: 500,
+                statusText: "Internal Server Error",
+                json: vi.fn().mockRejectedValue(new Error("invalid json")),
+            });
+
+            const result = await TelegramAdapter.test!(baseConfig);
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain("Internal Server Error");
+        });
+
         it("should handle network error", async () => {
             mockFetch.mockRejectedValue(new Error("Connection refused"));
 
@@ -113,6 +127,17 @@ describe("Telegram Adapter", () => {
             expect(body.parse_mode).toBe("HTML");
         });
 
+        it("should default parse mode and disable notification when unset", async () => {
+            mockFetch.mockResolvedValue({ ok: true });
+
+            const { parseMode, disableNotification, ...configWithoutOptionalSettings } = baseConfig;
+            await TelegramAdapter.send(configWithoutOptionalSettings, "Simple message");
+
+            const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+            expect(body.parse_mode).toBe("HTML");
+            expect(body.disable_notification).toBe(false);
+        });
+
         it("should escape HTML entities in message", async () => {
             mockFetch.mockResolvedValue({ ok: true });
 
@@ -133,6 +158,19 @@ describe("Telegram Adapter", () => {
 
             const body = JSON.parse(mockFetch.mock.calls[0][1].body);
             expect(body.disable_notification).toBe(true);
+        });
+
+        it("should use fallback title and field value for empty context values", async () => {
+            mockFetch.mockResolvedValue({ ok: true });
+
+            await TelegramAdapter.send(baseConfig, "Message", {
+                success: true,
+                fields: [{ name: "Error", value: "" }],
+            });
+
+            const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+            expect(body.text).toContain("<b>Error:</b> -");
+            expect(body.text).not.toContain("<b>Notification</b>");
         });
 
         it("should use configured parseMode", async () => {

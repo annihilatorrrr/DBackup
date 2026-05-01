@@ -54,6 +54,20 @@ describe("Slack Adapter", () => {
             expect(result.success).toBe(false);
             expect(result.message).toContain("ECONNREFUSED");
         });
+
+        it("should fall back to statusText when error body is empty", async () => {
+            mockFetch.mockResolvedValue({
+                ok: false,
+                status: 429,
+                statusText: "Too Many Requests",
+                text: vi.fn().mockResolvedValue(""),
+            });
+
+            const result = await SlackAdapter.test!(baseConfig);
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain("Too Many Requests");
+        });
     });
 
     describe("send()", () => {
@@ -131,6 +145,29 @@ describe("Slack Adapter", () => {
 
             const body = JSON.parse(mockFetch.mock.calls[0][1].body);
             expect(body.attachments[0].color).toBe("#3b82f6");
+        });
+
+        it("should default block title to Notification when title is missing", async () => {
+            mockFetch.mockResolvedValue({ ok: true });
+
+            await SlackAdapter.send(baseConfig, "Info", { success: true });
+
+            const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+            expect(body.attachments[0].blocks[0].text.text).toBe("Notification");
+        });
+
+        it("should render dash for empty field values", async () => {
+            mockFetch.mockResolvedValue({ ok: true });
+
+            await SlackAdapter.send(baseConfig, "Message", {
+                title: "Info",
+                success: true,
+                fields: [{ name: "Error", value: "" }],
+            });
+
+            const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+            const fieldsBlock = body.attachments[0].blocks.find((b: any) => b.type === "section" && b.fields);
+            expect(fieldsBlock.fields[0].text).toContain("-" );
         });
 
         it("should include channel override when configured", async () => {

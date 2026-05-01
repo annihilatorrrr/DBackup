@@ -36,6 +36,15 @@ describe("Generic Webhook Adapter", () => {
             expect(body.timestamp).toBeDefined();
         });
 
+        it("should default to POST when method is not configured", async () => {
+            mockFetch.mockResolvedValue({ ok: true, status: 200 });
+
+            const { method, ...configWithoutMethod } = baseConfig;
+            await GenericWebhookAdapter.test!(configWithoutMethod);
+
+            expect(mockFetch.mock.calls[0][1].method).toBe("POST");
+        });
+
         it("should use custom payload template for test", async () => {
             mockFetch.mockResolvedValue({ ok: true, status: 200 });
 
@@ -100,6 +109,15 @@ describe("Generic Webhook Adapter", () => {
             expect(result.success).toBe(false);
             expect(result.message).toContain("ECONNREFUSED");
         });
+
+        it("should handle non-Error exceptions", async () => {
+            mockFetch.mockRejectedValue("service-unavailable");
+
+            const result = await GenericWebhookAdapter.test!(baseConfig);
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain("service-unavailable");
+        });
     });
 
     describe("send()", () => {
@@ -141,6 +159,15 @@ describe("Generic Webhook Adapter", () => {
             expect(mockFetch.mock.calls[0][1].method).toBe("PUT");
         });
 
+        it("should default to POST in send() when method is not configured", async () => {
+            mockFetch.mockResolvedValue({ ok: true });
+
+            const { method, ...configWithoutMethod } = baseConfig;
+            await GenericWebhookAdapter.send(configWithoutMethod, "Test");
+
+            expect(mockFetch.mock.calls[0][1].method).toBe("POST");
+        });
+
         it("should use custom content type", async () => {
             mockFetch.mockResolvedValue({ ok: true });
 
@@ -150,6 +177,32 @@ describe("Generic Webhook Adapter", () => {
             );
 
             expect(mockFetch.mock.calls[0][1].headers["Content-Type"]).toBe("text/plain");
+        });
+
+        it("should default content type to application/json", async () => {
+            mockFetch.mockResolvedValue({ ok: true });
+
+            const { contentType, ...configWithoutContentType } = baseConfig;
+            await GenericWebhookAdapter.send(configWithoutContentType, "Test");
+
+            expect(mockFetch.mock.calls[0][1].headers["Content-Type"]).toBe("application/json");
+        });
+
+        it("should ignore malformed custom header lines", async () => {
+            mockFetch.mockResolvedValue({ ok: true });
+
+            await GenericWebhookAdapter.send(
+                {
+                    ...baseConfig,
+                    customHeaders: "InvalidLine\nX-Trace-Id: abc123\nKeyOnly:\n:NoKey",
+                },
+                "Test",
+            );
+
+            const headers = mockFetch.mock.calls[0][1].headers;
+            expect(headers["X-Trace-Id"]).toBe("abc123");
+            expect(headers.InvalidLine).toBeUndefined();
+            expect(headers.KeyOnly).toBeUndefined();
         });
 
         it("should render custom payload template with variables", async () => {

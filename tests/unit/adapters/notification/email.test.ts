@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { EmailAdapter } from "@/lib/adapters/notification/email";
+import nodemailer from "nodemailer";
 
 // Mock nodemailer
 const mockVerify = vi.fn().mockResolvedValue(true);
@@ -63,6 +64,22 @@ describe("Email Adapter", () => {
 
       expect(result.success).toBe(false);
       expect(result.message).toContain("Connection refused");
+    });
+
+    it("should set ignoreTLS when secure mode is none", async () => {
+      const insecureConfig = {
+        ...baseConfig,
+        secure: "none",
+      };
+
+      await EmailAdapter.test!(insecureConfig);
+
+      expect((nodemailer as any).createTransport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ignoreTLS: true,
+          secure: false,
+        })
+      );
     });
   });
 
