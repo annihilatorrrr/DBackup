@@ -58,6 +58,11 @@ describe("encrypt / decrypt (AES-256-GCM)", () => {
             expect(encrypt("")).toBe("");
         });
 
+        it("decrypt returns empty string unchanged", async () => {
+            const { decrypt } = await getCrypto();
+            expect(decrypt("")).toBe("");
+        });
+
         it("decrypt returns text that does not look encrypted (no 2 colons)", async () => {
             const { decrypt } = await getCrypto();
             expect(decrypt("plain-text")).toBe("plain-text");
@@ -128,5 +133,142 @@ describe("encrypt / decrypt (AES-256-GCM)", () => {
             const { decrypt } = await getCrypto();
             expect(() => decrypt(cipher)).toThrow();
         });
+    });
+
+    describe("EncryptionError re-throw inside decrypt", () => {
+        it("re-throws an EncryptionError thrown inside the try block (e.g. missing key)", async () => {
+            vi.stubEnv("ENCRYPTION_KEY", "");
+            const { decrypt } = await getCrypto();
+            // "aaa:bbb:ccc" passes the outer format guard (3 parts), then getEncryptionKey()
+            // throws an EncryptionError which must be re-thrown unchanged.
+            expect(() => decrypt("aaa:bbb:ccc")).toThrow("ENCRYPTION_KEY environment variable is not set");
+        });
+    });
+});
+
+describe("stripSecrets", () => {
+    async function getCrypto() {
+        vi.resetModules();
+        return import("@/lib/crypto");
+    }
+
+    it("passes through null unchanged", async () => {
+        const { stripSecrets } = await getCrypto();
+        expect(stripSecrets(null)).toBeNull();
+    });
+
+    it("passes through a primitive value unchanged", async () => {
+        const { stripSecrets } = await getCrypto();
+        expect(stripSecrets("plain")).toBe("plain");
+        expect(stripSecrets(42)).toBe(42);
+    });
+
+    it("replaces known sensitive string fields with an empty string", async () => {
+        const { stripSecrets } = await getCrypto();
+        const result = stripSecrets({ password: "secret", host: "localhost" });
+        expect(result.password).toBe("");
+        expect(result.host).toBe("localhost");
+    });
+
+    it("recursively strips sensitive fields in nested objects", async () => {
+        const { stripSecrets } = await getCrypto();
+        const result = stripSecrets({ db: { password: "hidden", port: 3306 } });
+        expect(result.db.password).toBe("");
+        expect(result.db.port).toBe(3306);
+    });
+
+    it("handles arrays containing objects with sensitive fields", async () => {
+        const { stripSecrets } = await getCrypto();
+        const result = stripSecrets([{ password: "a" }, { token: "b" }]);
+        expect(result[0].password).toBe("");
+        expect(result[1].token).toBe("");
+    });
+
+    it("does not mutate the original object", async () => {
+        const { stripSecrets } = await getCrypto();
+        const original = { password: "secret" };
+        stripSecrets(original);
+        expect(original.password).toBe("secret");
+    });
+});
+
+describe("encryptConfig / decryptConfig", () => {
+    const VALID_KEY = "a".repeat(64);
+
+    beforeEach(() => {
+        vi.stubEnv("ENCRYPTION_KEY", VALID_KEY);
+    });
+
+    afterEach(() => {
+        vi.unstubAllEnvs();
+    });
+
+    async function getCrypto() {
+        vi.resetModules();
+        return import("@/lib/crypto");
+    }
+
+    it("encryptConfig passes through null unchanged", async () => {
+        const { encryptConfig } = await getCrypto();
+        expect(encryptConfig(null)).toBeNull();
+    });
+
+    it("decryptConfig passes through a primitive value unchanged", async () => {
+        const { decryptConfig } = await getCrypto();
+        expect(decryptConfig(42)).toBe(42);
+        expect(decryptConfig(null)).toBeNull();
+    });
+
+    it("encrypts sensitive fields while leaving non-sensitive ones intact", async () => {
+        const { encryptConfig } = await getCrypto();
+        const result = encryptConfig({ password: "secret", host: "localhost" });
+        expect(result.host).toBe("localhost");
+        expect(result.password).not.toBe("secret");
+        expect(result.password.split(":")).toHaveLength(3);
+    });
+
+    it("round-trips a flat config via encryptConfig + decryptConfig", async () => {
+        const { encryptConfig, decryptConfig } = await getCrypto();
+        const config = { password: "s3cr3t", host: "db.example.com", port: 5432 };
+        expect(decryptConfig(encryptConfig(config))).toEqual(config);
+    });
+
+    it("round-trips a deeply nested config", async () => {
+        const { encryptConfig, decryptConfig } = await getCrypto();
+        const config = { credentials: { password: "pw", token: "tok" }, host: "h" };
+        expect(decryptConfig(encryptConfig(config))).toEqual(config);
+    });
+
+    it("round-trips an array of configs", async () => {
+        const { encryptConfig, decryptConfig } = await getCrypto();
+        const configs = [{ password: "alpha" }, { token: "beta" }];
+        expect(decryptConfig(encryptConfig(configs))).toEqual(configs);
+    });
+
+    it("does not mutate the original config object", async () => {
+        const { encryptConfig } = await getCrypto();
+        const original = { password: "secret" };
+        encryptConfig(original);
+        expect(original.password).toBe("secret");
+    });
+});
+
+describe("encrypt - unexpected error wrapping", () => {
+    afterEach(() => {
+        vi.unstubAllEnvs();
+    });
+
+    async function getCrypto() {
+        vi.resetModules();
+        return import("@/lib/crypto");
+    }
+
+    it("wraps non-EncryptionError as EncryptionError when the hex key decodes to wrong length", async () => {
+        // "g".repeat(64) is 64 chars (passes the length check) but contains no valid hex digits,
+        // so Buffer.from(..., 'hex') returns an empty Buffer. createCipheriv then throws
+        // a raw Error (not an EncryptionError), which must be wrapped by the catch block.
+        vi.stubEnv("ENCRYPTION_KEY", "g".repeat(64));
+        const { encrypt } = await getCrypto();
+        expect(() => encrypt("x")).toThrow("Failed to encrypt data");
     });
 });

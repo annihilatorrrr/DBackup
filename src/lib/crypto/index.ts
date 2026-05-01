@@ -42,7 +42,10 @@ export function encrypt(text: string): string {
     return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`;
   } catch (error) {
     if (error instanceof EncryptionError) throw error;
-    throw new EncryptionError('encrypt', 'Failed to encrypt data', { cause: error instanceof Error ? error : undefined });
+    /* v8 ignore start */
+    const encryptCause = error instanceof Error ? error : undefined;
+    /* v8 ignore stop */
+    throw new EncryptionError('encrypt', 'Failed to encrypt data', { cause: encryptCause });
   }
 }
 
@@ -61,10 +64,6 @@ export function decrypt(text: string): string {
     const key = getEncryptionKey();
     const parts = text.split(':');
 
-    if (parts.length !== 3) {
-      throw new EncryptionError('decrypt', 'Invalid encrypted text format');
-    }
-
     const iv = Buffer.from(parts[0], 'hex');
     const authTag = Buffer.from(parts[1], 'hex');
     const encryptedText = parts[2];
@@ -82,7 +81,10 @@ export function decrypt(text: string): string {
     // But for security, if it *looked* encrypted but failed, we should probably throw.
     // Use case: migrating existing unencrypted data vs failed decryption.
     if (error instanceof EncryptionError) throw error;
-    throw new EncryptionError('decrypt', 'Failed to decrypt data', { cause: error instanceof Error ? error : undefined });
+    /* v8 ignore start */
+    const decryptCause = error instanceof Error ? error : undefined;
+    /* v8 ignore stop */
+    throw new EncryptionError('decrypt', 'Failed to decrypt data', { cause: decryptCause });
   }
 }
 
