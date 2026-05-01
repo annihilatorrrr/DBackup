@@ -266,5 +266,105 @@ describe("SFTPAdapter", () => {
             expect(result.success).toBe(false);
             expect(result.message).toContain("Host unreachable");
         });
+
+        it("creates pathPrefix directory when it does not exist", async () => {
+            mockSftpExists.mockResolvedValue(false); // not 'd'
+
+            const result = await SFTPAdapter.test!(config);
+
+            expect(result.success).toBe(true);
+            expect(mockSftpMkdir).toHaveBeenCalledWith(config.pathPrefix, true);
+        });
+    });
+
+    // ===== download() fastGet step callback =====
+
+    describe("download() fastGet step callback", () => {
+        it("invokes onProgress via fastGet step callback", async () => {
+            mockSftpStat.mockResolvedValue({ size: 2048 });
+            let stepCb: ((transferred: number) => void) | undefined;
+            mockSftpFastGet.mockImplementation((_src: unknown, _dst: unknown, opts: { step?: (t: number) => void }) => {
+                stepCb = opts?.step;
+                return Promise.resolve(undefined);
+            });
+
+            const onProgress = vi.fn();
+            await SFTPAdapter.download(config, "Job/backup.sql", "/tmp/out.sql", onProgress);
+
+            stepCb?.(1024);
+            expect(onProgress).toHaveBeenCalledWith(1024, 2048);
+        });
+    });
+
+    // ===== read() non-Buffer result =====
+
+    describe("read() non-Buffer result", () => {
+        it("returns null when sftp.get() returns non-Buffer value", async () => {
+            mockSftpGet.mockResolvedValue(null);
+
+            const result = await SFTPAdapter.read!(config, "Job/meta.json");
+
+            expect(result).toBeNull();
+        });
+
+        it("returns null when sftp.get() throws", async () => {
+            mockSftpGet.mockRejectedValue(new Error("File not found"));
+
+            const result = await SFTPAdapter.read!(config, "Job/missing.meta.json");
+
+            expect(result).toBeNull();
+        });
+
+        it("works without pathPrefix (uses remotePath directly)", async () => {
+            const noPrefix = { ...config, pathPrefix: undefined };
+            mockSftpGet.mockResolvedValue(Buffer.from("content"));
+
+            const result = await SFTPAdapter.read!(noPrefix, "backup.meta.json");
+
+            expect(result).toBe("content");
+        });
+    });
+
+    // ====================================================================
+    // upload() step callback progress (lines 76-80)
+    // ====================================================================
+    describe("upload() step callback progress", () => {
+        it("invokes onProgress via put step callback when totalSize > 0", async () => {
+            mockSftpExists.mockResolvedValue("d");
+            mockFsStat.mockResolvedValue({ size: 2048 });
+
+            let stepCb: ((transferred: number, chunk: unknown, total: number) => void) | undefined;
+            mockSftpPut.mockImplementation((_src: unknown, _dst: unknown, opts: any) => {
+                stepCb = opts?.step;
+                return Promise.resolve(undefined);
+            });
+
+            const onProgress = vi.fn();
+            await SFTPAdapter.upload(config, "/tmp/backup.sql", "Job/backup.sql", onProgress);
+
+            // Simulate data transfer: 1024 of 2048 bytes transferred
+            stepCb?.(1024, null, 2048);
+
+            expect(onProgress).toHaveBeenCalledWith(50); // 1024/2048 * 100 = 50
+        });
+
+        it("does not call onProgress when totalSize is 0", async () => {
+            mockSftpExists.mockResolvedValue("d");
+            mockFsStat.mockResolvedValue({ size: 0 });
+
+            let stepCb: ((transferred: number, chunk: unknown, total: number) => void) | undefined;
+            mockSftpPut.mockImplementation((_src: unknown, _dst: unknown, opts: any) => {
+                stepCb = opts?.step;
+                return Promise.resolve(undefined);
+            });
+
+            const onProgress = vi.fn();
+            await SFTPAdapter.upload(config, "/tmp/backup.sql", "Job/backup.sql", onProgress);
+
+            stepCb?.(0, null, 0);
+
+            // totalSize = 0 → step callback guard: if (totalSize > 0) is false → no call
+            expect(onProgress).not.toHaveBeenCalled();
+        });
     });
 });

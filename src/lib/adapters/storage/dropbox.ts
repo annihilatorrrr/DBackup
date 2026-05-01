@@ -93,25 +93,6 @@ function buildDropboxPath(basePath: string | undefined, relativePath: string): s
 }
 
 /**
- * Ensures all parent folders exist for a given path.
- * Dropbox auto-creates parent folders on upload, but for explicit folder creation.
- */
-async function _ensureFolderExists(dbx: Dropbox, folderPath: string): Promise<void> {
-    const dirPath = path.posix.dirname(folderPath);
-    if (dirPath === "/" || dirPath === ".") return;
-
-    try {
-        await dbx.filesCreateFolderV2({ path: dirPath, autorename: false });
-    } catch (error: unknown) {
-        // Ignore "path/conflict/folder" errors - folder already exists
-        const errStr = JSON.stringify(error);
-        if (!errStr.includes("path/conflict") && !errStr.includes("already exists")) {
-            throw error;
-        }
-    }
-}
-
-/**
  * Recursively lists all files under a Dropbox folder.
  */
 async function listFilesRecursive(

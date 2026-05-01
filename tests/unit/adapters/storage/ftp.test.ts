@@ -276,4 +276,99 @@ describe("FTPAdapter", () => {
             expect(result.message).toContain("Connection refused");
         });
     });
+
+    // ===== upload() progress tracking =====
+
+    describe("upload() progress tracking", () => {
+        it("invokes onProgress when trackProgress callback fires", async () => {
+            let progressCb: ((info: { bytesOverall: number }) => void) | undefined;
+            mockTrackProgress.mockImplementation((cb?: (info: { bytesOverall: number }) => void) => {
+                if (cb) progressCb = cb;
+            });
+
+            const onProgress = vi.fn();
+            await FTPAdapter.upload(config, "/tmp/backup.sql", "Job/backup.sql", onProgress);
+
+            // Simulate progress event
+            progressCb?.({ bytesOverall: 512 });
+            expect(onProgress).toHaveBeenCalledWith(50); // 512/1024 * 100 = 50
+            expect(onProgress).toHaveBeenCalledWith(100); // final
+        });
+    });
+
+    // ===== download() progress tracking =====
+
+    describe("download() progress tracking", () => {
+        it("invokes onProgress when download trackProgress callback fires", async () => {
+            let progressCb: ((info: { bytesOverall: number }) => void) | undefined;
+            mockTrackProgress.mockImplementation((cb?: (info: { bytesOverall: number }) => void) => {
+                if (cb) progressCb = cb;
+            });
+
+            const onProgress = vi.fn();
+            await FTPAdapter.download(config, "Job/backup.sql", "/tmp/out.sql", onProgress);
+
+            progressCb?.({ bytesOverall: 256 });
+            expect(onProgress).toHaveBeenCalledWith(256, 1024);
+        });
+
+        it("proceeds when client.size() throws (size not supported)", async () => {
+            mockSize.mockRejectedValue(new Error("SIZE not implemented"));
+
+            let progressCb: ((info: { bytesOverall: number }) => void) | undefined;
+            mockTrackProgress.mockImplementation((cb?: (info: { bytesOverall: number }) => void) => {
+                if (cb) progressCb = cb;
+            });
+
+            const onProgress = vi.fn();
+            const result = await FTPAdapter.download(config, "Job/backup.sql", "/tmp/out.sql", onProgress);
+
+            // After size fails, total=0, onProgress uses bytesOverall for both
+            progressCb?.({ bytesOverall: 100 });
+            expect(onProgress).toHaveBeenCalledWith(100, 100);
+            expect(result).toBe(true);
+        });
+    });
+
+    // ===== list() - walk catch =====
+
+    describe("list() walk error handling", () => {
+        it("continues when list() throws for a subdirectory", async () => {
+            mockList
+                .mockResolvedValueOnce([
+                    { name: "subdir", isFile: false, isDirectory: true, size: 0, modifiedAt: new Date() },
+                ])
+                .mockRejectedValueOnce(new Error("Subdirectory listing failed"));
+
+            const result = await FTPAdapter.list(config, "Job");
+
+            // walk catches the error and continues - result is empty but no throw
+            expect(result).toEqual([]);
+        });
+    });
+
+    // ===== resolvePath without pathPrefix (line 49) =====
+
+    describe("resolvePath without pathPrefix", () => {
+        it("uses remotePath directly when no pathPrefix is configured", async () => {
+            const noPrefix = { ...config, pathPrefix: undefined };
+
+            const result = await FTPAdapter.upload(noPrefix, "/tmp/backup.sql", "backup.sql");
+
+            expect(result).toBe(true);
+            expect(mockUploadFrom).toHaveBeenCalled();
+        });
+
+        it("list() works without pathPrefix", async () => {
+            const noPrefix = { ...config, pathPrefix: undefined };
+            mockList.mockResolvedValue([
+                { name: "backup.sql", isFile: true, isDirectory: false, size: 512, modifiedAt: new Date() },
+            ]);
+
+            const result = await FTPAdapter.list(noPrefix, "");
+
+            expect(result).toHaveLength(1);
+            expect(result[0].name).toBe("backup.sql");
+        });
+    });
 });

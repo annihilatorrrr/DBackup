@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { SMBAdapter } from "@/lib/adapters/storage/smb";
 
 // --- Hoisted mocks ---
-const { mockSendFile, mockGetFile, mockList, mockMkdir, mockDeleteFile, mockFsReadFile, mockFsWriteFile, mockFsUnlink } = vi.hoisted(() => ({
+const { mockSendFile, mockGetFile, mockList, mockMkdir, mockDeleteFile, mockFsReadFile, mockFsWriteFile, mockFsUnlink, mockSambaCtorShouldThrow } = vi.hoisted(() => ({
     mockSendFile: vi.fn().mockResolvedValue(undefined),
     mockGetFile: vi.fn().mockResolvedValue(undefined),
     mockList: vi.fn(),
@@ -11,10 +11,16 @@ const { mockSendFile, mockGetFile, mockList, mockMkdir, mockDeleteFile, mockFsRe
     mockFsReadFile: vi.fn().mockResolvedValue("smb file content"),
     mockFsWriteFile: vi.fn().mockResolvedValue(undefined),
     mockFsUnlink: vi.fn().mockResolvedValue(undefined),
+    mockSambaCtorShouldThrow: { value: false },
 }));
 
 vi.mock("samba-client", () => {
     class MockSambaClient {
+        constructor() {
+            if (mockSambaCtorShouldThrow.value) {
+                throw new Error("SambaClient constructor failed");
+            }
+        }
         sendFile = mockSendFile;
         getFile = mockGetFile;
         list = mockList;
@@ -60,6 +66,7 @@ const config = {
 describe("SMBAdapter", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mockSambaCtorShouldThrow.value = false;
         mockSendFile.mockResolvedValue(undefined);
         mockGetFile.mockResolvedValue(undefined);
         mockMkdir.mockResolvedValue(undefined);
@@ -250,6 +257,45 @@ describe("SMBAdapter", () => {
 
             expect(result.success).toBe(false);
             expect(result.message).toContain("ECONNREFUSED");
+        });
+    });
+
+    // ===== resolvePath without pathPrefix =====
+
+    describe("upload() without pathPrefix", () => {
+        it("uses relativePath directly when no pathPrefix is set", async () => {
+            const noPrefix = { ...config, pathPrefix: undefined };
+            const result = await SMBAdapter.upload(noPrefix, "/tmp/backup.sql", "backup.sql");
+
+            expect(result).toBe(true);
+            const destArg = mockSendFile.mock.calls[0][1];
+            // no prefix - path should just be the relativePath
+            expect(destArg).not.toContain("backups/");
+        });
+    });
+
+    // ===== test() mkdir catch branch =====
+
+    describe("test() mkdir resilience", () => {
+        it("succeeds even when mkdir throws (directory already exists)", async () => {
+            mockMkdir.mockRejectedValue(new Error("NT_STATUS_OBJECT_NAME_COLLISION"));
+
+            const result = await SMBAdapter.test!(config);
+
+            expect(result.success).toBe(true);
+        });
+    });
+
+    // ====================================================================
+    // list() outer catch - when SambaClient constructor throws (lines 180-181)
+    // ====================================================================
+    describe("list() outer catch when SambaClient constructor throws", () => {
+        it("returns empty array when SambaClient constructor fails", async () => {
+            mockSambaCtorShouldThrow.value = true;
+
+            const result = await SMBAdapter.list(config, "Job");
+
+            expect(result).toEqual([]);
         });
     });
 });

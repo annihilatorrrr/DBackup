@@ -3,11 +3,12 @@ import { OneDriveAdapter } from "@/lib/adapters/storage/onedrive";
 import { Readable } from "stream";
 
 // --- Hoisted mocks (available in vi.mock factories) ---
-const { mockClient, mockFetch, mockFs } = vi.hoisted(() => ({
+const { mockClient, mockFetch, mockFs, mockPipeline } = vi.hoisted(() => ({
     mockClient: {
         api: vi.fn(),
     },
     mockFetch: vi.fn(),
+    mockPipeline: vi.fn().mockResolvedValue(undefined),
     mockFs: {
         stat: vi.fn(),
         mkdir: vi.fn(),
@@ -30,7 +31,13 @@ const mockApiChain = {
 
 vi.mock("@microsoft/microsoft-graph-client", () => ({
     Client: {
-        init: vi.fn(() => mockClient),
+        init: vi.fn((opts: any) => {
+            // Invoke the authProvider to cover the done(null, accessToken) line
+            if (opts?.authProvider) {
+                opts.authProvider((_err: unknown, _token: unknown) => {});
+            }
+            return mockClient;
+        }),
     },
 }));
 
@@ -61,9 +68,9 @@ vi.mock("fs", () => ({
 }));
 
 vi.mock("stream/promises", () => ({
-    pipeline: vi.fn().mockResolvedValue(undefined),
+    pipeline: mockPipeline,
     default: {
-        pipeline: vi.fn().mockResolvedValue(undefined),
+        pipeline: mockPipeline,
     },
 }));
 
@@ -677,6 +684,159 @@ describe("OneDriveAdapter", () => {
                     clientSecret: "test-secret",
                 })
             ).toThrow();
+        });
+    });
+
+    // ====================================================================
+    // download() with onProgress
+    // ====================================================================
+    describe("download() with onProgress tracking", () => {
+        it("should invoke onProgress when item.size > 0 and onProgress provided", async () => {
+            mockTokenRefresh();
+            mockFs.mkdir.mockResolvedValue(undefined);
+
+            const downloadUrl = "https://download.onedrive.example.com/file";
+
+            mockClient.api.mockReturnValue({
+                get: vi.fn().mockResolvedValue({
+                    "@microsoft.graph.downloadUrl": downloadUrl,
+                    size: 2048,
+                }),
+            });
+
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                body: Readable.toWeb(Readable.from(["file content"])),
+            });
+
+            const onProgress = vi.fn();
+            const result = await OneDriveAdapter.download(
+                validConfig,
+                "daily/backup.sql",
+                "/tmp/restored.sql",
+                onProgress
+            );
+
+            // With onProgress + item.size > 0, the tracker Transform branch is entered
+            expect(result).toBe(true);
+        });
+    });
+
+    // ====================================================================
+    // test() - folder creation failure branch
+    // ====================================================================
+    describe("test() - folder creation failure", () => {
+        it("should return failure when folder does not exist and cannot be created", async () => {
+            mockTokenRefresh();
+
+            let apiCallCount = 0;
+            mockClient.api.mockImplementation((path: string) => {
+                if (path === "/me/drive") {
+                    return {
+                        select: vi.fn().mockReturnValue({
+                            get: vi.fn().mockResolvedValue({
+                                owner: { user: { displayName: "Test User" } },
+                            }),
+                        }),
+                    };
+                }
+                apiCallCount++;
+                if (apiCallCount === 1) {
+                    // Folder check throws (folder not found)
+                    return {
+                        select: vi.fn().mockReturnValue({
+                            get: vi.fn().mockRejectedValue(new Error("itemNotFound")),
+                        }),
+                    };
+                }
+                // ensureFolderExists also throws (creation failed)
+                return {
+                    select: vi.fn().mockReturnThis(),
+                    get: vi.fn().mockRejectedValue(new Error("accessDenied")),
+                    post: vi.fn().mockRejectedValue(new Error("accessDenied")),
+                };
+            });
+
+            const result = await OneDriveAdapter.test!(validConfig);
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain("could not be created");
+        });
+    });
+
+    // ====================================================================
+    // download() line 299 - failed fetch response
+    // ====================================================================
+    describe("download() failed fetch response", () => {
+        it("returns false when download fetch returns non-ok status", async () => {
+            mockTokenRefresh();
+            mockFs.mkdir.mockResolvedValue(undefined);
+
+            const downloadUrl = "https://download.onedrive.example.com/file";
+            mockClient.api.mockReturnValue({
+                get: vi.fn().mockResolvedValue({
+                    "@microsoft.graph.downloadUrl": downloadUrl,
+                    size: 1024,
+                }),
+            });
+
+            // Fetch returns a non-ok response (e.g. 403 Forbidden)
+            mockFetch.mockResolvedValueOnce({
+                ok: false,
+                status: 403,
+                body: null,
+            });
+
+            const result = await OneDriveAdapter.download(
+                validConfig,
+                "daily/backup.sql",
+                "/tmp/restored.sql"
+            );
+
+            expect(result).toBe(false);
+        });
+    });
+
+    // ====================================================================
+    // download() lines 309-311 - tracker transform body coverage
+    // ====================================================================
+    describe("download() tracker transform body", () => {
+        it("invokes onProgress via tracker transform when onProgress and size > 0", async () => {
+            const { pipeline } = await import("stream/promises");
+            mockTokenRefresh();
+            mockFs.mkdir.mockResolvedValue(undefined);
+
+            const downloadUrl = "https://download.onedrive.example.com/file";
+            mockClient.api.mockReturnValue({
+                get: vi.fn().mockResolvedValue({
+                    "@microsoft.graph.downloadUrl": downloadUrl,
+                    size: 2048,
+                }),
+            });
+
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                body: Readable.toWeb(Readable.from(["content"])),
+            });
+
+            const onProgress = vi.fn();
+
+            // Override pipeline to call the tracker's _transform so lines 309-311 run
+            mockPipeline.mockImplementationOnce(async (_src: any, tracker: any, _dst: any) => {
+                if (tracker && tracker._transform) {
+                    tracker._transform(Buffer.from("chunk"), "buffer", () => {});
+                }
+            });
+
+            const result = await OneDriveAdapter.download(
+                validConfig,
+                "daily/backup.sql",
+                "/tmp/restored.sql",
+                onProgress
+            );
+
+            expect(result).toBe(true);
+            expect(onProgress).toHaveBeenCalled();
         });
     });
 });

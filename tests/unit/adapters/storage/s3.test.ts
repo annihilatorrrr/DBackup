@@ -8,10 +8,11 @@ import {
 } from "@/lib/adapters/storage/s3";
 
 // --- Hoisted mocks ---
-const { mockSend, mockUploadDone, mockUploadOn } = vi.hoisted(() => ({
+const { mockSend, mockUploadDone, mockUploadOn, mockPipeline } = vi.hoisted(() => ({
     mockSend: vi.fn(),
     mockUploadDone: vi.fn(),
     mockUploadOn: vi.fn(),
+    mockPipeline: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@aws-sdk/client-s3", () => {
@@ -62,8 +63,8 @@ vi.mock("fs", () => ({
 }));
 
 vi.mock("stream/promises", () => ({
-    pipeline: vi.fn().mockResolvedValue(undefined),
-    default: { pipeline: vi.fn().mockResolvedValue(undefined) },
+    pipeline: mockPipeline,
+    default: { pipeline: mockPipeline },
 }));
 
 vi.mock("@/lib/logging/logger", () => ({
@@ -390,6 +391,45 @@ describe("S3 Adapter variants - configuration wiring", () => {
         expect(s3ClientConfig.endpoint).toBe("https://fsn1.your-objectstorage.com");
     });
 
+    it("S3HetznerAdapter - upload delegates correctly", async () => {
+        mockUploadDone.mockResolvedValue({});
+        const result = await S3HetznerAdapter.upload(hetznerConfig, "/tmp/file.sql", "Job/file.sql");
+        expect(result).toBe(true);
+    });
+
+    it("S3HetznerAdapter - list delegates correctly", async () => {
+        mockSend.mockResolvedValue({ Contents: [{ Key: "Job/file.sql", Size: 100, LastModified: new Date() }] });
+        const result = await S3HetznerAdapter.list(hetznerConfig, "Job");
+        expect(result).toHaveLength(1);
+    });
+
+    it("S3HetznerAdapter - download delegates correctly", async () => {
+        const bodyStream = require("stream").Readable.from(["data"]);
+        mockSend.mockResolvedValue({ Body: bodyStream, ContentLength: 4 });
+        const result = await S3HetznerAdapter.download(hetznerConfig, "Job/file.sql", "/tmp/out.sql");
+        expect(result).toBe(true);
+    });
+
+    it("S3HetznerAdapter - delete delegates correctly", async () => {
+        mockSend.mockResolvedValue({});
+        const result = await S3HetznerAdapter.delete(hetznerConfig, "Job/file.sql");
+        expect(result).toBe(true);
+    });
+
+    it("S3HetznerAdapter - read delegates correctly", async () => {
+        const bodyMock = { transformToString: vi.fn().mockResolvedValue("meta content") };
+        mockSend.mockResolvedValue({ Body: bodyMock });
+        const result = await S3HetznerAdapter.read!(hetznerConfig, "Job/file.sql.meta.json");
+        expect(result).toBe("meta content");
+    });
+
+    it("S3R2Adapter - read delegates correctly", async () => {
+        const bodyMock = { transformToString: vi.fn().mockResolvedValue("r2 meta") };
+        mockSend.mockResolvedValue({ Body: bodyMock });
+        const result = await S3R2Adapter.read!({ ...r2Config }, "Job/file.meta.json");
+        expect(result).toBe("r2 meta");
+    });
+
     it("all adapters expose required StorageAdapter interface methods", () => {
         for (const { name, adapter } of adapters) {
             expect(typeof adapter.upload, `${name}.upload`).toBe("function");
@@ -399,5 +439,93 @@ describe("S3 Adapter variants - configuration wiring", () => {
             expect(typeof adapter.test, `${name}.test`).toBe("function");
             expect(typeof adapter.read, `${name}.read`).toBe("function");
         }
+    });
+
+    // ===== S3AWSAdapter - all delegated methods =====
+
+    it("S3AWSAdapter - list delegates correctly", async () => {
+        mockSend.mockResolvedValue({ Contents: [{ Key: "Job/file.sql", Size: 100, LastModified: new Date() }] });
+        const result = await S3AWSAdapter.list(awsConfig, "Job");
+        expect(result).toHaveLength(1);
+    });
+
+    it("S3AWSAdapter - download delegates correctly", async () => {
+        const bodyStream = Readable.from(["data"]);
+        mockSend.mockResolvedValue({ Body: bodyStream, ContentLength: 4 });
+        const result = await S3AWSAdapter.download(awsConfig, "Job/file.sql", "/tmp/out.sql");
+        expect(result).toBe(true);
+    });
+
+    it("S3AWSAdapter - delete delegates correctly", async () => {
+        mockSend.mockResolvedValue({});
+        const result = await S3AWSAdapter.delete(awsConfig, "Job/file.sql");
+        expect(result).toBe(true);
+    });
+
+    it("S3AWSAdapter - test delegates correctly", async () => {
+        mockSend.mockResolvedValue({});
+        const result = await S3AWSAdapter.test!(awsConfig);
+        expect(result.success).toBe(true);
+    });
+
+    it("S3AWSAdapter - read delegates correctly", async () => {
+        const bodyMock = { transformToString: vi.fn().mockResolvedValue("aws meta") };
+        mockSend.mockResolvedValue({ Body: bodyMock });
+        const result = await S3AWSAdapter.read!(awsConfig, "Job/file.meta.json");
+        expect(result).toBe("aws meta");
+    });
+
+    // ===== S3R2Adapter - all delegated methods =====
+
+    it("S3R2Adapter - upload delegates correctly", async () => {
+        mockUploadDone.mockResolvedValue({});
+        const result = await S3R2Adapter.upload(r2Config, "/tmp/file.sql", "Job/file.sql");
+        expect(result).toBe(true);
+    });
+
+    it("S3R2Adapter - list delegates correctly", async () => {
+        mockSend.mockResolvedValue({ Contents: [{ Key: "Job/file.sql", Size: 100, LastModified: new Date() }] });
+        const result = await S3R2Adapter.list(r2Config, "Job");
+        expect(result).toHaveLength(1);
+    });
+
+    it("S3R2Adapter - download delegates correctly", async () => {
+        const bodyStream = Readable.from(["data"]);
+        mockSend.mockResolvedValue({ Body: bodyStream, ContentLength: 4 });
+        const result = await S3R2Adapter.download(r2Config, "Job/file.sql", "/tmp/out.sql");
+        expect(result).toBe(true);
+    });
+
+    it("S3R2Adapter - delete delegates correctly", async () => {
+        mockSend.mockResolvedValue({});
+        const result = await S3R2Adapter.delete(r2Config, "Job/file.sql");
+        expect(result).toBe(true);
+    });
+});
+
+// --- Download progress tracker transform body coverage (lines 132-140) ---
+
+describe("S3 download progress tracker transform body", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it("invokes onProgress via tracker transform when onProgress and total > 0", async () => {
+        const bodyStream = Readable.from(["data"]);
+        mockSend.mockResolvedValue({ Body: bodyStream, ContentLength: 1024 });
+
+        const onProgress = vi.fn();
+
+        // Override pipeline to invoke the tracker's _transform so lines 132-140 run
+        mockPipeline.mockImplementationOnce(async (_src: any, tracker: any, _dst: any) => {
+            if (tracker && tracker._transform) {
+                tracker._transform(Buffer.from("chunk"), "buffer", () => {});
+            }
+        });
+
+        const result = await S3GenericAdapter.download(genericConfig, "Job/backup.sql", "/tmp/out.sql", onProgress);
+
+        expect(result).toBe(true);
+        expect(onProgress).toHaveBeenCalled();
     });
 });

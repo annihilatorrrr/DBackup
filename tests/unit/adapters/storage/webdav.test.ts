@@ -266,5 +266,80 @@ describe("WebDAVAdapter", () => {
             expect(result.success).toBe(false);
             expect(result.message).toContain("Unauthorized");
         });
+
+        it("creates pathPrefix directory when it does not exist", async () => {
+            mockClient.exists.mockResolvedValue(false);
+            mockClient.createDirectory.mockResolvedValue(undefined);
+            mockClient.putFileContents.mockResolvedValue(undefined);
+            mockClient.deleteFile.mockResolvedValue(undefined);
+
+            const result = await WebDAVAdapter.test!(config);
+
+            expect(result.success).toBe(true);
+            expect(mockClient.createDirectory).toHaveBeenCalled();
+        });
+    });
+
+    // ===== resolvePath without pathPrefix =====
+
+    describe("upload() without pathPrefix", () => {
+        it("uses root path when no pathPrefix is set", async () => {
+            const noPrefix = { ...config, pathPrefix: undefined };
+            mockClient.putFileContents.mockResolvedValue(undefined);
+
+            const result = await WebDAVAdapter.upload(noPrefix, "/tmp/backup.sql", "backup.sql");
+
+            expect(result).toBe(true);
+            const destArg = mockClient.putFileContents.mock.calls[0][0];
+            expect(destArg).not.toContain("backups");
+        });
+    });
+
+    // ===== download() - stat size 0 fallback =====
+
+    describe("download() stat size 0", () => {
+        it("falls back to plain pipeline when stat returns size 0", async () => {
+            mockClient.stat.mockResolvedValue({ size: 0 });
+            mockClient.createReadStream.mockReturnValue({ pipe: vi.fn() });
+
+            const onProgress = vi.fn();
+            const result = await WebDAVAdapter.download(config, "Job/backup.sql", "/tmp/out.sql", onProgress);
+
+            expect(result).toBe(true);
+            expect(mockPipeline).toHaveBeenCalled();
+        });
+
+        it("falls back to plain pipeline when stat throws", async () => {
+            mockClient.stat.mockRejectedValue(new Error("stat not supported"));
+            mockClient.createReadStream.mockReturnValue({ pipe: vi.fn() });
+
+            const onProgress = vi.fn();
+            const result = await WebDAVAdapter.download(config, "Job/backup.sql", "/tmp/out.sql", onProgress);
+
+            expect(result).toBe(true);
+        });
+    });
+
+    // ====================================================================
+    // download() tracker transform body (lines 93-95)
+    // ====================================================================
+    describe("download() tracker transform body coverage", () => {
+        it("invokes onProgress via tracker _transform when size > 0", async () => {
+            mockClient.stat.mockResolvedValue({ size: 2048 });
+            mockClient.createReadStream.mockReturnValue({ pipe: vi.fn() });
+
+            // Override pipeline to call the tracker's _transform so lines 93-95 run
+            mockPipeline.mockImplementationOnce(async (_src: any, tracker: any, _dst: any) => {
+                if (tracker && typeof tracker._transform === "function") {
+                    tracker._transform(Buffer.from("test chunk"), "buffer", () => {});
+                }
+            });
+
+            const onProgress = vi.fn();
+            const result = await WebDAVAdapter.download(config, "Job/backup.sql", "/tmp/out.sql", onProgress);
+
+            expect(result).toBe(true);
+            expect(onProgress).toHaveBeenCalled();
+        });
     });
 });
