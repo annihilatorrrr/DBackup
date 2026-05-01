@@ -3,7 +3,7 @@ import { tabsMarkdownPlugin } from 'vitepress-plugin-tabs'
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
-  title: "DBackup",
+  title: "DBackup | Docs",
   description: "Self-hosted database backup automation with encryption, compression, and retention policies",
   lang: 'en-US',
   cleanUrls: true, // Remove .html from URLs for better SEO
