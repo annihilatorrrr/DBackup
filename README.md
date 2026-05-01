@@ -26,6 +26,7 @@
   <img src="https://img.shields.io/badge/open_source-%E2%9D%A4%EF%B8%8F-red" alt="Open Source">
   <br>
   <a href="https://github.com/Skyfay/DBackup/actions/workflows/release.yml"><img src="https://github.com/Skyfay/DBackup/actions/workflows/release.yml/badge.svg" alt="Release"></a>
+  <a href="https://codecov.io/gh/Skyfay/DBackup"><img src="https://img.shields.io/codecov/c/github/Skyfay/DBackup?label=coverage" alt="Coverage"></a>
   <a href="https://github.com/Skyfay/DBackup/commits"><img src="https://img.shields.io/github/last-commit/Skyfay/DBackup?color=%234B8BBE" alt="Last Commit"></a>
   <a href="https://discord.com/invite/YvgPyky"><img src="https://img.shields.io/discord/580801656707350529?label=Discord&color=%235865f2" alt="Discord"></a>
 </p>
