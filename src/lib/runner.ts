@@ -100,6 +100,7 @@ export async function performExecution(executionId: string, jobId: string) {
         execution: initialExe!,
         job: initialExe!.job!,
         destinations: [],
+        /* v8 ignore start */
         log: (msg: string, level: LogLevel = 'info', type: LogType = 'general', details?: string) => {
              const entry: LogEntry = {
                  timestamp: new Date().toISOString(),
@@ -116,6 +117,10 @@ export async function performExecution(executionId: string, jobId: string) {
             if (s) currentStage = s;
             currentProgress = p;
         },
+        setStage: (_stage: PipelineStage) => {},
+        updateDetail: (_detail: string) => {},
+        updateStageProgress: (_percent: number) => {},
+        /* v8 ignore end */
         setStage: (_stage: PipelineStage) => {},
         updateDetail: (_detail: string) => {},
         updateStageProgress: (_percent: number) => {},

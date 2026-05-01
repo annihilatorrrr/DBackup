@@ -143,6 +143,14 @@ describe('runJob()', () => {
 
         await expect(runJob('job-1')).rejects.toThrow('DB connection lost');
     });
+
+    it('swallows processQueue rejection silently (fire-and-forget error handler)', async () => {
+        vi.mocked(prisma.execution.create).mockResolvedValue({ ...mockExecution } as any);
+        vi.mocked(processQueue).mockRejectedValue(new Error('queue crash'));
+
+        // processQueue failure must NOT propagate to the caller.
+        await expect(runJob('job-1')).resolves.toMatchObject({ success: true });
+    });
 });
 
 // ── performExecution() tests ───────────────────────────────────────────────
@@ -227,5 +235,65 @@ describe('performExecution()', () => {
         await performExecution('exec-1', 'job-1');
 
         expect(processQueue).toHaveBeenCalled();
+    });
+
+    it('parses legacy string log entries into LogEntry objects', async () => {
+        vi.mocked(prisma.execution.updateMany).mockResolvedValue({ count: 1 });
+        // Execution with a legacy plain-string log (old format before LogEntry was introduced).
+        vi.mocked(prisma.execution.findUnique).mockResolvedValue({
+            ...mockExecution,
+            logs: JSON.stringify(['2024-01-01T00:00:00.000Z: old-style log message']),
+        } as any);
+
+        await performExecution('exec-1', 'job-1');
+
+        // Should not throw - legacy logs are normalized silently.
+        expect(stepInitialize).toHaveBeenCalled();
+    });
+
+    it('handles prisma.execution.update failure in flushLogs gracefully', async () => {
+        vi.mocked(prisma.execution.updateMany).mockResolvedValue({ count: 1 });
+        vi.mocked(prisma.execution.findUnique).mockResolvedValue(mockExecution as any);
+        // All DB writes for log flushing fail.
+        vi.mocked(prisma.execution.update).mockRejectedValue(new Error('DB write failed'));
+
+        // Should complete without throwing - flush errors are swallowed.
+        await performExecution('exec-1', 'job-1');
+
+        expect(unregisterExecution).toHaveBeenCalledWith('exec-1');
+    });
+
+    it('covers updateProgress, updateDetail and updateStageProgress via mock step', async () => {
+        vi.mocked(prisma.execution.updateMany).mockResolvedValue({ count: 1 });
+        vi.mocked(prisma.execution.findUnique).mockResolvedValue(mockExecution as any);
+
+        // stepInitialize exercises all three ctx helper functions.
+        vi.mocked(stepInitialize).mockImplementation(async (ctx: any) => {
+            ctx.updateProgress(30, 'Preparing');
+            ctx.updateDetail('fetching job config...');
+            ctx.updateStageProgress(50);
+        });
+
+        await performExecution('exec-1', 'job-1');
+
+        expect(stepExecuteDump).toHaveBeenCalled();
+    });
+
+    it('throws via checkCancelled when step aborts signal without throwing', async () => {
+        const abortController = new AbortController();
+        vi.mocked(registerExecution).mockReturnValue(abortController);
+        vi.mocked(prisma.execution.updateMany).mockResolvedValue({ count: 1 });
+        vi.mocked(prisma.execution.findUnique).mockResolvedValue(mockExecution as any);
+
+        // Abort signal but do NOT throw - lets the pipeline reach checkCancelled().
+        vi.mocked(stepInitialize).mockImplementation(async () => {
+            abortController.abort();
+        });
+
+        await performExecution('exec-1', 'job-1');
+
+        // checkCancelled() threw, which was caught and treated as cancellation.
+        expect(stepCleanup).toHaveBeenCalled();
+        expect(unregisterExecution).toHaveBeenCalledWith('exec-1');
     });
 });
