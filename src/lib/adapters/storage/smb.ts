@@ -154,7 +154,7 @@ export const SMBAdapter: StorageAdapter = {
                         ? normalize(currentDir) + "/" + item.name
                         : item.name;
 
-                    if (item.type === "D") {
+                    if (item.type.includes("D")) {
                         await walk(fullPath);
                     } else {
                         // Calculate relative path (strip prefix)
