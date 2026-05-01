@@ -75,8 +75,11 @@ export const FTPAdapter: StorageAdapter = {
 
             const destination = resolvePath(config, remotePath);
 
-            // Ensure directory exists
+            // Ensure directory exists. basic-ftp's ensureDir changes CWD to the
+            // created directory, so reset to root afterwards to allow absolute-style
+            // path resolution in the subsequent uploadFrom call.
             await ensureDir(client, destination);
+            await client.cd("/");
 
             if (onLog) onLog(`Starting FTP upload to: ${destination}`, "info", "storage");
 

@@ -14,6 +14,7 @@ All notable changes to DBackup are documented here.
 
 ### 🐛 Bug Fixes
 
+- **storage**: Fixed FTP/FTPS adapter uploading to a doubled path when the job folder contains subdirectories - `basic-ftp`'s `ensureDir` changes the working directory to the created directory, causing the subsequent `uploadFrom` call to resolve the relative path against the new CWD instead of root, resulting in a 553 Permission denied error from the server. A `cd("/")` is now called after `ensureDir` to reset the working directory before the upload.
 - **notifications**: Fixed Email (SMTP) `From` and `To` fields appearing in both the Connection and Configuration tabs - removed `from` and `to` from `NOTIFICATION_CONNECTION_KEYS` so they only render in the Configuration tab
 - **storage**: Fixed Google Drive, OneDrive, and Dropbox OAuth redirect URIs using `req.nextUrl.origin` (resolves to `0.0.0.0:3000` internally) instead of `BETTER_AUTH_URL` when deployed behind a reverse proxy, causing OAuth failures - Thanks @garrettstoupe
 - **jobs**: Fixed pipeline Compression selector being permanently disabled for all adapter types on the job form - `isNativeCompressionActive` now only evaluates to true when a PostgreSQL source is selected and a native compression algorithm (Legacy, Gzip, LZ4, ZSTD) is active. Non-PostgreSQL adapters can always choose a compression algorithm.
