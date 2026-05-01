@@ -32,6 +32,18 @@ const TYPE_LABELS: Record<CredentialType, string> = {
     SMTP: "SMTP",
 };
 
+const TYPE_FILTER_OPTIONS = (Object.entries(TYPE_LABELS) as [CredentialType, string][]).map(
+    ([value, label]) => ({ label, value }),
+);
+
+const FILTERABLE_COLUMNS = [
+    {
+        id: "type",
+        title: "Type",
+        options: TYPE_FILTER_OPTIONS,
+    },
+];
+
 interface UsageEntry {
     adapterId: string;
     name: string;
@@ -181,6 +193,7 @@ export function CredentialProfilesList({ canReveal }: { canReveal: boolean }) {
         {
             accessorKey: "type",
             header: "Type",
+            filterFn: (row, id, value) => value.includes(row.getValue(id)),
             cell: ({ row }) => (
                 <Badge variant="outline">{TYPE_LABELS[row.original.type]}</Badge>
             ),
@@ -275,6 +288,7 @@ export function CredentialProfilesList({ canReveal }: { canReveal: boolean }) {
                         columns={columns}
                         data={profiles}
                         searchKey="name"
+                        filterableColumns={FILTERABLE_COLUMNS}
                         onRefresh={fetchProfiles}
                     />
                 )}
