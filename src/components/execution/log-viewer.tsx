@@ -29,6 +29,7 @@ interface LogViewerProps {
   autoScroll?: boolean;
   status?: string; // Overall job status
   executionType?: string; // "Backup" | "Restore"
+  systemTimezone?: string; // System timezone for timestamps
 }
 
 interface LogGroup {
@@ -40,7 +41,7 @@ interface LogGroup {
     durationMs?: number;
 }
 
-export function LogViewer({ logs, className, autoScroll = true, status, executionType }: LogViewerProps) {
+export function LogViewer({ logs, className, autoScroll = true, status, executionType, systemTimezone = "UTC" }: LogViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(autoScroll);
   const [activeStages, setActiveStages] = useState<string[]>([]);
@@ -243,7 +244,7 @@ export function LogViewer({ logs, className, autoScroll = true, status, executio
                         <AccordionContent className="pt-2 pb-4 px-2 border-t border-border/50">
                              <div className="space-y-1 pl-2 border-l border-border ml-2">
                                 {group.logs.map((log, idx) => (
-                                    <LogItem key={`${log.timestamp}-${idx}`} entry={log} />
+                                    <LogItem key={`${log.timestamp}-${idx}`} entry={log} systemTimezone={systemTimezone} />
                                 ))}
                              </div>
                         </AccordionContent>
@@ -267,7 +268,7 @@ export function LogViewer({ logs, className, autoScroll = true, status, executio
   );
 }
 
-function LogItem({ entry }: { entry: LogEntry }) {
+function LogItem({ entry, systemTimezone = "UTC" }: { entry: LogEntry; systemTimezone?: string }) {
   const [isOpen, setIsOpen] = React.useState(false);
   const hasDetails = !!entry.details || !!entry.context;
   const isCommand = entry.type === "command";
@@ -291,7 +292,7 @@ function LogItem({ entry }: { entry: LogEntry }) {
       <div className="flex items-start gap-3 py-1">
         {/* Timestamp */}
         <div className="shrink-0 text-xs text-muted-foreground w-20 pt-0.5 font-mono">
-           <DateDisplay date={entry.timestamp} format="pp" />
+           <DateDisplay date={entry.timestamp} format="pp" timezone={systemTimezone} />
         </div>
 
         {/* Icon & Message Container */}
