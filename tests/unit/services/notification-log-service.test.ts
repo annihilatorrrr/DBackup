@@ -132,6 +132,17 @@ describe('getNotificationLogs()', () => {
         );
     });
 
+    it('applies eventType filter', async () => {
+        prismaMock.notificationLog.findMany.mockResolvedValue([]);
+        prismaMock.notificationLog.count.mockResolvedValue(0);
+
+        await getNotificationLogs({ eventType: 'backup.completed' });
+
+        expect(prismaMock.notificationLog.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({ where: expect.objectContaining({ eventType: 'backup.completed' }) })
+        );
+    });
+
     it('respects custom page and pageSize', async () => {
         prismaMock.notificationLog.findMany.mockResolvedValue([]);
         prismaMock.notificationLog.count.mockResolvedValue(0);

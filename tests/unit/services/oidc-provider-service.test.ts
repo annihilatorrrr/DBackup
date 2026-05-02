@@ -175,5 +175,108 @@ describe('OidcProviderService', () => {
             const callData = prismaMock.ssoProvider.update.mock.calls[0][0].data;
             expect(callData.oidcConfig).toBeUndefined();
         });
+
+        it('regenerates oidcConfig when authorizationEndpoint is updated', async () => {
+            prismaMock.ssoProvider.findUnique.mockResolvedValue(mockProvider as any);
+            prismaMock.ssoProvider.update.mockResolvedValue(mockProvider as any);
+
+            await OidcProviderService.updateProvider('prov-1', {
+                authorizationEndpoint: 'https://new.example.com/authorize',
+            });
+
+            const callData = prismaMock.ssoProvider.update.mock.calls[0][0].data;
+            const oidcConfig = JSON.parse(callData.oidcConfig as string);
+            expect(oidcConfig.authorizationEndpoint).toBe('https://new.example.com/authorize');
+            expect(oidcConfig.skipDiscovery).toBe(true);
+        });
+
+        it('regenerates oidcConfig when clientId is updated and encrypts it', async () => {
+            prismaMock.ssoProvider.findUnique.mockResolvedValue(mockProvider as any);
+            prismaMock.ssoProvider.update.mockResolvedValue(mockProvider as any);
+
+            await OidcProviderService.updateProvider('prov-1', {
+                clientId: 'new-client-id',
+                clientSecret: 'new-client-secret',
+            });
+
+            const callData = prismaMock.ssoProvider.update.mock.calls[0][0].data;
+            expect(callData.clientId).toBe('encrypted:new-client-id');
+            expect(callData.clientSecret).toBe('encrypted:new-client-secret');
+
+            const oidcConfig = JSON.parse(callData.oidcConfig as string);
+            expect(oidcConfig.clientId).toBe('encrypted:new-client-id');
+        });
+
+        it('uses provided discoveryEndpoint directly without building fallback', async () => {
+            prismaMock.ssoProvider.findUnique.mockResolvedValue(mockProvider as any);
+            prismaMock.ssoProvider.update.mockResolvedValue(mockProvider as any);
+
+            await OidcProviderService.updateProvider('prov-1', {
+                authorizationEndpoint: 'https://new.example.com/authorize',
+                discoveryEndpoint: 'https://new.example.com/.well-known/custom',
+            });
+
+            const callData = prismaMock.ssoProvider.update.mock.calls[0][0].data;
+            const oidcConfig = JSON.parse(callData.oidcConfig as string);
+            expect(oidcConfig.discoveryEndpoint).toBe('https://new.example.com/.well-known/custom');
+        });
+
+        it('falls back to issuer-based discoveryEndpoint when none is provided', async () => {
+            prismaMock.ssoProvider.findUnique.mockResolvedValue({
+                ...mockProvider,
+                issuer: 'https://auth.example.com',
+            } as any);
+            prismaMock.ssoProvider.update.mockResolvedValue(mockProvider as any);
+
+            await OidcProviderService.updateProvider('prov-1', {
+                authorizationEndpoint: 'https://auth.example.com/authorize',
+            });
+
+            const callData = prismaMock.ssoProvider.update.mock.calls[0][0].data;
+            const oidcConfig = JSON.parse(callData.oidcConfig as string);
+            expect(oidcConfig.discoveryEndpoint).toContain('/.well-known/openid-configuration');
+        });
+    });
+
+    describe('createProvider() - additional branches', () => {
+        it('uses provided discoveryEndpoint directly instead of building from issuer', async () => {
+            prismaMock.ssoProvider.create.mockResolvedValue(mockProvider as any);
+
+            await OidcProviderService.createProvider({
+                ...baseInput,
+                discoveryEndpoint: 'https://auth.example.com/application/o/my-app/.well-known/openid-configuration',
+            });
+
+            const callData = prismaMock.ssoProvider.create.mock.calls[0][0].data;
+            const oidcConfig = JSON.parse(callData.oidcConfig as string);
+            expect(oidcConfig.discoveryEndpoint).toBe(
+                'https://auth.example.com/application/o/my-app/.well-known/openid-configuration'
+            );
+        });
+
+        it('does not generate oidcConfig for saml type', async () => {
+            prismaMock.ssoProvider.create.mockResolvedValue(mockProvider as any);
+
+            await OidcProviderService.createProvider({
+                ...baseInput,
+                type: 'saml',
+            });
+
+            const callData = prismaMock.ssoProvider.create.mock.calls[0][0].data;
+            expect(callData.oidcConfig).toBeUndefined();
+        });
+
+        it('sets discoveryEndpoint to undefined when neither issuer nor discoveryEndpoint is provided', async () => {
+            prismaMock.ssoProvider.create.mockResolvedValue(mockProvider as any);
+
+            const inputWithoutIssuer = { ...baseInput };
+            delete (inputWithoutIssuer as any).issuer;
+
+            await OidcProviderService.createProvider(inputWithoutIssuer);
+
+            const callData = prismaMock.ssoProvider.create.mock.calls[0][0].data;
+            const oidcConfig = JSON.parse(callData.oidcConfig as string);
+            expect(oidcConfig.discoveryEndpoint).toBeUndefined();
+        });
     });
 });

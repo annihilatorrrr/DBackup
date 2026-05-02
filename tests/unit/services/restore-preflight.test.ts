@@ -168,4 +168,157 @@ describe('preflightRestore()', () => {
             })
         ).resolves.toBeUndefined();
     });
+
+    it('calls prepareRestore with targets from array-format databaseMapping', async () => {
+        const prepareRestore = vi.fn().mockResolvedValue(undefined);
+        prismaMock.adapterConfig.findUnique.mockResolvedValueOnce(mockDbConfig as any);
+        prismaMock.adapterConfig.findUnique.mockResolvedValueOnce(null);
+        vi.mocked(registry.get).mockReturnValue({ prepareRestore } as any);
+
+        await preflightRestore({
+            storageConfigId: 'st-1',
+            file: '/backup.sql',
+            targetSourceId: 'target-1',
+            databaseMapping: [
+                { selected: true, originalName: 'db_a', targetName: 'db_new' },
+                { selected: false, originalName: 'db_b', targetName: 'db_b' },
+            ] as any,
+        });
+
+        // Only selected entries with their targetName should be passed
+        expect(prepareRestore).toHaveBeenCalledWith(
+            expect.any(Object),
+            ['db_new'],
+        );
+    });
+
+    it('calls prepareRestore with values from record-format databaseMapping', async () => {
+        const prepareRestore = vi.fn().mockResolvedValue(undefined);
+        prismaMock.adapterConfig.findUnique.mockResolvedValueOnce(mockDbConfig as any);
+        prismaMock.adapterConfig.findUnique.mockResolvedValueOnce(null);
+        vi.mocked(registry.get).mockReturnValue({ prepareRestore } as any);
+
+        await preflightRestore({
+            storageConfigId: 'st-1',
+            file: '/backup.sql',
+            targetSourceId: 'target-1',
+            databaseMapping: { old_db: 'new_db', shop: 'shop_restored' },
+        });
+
+        expect(prepareRestore).toHaveBeenCalledWith(
+            expect.any(Object),
+            expect.arrayContaining(['new_db', 'shop_restored']),
+        );
+    });
+
+    it('throws when MSSQL Azure SQL Edge backup is restored to SQL Server', async () => {
+        const testFn = vi.fn().mockResolvedValue({
+            success: true,
+            version: '15.0',
+            edition: 'SQL Server',
+        });
+        const readFn = vi.fn().mockResolvedValue(JSON.stringify({
+            sourceType: 'mssql',
+            engineVersion: '15.0',
+            engineEdition: 'Azure SQL Edge',
+        }));
+
+        prismaMock.adapterConfig.findUnique.mockResolvedValueOnce({
+            ...mockDbConfig,
+            adapterId: 'mssql',
+        } as any);
+        prismaMock.adapterConfig.findUnique.mockResolvedValueOnce(mockStorageConfig as any);
+
+        vi.mocked(registry.get)
+            .mockReturnValueOnce(undefined as any)
+            .mockReturnValueOnce({ read: readFn } as any)
+            .mockReturnValueOnce({ test: testFn } as any);
+
+        await expect(
+            preflightRestore({
+                storageConfigId: 'st-1',
+                file: '/backup.bak',
+                targetSourceId: 'target-mssql',
+            })
+        ).rejects.toThrow('Azure SQL Edge');
+    });
+
+    it('succeeds when MSSQL edition matches on both sides', async () => {
+        const testFn = vi.fn().mockResolvedValue({
+            success: true,
+            version: '15.0',
+            edition: 'Azure SQL Edge',
+        });
+        const readFn = vi.fn().mockResolvedValue(JSON.stringify({
+            sourceType: 'mssql',
+            engineVersion: '15.0',
+            engineEdition: 'Azure SQL Edge',
+        }));
+
+        prismaMock.adapterConfig.findUnique.mockResolvedValueOnce({
+            ...mockDbConfig,
+            adapterId: 'mssql',
+        } as any);
+        prismaMock.adapterConfig.findUnique.mockResolvedValueOnce(mockStorageConfig as any);
+
+        vi.mocked(registry.get)
+            .mockReturnValueOnce(undefined as any)
+            .mockReturnValueOnce({ read: readFn } as any)
+            .mockReturnValueOnce({ test: testFn } as any);
+
+        await expect(
+            preflightRestore({
+                storageConfigId: 'st-1',
+                file: '/backup.bak',
+                targetSourceId: 'target-mssql',
+            })
+        ).resolves.toBeUndefined();
+    });
+
+    it('ignores non-critical errors during version check (warns and continues)', async () => {
+        // resolveAdapterConfig throws for a non-critical reason
+        vi.mocked(resolveAdapterConfig).mockRejectedValueOnce(new Error('Config parse failed'));
+
+        const readFn = vi.fn().mockResolvedValue(JSON.stringify({
+            sourceType: 'postgres',
+            engineVersion: '14.0',
+        }));
+
+        prismaMock.adapterConfig.findUnique.mockResolvedValueOnce(mockDbConfig as any);
+        prismaMock.adapterConfig.findUnique.mockResolvedValueOnce(mockStorageConfig as any);
+
+        vi.mocked(registry.get)
+            .mockReturnValueOnce(undefined as any)
+            .mockReturnValueOnce({ read: readFn } as any)
+            .mockReturnValueOnce({ test: vi.fn() } as any);
+
+        // Non-critical errors should be swallowed, not rethrown
+        await expect(
+            preflightRestore({
+                storageConfigId: 'st-1',
+                file: '/backup.sql',
+                targetSourceId: 'target-1',
+            })
+        ).resolves.toBeUndefined();
+    });
+
+    it('applies privilegedAuth to the resolve config during prepareRestore', async () => {
+        const prepareRestore = vi.fn().mockResolvedValue(undefined);
+        prismaMock.adapterConfig.findUnique.mockResolvedValueOnce(mockDbConfig as any);
+        prismaMock.adapterConfig.findUnique.mockResolvedValueOnce(null);
+        vi.mocked(registry.get).mockReturnValue({ prepareRestore } as any);
+
+        await preflightRestore({
+            storageConfigId: 'st-1',
+            file: '/backup.sql',
+            targetSourceId: 'target-1',
+            targetDatabaseName: 'restore_db',
+            privilegedAuth: { user: 'root', password: 'pass' },
+        });
+
+        expect(prepareRestore).toHaveBeenCalledWith(
+            expect.objectContaining({ privilegedAuth: { user: 'root', password: 'pass' } }),
+            ['restore_db'],
+        );
+    });
 });
