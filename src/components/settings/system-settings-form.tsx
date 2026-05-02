@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm, useWatch } from "react-hook-form"
 import * as z from "zod"
+import { useState, useMemo } from "react"
 import {
     Form,
     FormControl,
@@ -15,11 +16,16 @@ import {
 import { toast } from "sonner"
 import { updateSystemSettings } from "@/app/actions/settings"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Shield, Cpu, Rocket, Database, ScrollText, HardDrive, Bell } from "lucide-react"
+import { Shield, Cpu, Rocket, Database, ScrollText, HardDrive, Bell, Globe, Check, ChevronsUpDown, FileText } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
 
 const formSchema = z.object({
     maxConcurrentJobs: z.coerce.number().min(1).max(10),
@@ -30,6 +36,8 @@ const formSchema = z.object({
     notificationLogRetentionDays: z.coerce.number().min(7).max(1825).default(90),
     checkForUpdates: z.boolean().default(true),
     showQuickSetup: z.boolean().default(false),
+    systemTimezone: z.string().default("UTC"),
+    filenamePattern: z.string().default("{name}_yyyy-MM-dd_HH-mm-ss"),
 })
 
 interface SystemSettingsFormProps {
@@ -41,9 +49,15 @@ interface SystemSettingsFormProps {
     initialNotificationLogRetentionDays?: number;
     initialCheckForUpdates?: boolean;
     initialShowQuickSetup?: boolean;
+    initialSystemTimezone?: string;
+    initialFilenamePattern?: string;
 }
 
-export function SystemSettingsForm({ initialMaxConcurrentJobs, initialDisablePasskeyLogin, initialSessionDuration = 604800, initialAuditLogRetentionDays = 90, initialStorageSnapshotRetentionDays = 90, initialNotificationLogRetentionDays = 90, initialCheckForUpdates = true, initialShowQuickSetup = false }: SystemSettingsFormProps) {
+export function SystemSettingsForm({ initialMaxConcurrentJobs, initialDisablePasskeyLogin, initialSessionDuration = 604800, initialAuditLogRetentionDays = 90, initialStorageSnapshotRetentionDays = 90, initialNotificationLogRetentionDays = 90, initialCheckForUpdates = true, initialShowQuickSetup = false, initialSystemTimezone = "UTC", initialFilenamePattern = "{name}_yyyy-MM-dd_HH-mm-ss" }: SystemSettingsFormProps) {
+    const [openTimezone, setOpenTimezone] = useState(false);
+    const timezones = Intl.supportedValuesOf('timeZone');
+    const filenameTokens = ['{name}', '{db_name}', 'yyyy', 'MM', 'dd', 'HH', 'mm', 'ss'];
+
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema) as any,
         defaultValues: {
@@ -55,8 +69,22 @@ export function SystemSettingsForm({ initialMaxConcurrentJobs, initialDisablePas
             notificationLogRetentionDays: initialNotificationLogRetentionDays,
             checkForUpdates: initialCheckForUpdates === true,
             showQuickSetup: initialShowQuickSetup === true,
+            systemTimezone: initialSystemTimezone || "UTC",
+            filenamePattern: initialFilenamePattern || "{name}_yyyy-MM-dd_HH-mm-ss",
         },
     })
+
+    const filenamePatternValue = useWatch({ control: form.control, name: "filenamePattern" });
+    const previewFilename = useMemo(() => {
+        try {
+            const previewPattern = filenamePatternValue
+                .replace('{name}', "'JobName'")
+                .replace('{db_name}', "'mydb'");
+            return format(new Date(), previewPattern);
+        } catch {
+            return "Invalid pattern";
+        }
+    }, [filenamePatternValue]);
 
     const handleAutoSave = async (field: keyof z.infer<typeof formSchema>, value: any) => {
         // Update local state immediately
@@ -288,6 +316,115 @@ export function SystemSettingsForm({ initialMaxConcurrentJobs, initialDisablePas
                                             onCheckedChange={(val) => handleAutoSave("checkForUpdates", val)}
                                         />
                                     </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center gap-2">
+                            <Globe className="h-5 w-5 text-muted-foreground" />
+                            <CardTitle>Scheduler Timezone</CardTitle>
+                        </div>
+                        <CardDescription>
+                            Timezone used for all backup job schedules. &quot;3:00 AM&quot; means 3:00 AM in this timezone.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <FormField
+                            control={form.control}
+                            name="systemTimezone"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                    <FormLabel>System Timezone</FormLabel>
+                                    <Popover open={openTimezone} onOpenChange={setOpenTimezone}>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <Button variant="outline" role="combobox"
+                                                    className="w-full justify-between">
+                                                    {field.value || "UTC"}
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[300px] p-0">
+                                            <Command>
+                                                <CommandInput placeholder="Search timezone..." />
+                                                <CommandList>
+                                                    <CommandEmpty>No timezone found.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {timezones.map((tz) => (
+                                                            <CommandItem key={tz} value={tz}
+                                                                onSelect={() => {
+                                                                    handleAutoSave("systemTimezone", tz);
+                                                                    setOpenTimezone(false);
+                                                                }}>
+                                                                <Check className={cn("mr-2 h-4 w-4",
+                                                                    tz === field.value ? "opacity-100" : "opacity-0"
+                                                                )} />
+                                                                {tz}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                    <FormDescription>
+                                        Timestamps in logs are always stored in UTC regardless of this setting.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center gap-2">
+                            <FileText className="h-5 w-5 text-muted-foreground" />
+                            <CardTitle>Backup File Naming</CardTitle>
+                        </div>
+                        <CardDescription>
+                            Customize how backup files are named. Use &quot;name&quot; for job name and &quot;db_name&quot; for database name.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <FormField
+                            control={form.control}
+                            name="filenamePattern"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Filename Pattern</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            {...field}
+                                            placeholder="{name}_yyyy-MM-dd_HH-mm-ss"
+                                            onBlur={(e) => handleAutoSave("filenamePattern", e.target.value)}
+                                        />
+                                    </FormControl>
+                                    <div className="flex flex-wrap gap-1 mt-2">
+                                        {filenameTokens.map(token => (
+                                            <Badge
+                                                key={token}
+                                                variant="outline"
+                                                className="cursor-pointer hover:bg-muted"
+                                                onClick={() => {
+                                                    const current = field.value || "";
+                                                    form.setValue("filenamePattern", current + token);
+                                                }}
+                                            >
+                                                {token}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                    <FormDescription>
+                                        Preview: <code className="bg-muted px-2 py-1 rounded text-xs">{previewFilename}.sql</code>
+                                    </FormDescription>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />

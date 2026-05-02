@@ -56,6 +56,11 @@ export class BackupScheduler {
         // Stop all existing tasks to avoid duplicates
         this.stopAll();
 
+        // Read system timezone once for all tasks in this refresh cycle
+        const tzSetting = await prisma.systemSetting.findUnique({ where: { key: "system.timezone" } });
+        const timezone = tzSetting?.value || "UTC";
+        log.debug("Scheduler timezone", { timezone });
+
         try {
             // 1. User Jobs
             const jobs = await prisma.job.findMany({
@@ -66,12 +71,12 @@ export class BackupScheduler {
 
             for (const job of jobs) {
                 if (cron.validate(job.schedule)) {
-                    log.debug("Scheduling job", { jobName: job.name, jobId: job.id, schedule: job.schedule });
+                    log.debug("Scheduling job", { jobName: job.name, jobId: job.id, schedule: job.schedule, timezone });
 
                     const task = cron.schedule(job.schedule, () => {
                         log.debug("Triggering job", { jobName: job.name });
                         runJob(job.id).catch((e) => log.error("Job failed", { jobId: job.id }, wrapError(e)));
-                    });
+                    }, { timezone });
 
                     this.tasks.set(job.id, task);
                 } else {
@@ -90,10 +95,10 @@ export class BackupScheduler {
 
                     const schedule = await systemTaskService.getTaskConfig(taskId);
                     if (schedule && cron.validate(schedule)) {
-                        log.debug("Scheduling system task", { taskId, schedule });
+                        log.debug("Scheduling system task", { taskId, schedule, timezone });
                         const task = cron.schedule(schedule, () => {
                             systemTaskService.runTask(taskId).catch((e) => log.error("System task failed", { taskId }, wrapError(e)));
-                        });
+                        }, { timezone });
                         this.tasks.set(taskId, task);
                     }
 

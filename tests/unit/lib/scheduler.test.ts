@@ -12,6 +12,9 @@ vi.mock('@/lib/prisma', () => ({
         job: {
             findMany: vi.fn(),
         },
+        systemSetting: {
+            findUnique: vi.fn(),
+        },
     },
 }));
 
@@ -54,6 +57,8 @@ describe('BackupScheduler', () => {
         // @ts-expect-error -- Mock setup
         prisma.job.findMany.mockResolvedValue([]);
         // @ts-expect-error -- Mock setup
+        prisma.systemSetting.findUnique.mockResolvedValue(null);
+        // @ts-expect-error -- Mock setup
         systemTaskService.getTaskConfig.mockResolvedValue(null);
         // @ts-expect-error -- Mock setup
         systemTaskService.getTaskEnabled.mockResolvedValue(false);
@@ -83,7 +88,7 @@ describe('BackupScheduler', () => {
         expect(cron.validate).toHaveBeenCalledWith('0 0 * * *');
         expect(cron.validate).toHaveBeenCalledWith('*/5 * * * *');
         expect(cron.schedule).toHaveBeenCalledTimes(2);
-        expect(cron.schedule).toHaveBeenCalledWith('0 0 * * *', expect.any(Function));
+        expect(cron.schedule).toHaveBeenCalledWith('0 0 * * *', expect.any(Function), { timezone: 'UTC' });
 
         // Verify scheduled callback calls runJob
         // Get the callback passed to schedule for the first job
@@ -139,7 +144,7 @@ describe('BackupScheduler', () => {
 
         await scheduler.refresh();
 
-        expect(cron.schedule).toHaveBeenCalledWith('0 2 * * *', expect.any(Function));
+        expect(cron.schedule).toHaveBeenCalledWith('0 2 * * *', expect.any(Function), { timezone: 'UTC' });
 
         // Verify callback executes system task
         // @ts-expect-error -- Mock setup
