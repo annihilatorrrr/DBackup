@@ -1,0 +1,16 @@
+{
+  "name": "dbackup-docs",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "git fetch --unshallow 2>/dev/null || true && vitepress build",
+    "build:local": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.0",
+    "vitepress-plugin-tabs": "^0.7.3",
+    "vue": "^3.5.0"
+  }
+}

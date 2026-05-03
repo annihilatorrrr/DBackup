@@ -3,14 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { registry } from "@/lib/core/registry";
 import { registerAdapters } from "@/lib/adapters";
 import { StorageAdapter, DatabaseAdapter } from "@/lib/core/interfaces";
-import { decryptConfig } from "@/lib/crypto";
+import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import prisma from "@/lib/prisma";
 import { getTempDir } from "@/lib/temp-dir";
 import path from "path";
 import fs from "fs";
 import { headers } from "next/headers";
-import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 registerAdapters();
 
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
         const tempDir = getTempDir();
         tempFile = path.join(tempDir, path.basename(file));
-        const sConf = decryptConfig(JSON.parse(storageConfig.config));
+        const sConf = await resolveAdapterConfig(storageConfig);
 
         // OPTIMIZATION: Try to read sidecar metadata first
         if (storageAdapter.read) {

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { backupService } from "@/services/backup-service";
+import { backupService } from "@/services/backup/backup-service";
 import { headers } from "next/headers";
-import { getAuthContext, checkPermissionWithContext, AuthContext } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { getAuthContext, checkPermissionWithContext, AuthContext } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { auditService } from "@/services/audit-service";
 import { AUDIT_ACTIONS, AUDIT_RESOURCES } from "@/lib/core/audit-types";
-import { ApiKeyError } from "@/lib/errors";
+import { ApiKeyError } from "@/lib/logging/errors";
 
 export async function POST(
     req: NextRequest,

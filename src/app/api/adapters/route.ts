@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { encryptConfig, decryptConfig } from "@/lib/crypto";
 import { headers } from "next/headers";
-import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { auditService } from "@/services/audit-service";
 import { AUDIT_ACTIONS, AUDIT_RESOURCES } from "@/lib/core/audit-types";
-import { logger } from "@/lib/logger";
-import { wrapError, getErrorMessage } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError, getErrorMessage, ValidationError, NotFoundError } from "@/lib/logging/errors";
+import { registerAdapters } from "@/lib/adapters";
+import { validateCredentialAssignments } from "@/lib/adapters/credential-validation";
+
+registerAdapters();
 
 const log = logger.child({ route: "adapters" });
 
@@ -81,7 +85,7 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const { name, type, adapterId, config, metadata } = body;
+        const { name, type, adapterId, config, metadata, primaryCredentialId, sshCredentialId } = body;
 
         // Permission Check
         if (type === 'database') {
@@ -95,6 +99,19 @@ export async function POST(req: NextRequest) {
         // Basic validation
         if (!name || !type || !adapterId || !config) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+        }
+
+        // Validate credential profile assignments (if provided)
+        try {
+            await validateCredentialAssignments(adapterId, primaryCredentialId ?? null, sshCredentialId ?? null);
+        } catch (e) {
+            if (e instanceof ValidationError) {
+                return NextResponse.json({ error: e.message }, { status: 400 });
+            }
+            if (e instanceof NotFoundError) {
+                return NextResponse.json({ error: e.message }, { status: 404 });
+            }
+            throw e;
         }
 
         // Check name uniqueness within the same type
@@ -120,6 +137,8 @@ export async function POST(req: NextRequest) {
                 type,
                 adapterId,
                 config: configString,
+                primaryCredentialId: primaryCredentialId ?? null,
+                sshCredentialId: sshCredentialId ?? null,
                 ...(metadata ? { metadata: JSON.stringify(metadata) } : {}),
             },
         });

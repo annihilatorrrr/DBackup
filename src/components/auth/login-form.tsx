@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { signIn, signUp, authClient } from "@/lib/auth-client"
+import { signIn, signUp, authClient } from "@/lib/auth/client"
 import { Button } from "@/components/ui/button"
 import {
   Form,
@@ -23,7 +23,7 @@ import { Loader2, Fingerprint, AlertCircle } from "lucide-react"
 import { formatTwoFactorCode } from "@/lib/utils"
 import { ShieldCheck, Box, Settings2, Globe } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { logLoginSuccess } from "@/app/actions/audit-log"
+import { logLoginSuccess } from "@/app/actions/audit/audit-log"
 
 const formSchema = z.object({
   email: z.string().email(),

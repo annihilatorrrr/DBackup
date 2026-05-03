@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -48,10 +48,27 @@ export function NotificationStep({
 }: NotificationStepProps) {
     const [selectedAdapter, setSelectedAdapter] = useState<AdapterDefinition | null>(null);
     const [isSaved, setIsSaved] = useState(wizardData.notificationIds.length > 0);
+    const [primaryCredentialId, setPrimaryCredentialId] = useState<string | null>(null);
+
+    // Patch schema: make credential-managed fields optional so hidden inputs
+    // don't cause silent required-field validation failures.
+    const configSchema = useMemo(() => {
+        if (!selectedAdapter) return z.any();
+        const base = selectedAdapter.configSchema;
+        if (!(base instanceof z.ZodObject)) return base;
+        const keys: string[] = [];
+        if (selectedAdapter.credentials?.primary === "USERNAME_PASSWORD") keys.push("user", "username", "password");
+        if (selectedAdapter.credentials?.primary === "TOKEN") keys.push("token", "appToken", "accessToken", "botToken");
+        if (selectedAdapter.credentials?.primary === "SMTP") keys.push("user", "password");
+        if (keys.length === 0) return base;
+        const shape = { ...base.shape };
+        for (const k of keys) { if (shape[k]) shape[k] = shape[k].optional(); }
+        return z.object(shape);
+    }, [selectedAdapter]);
 
     const schema = z.object({
         name: z.string().min(1, "Name is required"),
-        config: selectedAdapter ? selectedAdapter.configSchema : z.any(),
+        config: configSchema,
     });
 
     const form = useForm({
@@ -70,6 +87,7 @@ export function NotificationStep({
     const handleAdapterSelect = (adapter: AdapterDefinition) => {
         setSelectedAdapter(adapter);
         form.reset({ name: "", config: {} });
+        setPrimaryCredentialId(null);
         setIsSaved(false);
     };
 
@@ -80,6 +98,7 @@ export function NotificationStep({
                 adapterId: selectedAdapter!.id,
                 config: data.config,
                 type: "notification",
+                primaryCredentialId,
             };
 
             const res = await fetch("/api/adapters", {
@@ -212,7 +231,11 @@ export function NotificationStep({
                             </div>
                         </div>
 
-                        <NotificationFormContent adapter={selectedAdapter} />
+                        <NotificationFormContent
+                            adapter={selectedAdapter}
+                            primaryCredentialId={primaryCredentialId}
+                            onPrimaryChange={setPrimaryCredentialId}
+                        />
 
                         <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-2 pt-4">
                             <Button type="button" variant="outline" onClick={() => setSelectedAdapter(null)}>

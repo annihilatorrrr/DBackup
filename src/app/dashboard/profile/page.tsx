@@ -8,8 +8,8 @@ import { SecurityForm } from "@/components/settings/security-form";
 import { PreferencesForm } from "@/components/settings/preferences-form";
 import { SessionsForm } from "@/components/settings/sessions-form";
 import { redirect } from "next/navigation";
-import { getUserPermissions } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { getUserPermissions } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 export default async function ProfilePage() {
     const headersList = await headers();

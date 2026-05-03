@@ -5,8 +5,8 @@ import fs from "fs/promises";
 import { createReadStream } from "fs";
 import path from "path";
 import { LogLevel, LogType } from "@/lib/core/logs";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ adapter: "dropbox" });
 
@@ -90,25 +90,6 @@ function buildDropboxPath(basePath: string | undefined, relativePath: string): s
     const fullPath = `${base}/${rel}`;
     // Ensure path starts with /
     return fullPath.startsWith("/") ? fullPath : `/${fullPath}`;
-}
-
-/**
- * Ensures all parent folders exist for a given path.
- * Dropbox auto-creates parent folders on upload, but for explicit folder creation.
- */
-async function _ensureFolderExists(dbx: Dropbox, folderPath: string): Promise<void> {
-    const dirPath = path.posix.dirname(folderPath);
-    if (dirPath === "/" || dirPath === ".") return;
-
-    try {
-        await dbx.filesCreateFolderV2({ path: dirPath, autorename: false });
-    } catch (error: unknown) {
-        // Ignore "path/conflict/folder" errors - folder already exists
-        const errStr = JSON.stringify(error);
-        if (!errStr.includes("path/conflict") && !errStr.includes("already exists")) {
-            throw error;
-        }
-    }
 }
 
 /**

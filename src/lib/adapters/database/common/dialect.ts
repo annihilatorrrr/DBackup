@@ -32,6 +32,7 @@ export abstract class BaseDialect implements DatabaseDialect {
         return true; // Default fallback
     }
 
+    /* v8 ignore next 3 */
     protected appendAuthArgs(_args: string[], _config: AnyDatabaseConfig) {
         // Implementation provided by subclasses or specific common logic
     }

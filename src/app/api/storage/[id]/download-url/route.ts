@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
-import { generateDownloadToken } from "@/lib/download-tokens";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { generateDownloadToken } from "@/lib/auth/download-tokens";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ route: "storage/download-url" });
 

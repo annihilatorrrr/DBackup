@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/auth/login-form";
-import { getPublicSsoProviders } from "@/app/actions/oidc";
+import { getPublicSsoProviders } from "@/app/actions/auth/oidc";
 import Image from "next/image";
 
 interface HomeProps {

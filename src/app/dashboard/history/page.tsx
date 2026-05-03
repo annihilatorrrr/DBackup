@@ -19,6 +19,7 @@ import { DateDisplay } from "@/components/utils/date-display";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogViewer } from "@/components/execution/log-viewer";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -357,11 +358,13 @@ function HistoryContent() {
                             )}
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="flex-1 min-h-0 p-6 overflow-y-auto">
-                        {selectedNotification && (
-                            <NotificationPreview entry={selectedNotification} />
-                        )}
-                    </div>
+                    <ScrollArea className="flex-1 min-h-0">
+                        <div className="p-6">
+                            {selectedNotification && (
+                                <NotificationPreview entry={selectedNotification} />
+                            )}
+                        </div>
+                    </ScrollArea>
                 </DialogContent>
             </Dialog>
         </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback } from "react"
-import { useSession } from "@/lib/auth-client"
+import { useSession } from "@/lib/auth/client"
 import { formatInTimeZone } from "date-fns-tz"
 
 /**

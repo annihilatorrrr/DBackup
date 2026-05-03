@@ -1,11 +1,11 @@
 import { RunnerContext } from "../types";
-import { decryptConfig } from "@/lib/crypto";
+import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { getTempDir } from "@/lib/temp-dir";
 import path from "path";
 import fs from "fs/promises";
 import { isMultiDbTar, readTarManifest } from "@/lib/adapters/database/common/tar-utils";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 import { getBackupFileExtension } from "@/lib/backup-extensions";
 import { formatBytes } from "@/lib/utils";
 import prisma from "@/lib/prisma";
@@ -30,7 +30,7 @@ export async function stepExecuteDump(ctx: RunnerContext) {
     const pattern = patternSetting?.value || "{name}_yyyy-MM-dd_HH-mm-ss";
 
     // 2. Prepare Config & Metadata
-    const sourceConfig = decryptConfig(JSON.parse(job.source.config));
+    const sourceConfig = await resolveAdapterConfig(job.source) as any;
     // Inject adapterId as type for Dialect selection (e.g. 'mariadb')
     sourceConfig.type = job.source.adapterId;
 
@@ -51,7 +51,7 @@ export async function stepExecuteDump(ctx: RunnerContext) {
 
     const sanitizedName = job.name.replace(/[^a-z0-9]/gi, '_');
     const escapeName = (text: string) => text.replace(/'/g, "''");
-    let datePattern = pattern
+    const datePattern = pattern
         .replace('{name}', `'${escapeName(sanitizedName)}'`)
         .replace('{db_name}', `'${escapeName(dbNameRaw)}'`);
 

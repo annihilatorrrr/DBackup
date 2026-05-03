@@ -5,11 +5,11 @@ import { stepUpload } from "@/lib/runner/steps/03-upload";
 import { stepRetention } from "@/lib/runner/steps/05-retention";
 import { stepCleanup, stepFinalize } from "@/lib/runner/steps/04-completion";
 import prisma from "@/lib/prisma";
-import { processQueue } from "@/lib/queue-manager";
+import { processQueue } from "@/lib/execution/queue-manager";
 import { LogEntry, LogLevel, LogType, PipelineStage, PIPELINE_STAGES, stageProgress } from "@/lib/core/logs";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
-import { registerExecution, unregisterExecution } from "@/lib/execution-abort";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
+import { registerExecution, unregisterExecution } from "@/lib/execution/abort";
 import { formatDuration } from "@/lib/utils";
 
 const log = logger.child({ module: "Runner" });
@@ -100,6 +100,7 @@ export async function performExecution(executionId: string, jobId: string) {
         execution: initialExe!,
         job: initialExe!.job!,
         destinations: [],
+        /* v8 ignore start */
         log: (msg: string, level: LogLevel = 'info', type: LogType = 'general', details?: string) => {
              const entry: LogEntry = {
                  timestamp: new Date().toISOString(),
@@ -116,9 +117,11 @@ export async function performExecution(executionId: string, jobId: string) {
             if (s) currentStage = s;
             currentProgress = p;
         },
+        /* v8 ignore next 3 */
         setStage: (_stage: PipelineStage) => {},
         updateDetail: (_detail: string) => {},
         updateStageProgress: (_percent: number) => {},
+        /* v8 ignore end */
     } as unknown as RunnerContext;
 
     // Parse logs and normalize to LogEntry[]

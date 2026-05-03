@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { getStorageHistory } from "@/services/dashboard-service";
-import { logger } from "@/lib/logger";
-import { wrapError, getErrorMessage } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError, getErrorMessage } from "@/lib/logging/errors";
 
 const log = logger.child({ route: "storage/history" });
 

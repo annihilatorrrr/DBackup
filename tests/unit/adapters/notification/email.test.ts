@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { EmailAdapter } from "@/lib/adapters/notification/email";
+import nodemailer from "nodemailer";
 
 // Mock nodemailer
 const mockVerify = vi.fn().mockResolvedValue(true);
@@ -14,7 +15,7 @@ vi.mock("nodemailer", () => ({
   },
 }));
 
-vi.mock("@/lib/logger", () => ({
+vi.mock("@/lib/logging/logger", () => ({
   logger: {
     child: () => ({
       debug: vi.fn(),
@@ -25,7 +26,7 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
-vi.mock("@/lib/errors", () => ({
+vi.mock("@/lib/logging/errors", () => ({
   wrapError: vi.fn((e: any) => e),
 }));
 
@@ -63,6 +64,22 @@ describe("Email Adapter", () => {
 
       expect(result.success).toBe(false);
       expect(result.message).toContain("Connection refused");
+    });
+
+    it("should set ignoreTLS when secure mode is none", async () => {
+      const insecureConfig = {
+        ...baseConfig,
+        secure: "none",
+      };
+
+      await EmailAdapter.test!(insecureConfig);
+
+      expect((nodemailer as any).createTransport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ignoreTLS: true,
+          secure: false,
+        })
+      );
     });
   });
 
@@ -140,7 +157,7 @@ describe("Email Adapter", () => {
       });
 
       const html = mockSendMail.mock.calls[0][0].html;
-      expect(html).toContain("https://dbackup.app/logo.png");
+      expect(html).toContain("https://docs.dbackup.app/logo.png");
     });
 
     it("should render HTML with DBackup footer", async () => {

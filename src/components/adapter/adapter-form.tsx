@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -17,11 +17,40 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 
+import { Loader2 } from "lucide-react";
 import { AdapterDefinition } from "@/lib/adapters/definitions";
 import { AdapterConfig } from "./types";
 import { useAdapterConnection } from "./use-adapter-connection";
 import { DatabaseFormContent, GenericFormContent, NotificationFormContent, StorageFormContent } from "./form-sections";
 import { SchemaField } from "./schema-field";
+
+/**
+ * Walks a Zod schema shape and calls form.setValue for every field that has a
+ * Zod .default(...) value AND whose current form value is undefined.
+ * This seeds enum/boolean/number defaults without wiping values already typed.
+ */
+function seedSchemaDefaults(schema: z.ZodTypeAny, form: any) {
+    if (!(schema instanceof z.ZodObject)) return;
+    const shape = (schema as z.ZodObject<any>).shape;
+    for (const [key, raw] of Object.entries(shape)) {
+        const currentVal = form.getValues(`config.${key}`);
+        if (currentVal !== undefined) continue;
+        // Walk wrappers (Optional, Nullable) to find ZodDefault
+        let s = raw as z.ZodTypeAny;
+        while (s) {
+            const typeName = (s as any)._def?.typeName;
+            if (typeName === "ZodDefault") {
+                form.setValue(`config.${key}`, (s as any)._def.defaultValue());
+                break;
+            }
+            if ((s as any)._def?.innerType) {
+                s = (s as any)._def.innerType;
+            } else {
+                break;
+            }
+        }
+    }
+}
 
 export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: { type: string, adapters: AdapterDefinition[], onSuccess: () => void, initialData?: AdapterConfig, onBack?: () => void }) {
     const [selectedAdapterId, setSelectedAdapterId] = useState<string>(initialData?.adapterId || "");
@@ -29,6 +58,10 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
     // Health check notification opt-out (database & storage only)
     const initialMeta = initialData?.metadata ? JSON.parse(initialData.metadata) : {};
     const [healthNotificationsDisabled, setHealthNotificationsDisabled] = useState<boolean>(initialMeta.healthNotificationsDisabled === true);
+
+    // Credential profile assignments (Phase 4 - Generic Credential Profile System)
+    const [primaryCredentialId, setPrimaryCredentialId] = useState<string | null>(initialData?.primaryCredentialId ?? null);
+    const [sshCredentialId, setSshCredentialId] = useState<string | null>(initialData?.sshCredentialId ?? null);
 
     const selectedAdapter = adapters.find(a => a.id === selectedAdapterId);
 
@@ -57,10 +90,56 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
         }
     }, [initialData, type]);
 
+    // When a credential profile is assigned, the fields it covers are hidden from
+    // the form and will never be populated - so we strip them from the config
+    // schema before validation to avoid a silent required-field failure.
+    const configSchema = useMemo(() => {
+        if (!selectedAdapter) return z.any();
+        const base = selectedAdapter.configSchema;
+        if (!(base instanceof z.ZodObject)) return base;
+
+        const credentialKeys: string[] = [];
+        if (selectedAdapter.credentials?.primary === "ACCESS_KEY") {
+            credentialKeys.push("accessKeyId", "secretAccessKey");
+        }
+        if (selectedAdapter.credentials?.primary === "USERNAME_PASSWORD") {
+            credentialKeys.push("user", "username", "password");
+        }
+        if (selectedAdapter.credentials?.primary === "SSH_KEY") {
+            // SFTP/Rsync: unprefixed identity fields
+            credentialKeys.push("username", "authType", "password", "privateKey", "passphrase");
+        }
+        if (selectedAdapter.credentials?.primary === "TOKEN") {
+            credentialKeys.push("token", "appToken", "accessToken", "botToken");
+        }
+        if (selectedAdapter.credentials?.primary === "SMTP") {
+            credentialKeys.push("user", "password");
+        }
+        if (selectedAdapter.credentials?.ssh === "SSH_KEY") {
+            credentialKeys.push(
+                "sshUsername", "sshAuthType", "sshPassword", "sshPrivateKey", "sshPassphrase",
+                "username", "authType", "privateKey", "passphrase"
+            );
+        }
+
+        if (credentialKeys.length === 0) return base;
+
+        // Make each credential-managed field optional so validation passes
+        // even though those inputs are hidden.
+        const shape = (base as z.ZodObject<any>).shape;
+        const patchedShape: Record<string, z.ZodTypeAny> = { ...shape };
+        for (const key of credentialKeys) {
+            if (patchedShape[key]) {
+                patchedShape[key] = patchedShape[key].optional();
+            }
+        }
+        return z.object(patchedShape);
+    }, [selectedAdapter]);
+
     const schema = z.object({
         name: z.string().min(1, "Name is required"),
         adapterId: z.string().min(1, "Type is required"),
-        config: selectedAdapter ? selectedAdapter.configSchema : z.any()
+        config: configSchema,
     });
 
     const form = useForm({
@@ -78,12 +157,20 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
         pendingSubmission,
         setPendingSubmission,
         detectedVersion,
+        isTesting,
         testConnection,
     } = useAdapterConnection({
         adapterId: selectedAdapterId,
         form,
-        initialDataId: initialData?.id
+        initialDataId: initialData?.id,
+        primaryCredentialId,
+        sshCredentialId
     });
+
+    // Track which adapter we have already seeded defaults for, to avoid
+    // overwriting values the user has already typed when the parent re-renders
+    // and passes a new (but equivalent) adapters array reference.
+    const seededAdapterRef = useRef<string | null>(null);
 
     // Update form schema/values when adapter changes
     useEffect(() => {
@@ -92,6 +179,13 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setSelectedAdapterId(firstId);
             form.setValue("adapterId", firstId);
+
+            // Only seed enum/default values once per adapter - never wipe the whole
+            // config object, which would destroy values the user has already typed.
+            if (seededAdapterRef.current !== firstId) {
+                seededAdapterRef.current = firstId;
+                seedSchemaDefaults(adapters[0].configSchema, form);
+            }
         }
     }, [adapters, initialData, form]);
 
@@ -112,6 +206,8 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
                 config: data.config,
                 type: type, // ensure type is sent
                 metadata,
+                primaryCredentialId,
+                sshCredentialId,
             };
 
             const res = await fetch(url, {
@@ -139,7 +235,7 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
                  const testRes = await fetch('/api/adapters/test-connection', {
                      method: 'POST',
                      headers: { 'Content-Type': 'application/json' },
-                     body: JSON.stringify({ adapterId: data.adapterId, config: data.config })
+                     body: JSON.stringify({ adapterId: data.adapterId, config: data.config, primaryCredentialId, sshCredentialId })
                  });
 
                  const testResult = await testRes.json();
@@ -243,8 +339,14 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
                                                                     value={adapter.name}
                                                                     key={adapter.id}
                                                                     onSelect={() => {
-                                                                        form.setValue("adapterId", adapter.id)
+                                                                        form.setValue("adapterId", adapter.id);
                                                                         setSelectedAdapterId(adapter.id);
+                                                                        if (!initialData) {
+                                                                            // User actively switched adapter: reset config and re-seed defaults
+                                                                            form.setValue("config", {});
+                                                                            seededAdapterRef.current = adapter.id;
+                                                                            seedSchemaDefaults(adapter.configSchema, form);
+                                                                        }
                                                                     }}
                                                                     className={cn(adapter.id === field.value && "bg-accent")}
                                                                 >
@@ -292,6 +394,10 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
                         detectedVersion={detectedVersion}
                         healthNotificationsDisabled={healthNotificationsDisabled}
                         onHealthNotificationsDisabledChange={setHealthNotificationsDisabled}
+                        primaryCredentialId={primaryCredentialId}
+                        sshCredentialId={sshCredentialId}
+                        onPrimaryChange={setPrimaryCredentialId}
+                        onSshChange={setSshCredentialId}
                     />
                 )}
 
@@ -301,11 +407,19 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
                         initialData={initialData}
                         healthNotificationsDisabled={healthNotificationsDisabled}
                         onHealthNotificationsDisabledChange={setHealthNotificationsDisabled}
+                        primaryCredentialId={primaryCredentialId}
+                        sshCredentialId={sshCredentialId}
+                        onPrimaryChange={setPrimaryCredentialId}
+                        onSshChange={setSshCredentialId}
                     />
                 )}
 
                 {selectedAdapter && type === 'notification' && (
-                    <NotificationFormContent adapter={selectedAdapter} />
+                    <NotificationFormContent
+                        adapter={selectedAdapter}
+                        primaryCredentialId={primaryCredentialId}
+                        onPrimaryChange={setPrimaryCredentialId}
+                    />
                 )}
 
                 {selectedAdapter && type !== 'database' && type !== 'storage' && type !== 'notification' && (
@@ -327,12 +441,14 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
                                 type="button"
                                 variant="secondary"
                                 onClick={testConnection}
-                                disabled={!selectedAdapter}
+                                disabled={!selectedAdapter || isTesting || form.formState.isSubmitting}
                             >
+                                {isTesting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Test Connection
                             </Button>
                         )}
-                        <Button type="submit" disabled={!selectedAdapter}>
+                        <Button type="submit" disabled={!selectedAdapter || form.formState.isSubmitting || isTesting}>
+                            {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {initialData ? "Save Changes" : "Create"}
                         </Button>
                     </div>

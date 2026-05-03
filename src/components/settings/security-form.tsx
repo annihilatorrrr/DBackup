@@ -1,13 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { authClient } from "@/lib/auth-client"
+import { authClient } from "@/lib/auth/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Loader2, CheckCircle2, AlertCircle, Fingerprint, Plus, Trash2, Smartphone, KeyRound } from "lucide-react"
+import { Loader2, CheckCircle2, AlertCircle, Fingerprint, Plus, Trash2, Smartphone, KeyRound, Copy, Check } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
 import { Switch } from "@/components/ui/switch"
@@ -22,7 +22,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { togglePasskeyTwoFactor as togglePasskeyAction, updateOwnPassword } from "@/app/actions/user"
+import { togglePasskeyTwoFactor as togglePasskeyAction, updateOwnPassword } from "@/app/actions/auth/user"
 import { User, Passkey } from "@prisma/client"
 import { formatTwoFactorCode } from "@/lib/utils"
 
@@ -48,6 +48,7 @@ export function SecurityForm({ canUpdatePassword, canManage2FA, canManagePasskey
     const [newPassword, setNewPassword] = useState("")
     const [confirmPassword, setConfirmPassword] = useState("")
     const [isChangingPassword, setIsChangingPassword] = useState(false)
+    const [copiedSecret, setCopiedSecret] = useState(false)
 
     // Passkey State
     const [passkeys, setPasskeys] = useState<Passkey[]>([])
@@ -450,6 +451,30 @@ export function SecurityForm({ canUpdatePassword, canManage2FA, canManagePasskey
                                             <p className="text-sm text-muted-foreground text-center">
                                                 Scan this QR code with your authenticator app (e.g. Google Authenticator, Authy).
                                             </p>
+                                            <div className="flex justify-center">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-xs text-muted-foreground h-auto py-1 px-2"
+                                                    onClick={() => {
+                                                        try {
+                                                            const secret = new URL(totpURI!).searchParams.get("secret") || ""
+                                                            navigator.clipboard.writeText(secret)
+                                                            setCopiedSecret(true)
+                                                            setTimeout(() => setCopiedSecret(false), 2000)
+                                                        } catch {
+                                                            toast.error("Failed to copy secret")
+                                                        }
+                                                    }}
+                                                >
+                                                    {copiedSecret ? (
+                                                        <><Check className="mr-1 h-3 w-3" />Copied!</>
+                                                    ) : (
+                                                        <><Copy className="mr-1 h-3 w-3" />Can&apos;t scan? Copy the secret key</>
+                                                    )}
+                                                </Button>
+                                            </div>
                                             <div className="space-y-2">
                                                 <Label htmlFor="code">Verification Code</Label>
                                                 <Input

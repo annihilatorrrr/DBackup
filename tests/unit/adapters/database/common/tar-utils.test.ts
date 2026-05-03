@@ -152,6 +152,28 @@ describe("TAR Utils for Multi-DB Backups", () => {
                 "TAR archive does not contain a manifest.json"
             );
         });
+
+        it("should reject with parse error when manifest contains invalid JSON", async () => {
+            const { pack } = await import("tar-stream");
+            const { createWriteStream } = await import("fs");
+            const { pipeline } = await import("stream/promises");
+
+            const tarPath = path.join(tempDir, "bad-manifest.tar");
+            const tarPack = pack();
+            const outputStream = createWriteStream(tarPath);
+            const pipePromise = pipeline(tarPack, outputStream);
+
+            const invalidJson = Buffer.from("{ not valid json !!!");
+            const entry = tarPack.entry({ name: "manifest.json", size: invalidJson.length });
+            entry.end(invalidJson);
+            tarPack.finalize();
+            await pipePromise;
+
+            const extractDir = path.join(tempDir, "bad-manifest-extract");
+            await expect(extractMultiDbTar(tarPath, extractDir)).rejects.toThrow(
+                "Failed to parse manifest"
+            );
+        });
     });
 
     describe("isMultiDbTar", () => {
@@ -226,6 +248,26 @@ describe("TAR Utils for Multi-DB Backups", () => {
 
             const manifest = await readTarManifest(invalidPath);
             expect(manifest).toBeNull();
+        });
+
+        it("should return null when manifest contains invalid JSON", async () => {
+            const { pack } = await import("tar-stream");
+            const { createWriteStream } = await import("fs");
+            const { pipeline } = await import("stream/promises");
+
+            const tarPath = path.join(tempDir, "bad-json-manifest.tar");
+            const tarPack = pack();
+            const outputStream = createWriteStream(tarPath);
+            const pipePromise = pipeline(tarPack, outputStream);
+
+            const invalidJson = Buffer.from("{ broken json !!!");
+            const entry = tarPack.entry({ name: "manifest.json", size: invalidJson.length });
+            entry.end(invalidJson);
+            tarPack.finalize();
+            await pipePromise;
+
+            const result = await readTarManifest(tarPath);
+            expect(result).toBeNull();
         });
     });
 

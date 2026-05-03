@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { registry } from "@/lib/core/registry";
 import { registerAdapters } from "@/lib/adapters";
+import { overlayCredentialsOnConfig } from "@/lib/adapters/config-resolver";
 import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
-import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PERMISSIONS, Permission } from "@/lib/permissions";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PERMISSIONS, Permission } from "@/lib/auth/permissions";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ route: "adapters/test-connection" });
 
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const { adapterId, config, configId } = body;
+        const { adapterId, config, configId, primaryCredentialId, sshCredentialId } = body;
 
         // RBAC: Check permission based on adapter type
         const requiredPermission = getPermissionForAdapter(adapterId || '');
@@ -56,7 +57,17 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, message: "This adapter does not support connection testing." });
         }
 
-        const result = await adapter.test(config);
+        // Overlay credential profiles onto the (plaintext) config so that the
+        // adapter receives a fully merged, ready-to-use config. Required when
+        // the user has assigned credential profiles instead of inline secrets.
+        const mergedConfig = await overlayCredentialsOnConfig(
+            adapterId,
+            { ...config },
+            primaryCredentialId ?? null,
+            sshCredentialId ?? null
+        );
+
+        const result = await adapter.test(mergedConfig);
 
         // If test successful and we have a configId (editing existing config), update metadata
         if (result.success && result.version && configId) {

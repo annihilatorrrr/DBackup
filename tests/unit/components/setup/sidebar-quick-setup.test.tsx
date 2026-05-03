@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { Sidebar } from "@/components/layout/sidebar";
-import { PERMISSIONS } from "@/lib/permissions";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
@@ -18,7 +18,7 @@ vi.mock("next/image", () => ({
 }));
 
 // Mock auth-client
-vi.mock("@/lib/auth-client", () => ({
+vi.mock("@/lib/auth/client", () => ({
     useSession: () => ({
         data: {
             user: { name: "Test User", email: "test@test.com", image: null },

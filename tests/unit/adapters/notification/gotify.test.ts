@@ -140,6 +140,19 @@ describe("Gotify Adapter", () => {
             expect(body.priority).toBe(3);
         });
 
+        it("should keep default priority when context has no success flag", async () => {
+            mockFetch.mockResolvedValue({ ok: true });
+
+            await GotifyAdapter.send(
+                { ...baseConfig, priority: 6 },
+                "Info",
+                { title: "Info only" },
+            );
+
+            const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+            expect(body.priority).toBe(6);
+        });
+
         it("should send plain message without context", async () => {
             mockFetch.mockResolvedValue({ ok: true });
 

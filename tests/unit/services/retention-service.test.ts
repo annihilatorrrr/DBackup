@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RetentionService } from '@/services/retention-service';
+import { RetentionService } from '@/services/backup/retention-service';
 import { FileInfo } from '@/lib/core/interfaces';
 import { RetentionConfiguration } from '@/lib/core/retention';
 import { subDays, subWeeks, subMonths, subYears } from 'date-fns';

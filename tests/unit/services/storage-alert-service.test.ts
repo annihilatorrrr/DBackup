@@ -5,12 +5,14 @@ import { NOTIFICATION_EVENTS } from "@/lib/notifications/types";
 // ── Mocks ──────────────────────────────────────────────────────
 
 const mockNotify = vi.fn().mockResolvedValue(undefined);
+const mockGetNotificationConfig = vi.fn();
 
-vi.mock("@/services/system-notification-service", () => ({
+vi.mock("@/services/notifications/system-notification-service", () => ({
   notify: (...args: any[]) => mockNotify(...args),
+  getNotificationConfig: (...args: any[]) => mockGetNotificationConfig(...args),
 }));
 
-vi.mock("@/lib/logger", () => ({
+vi.mock("@/lib/logging/logger", () => ({
   logger: {
     child: () => ({
       debug: vi.fn(),
@@ -21,7 +23,7 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
-vi.mock("@/lib/errors", () => ({
+vi.mock("@/lib/logging/errors", () => ({
   wrapError: vi.fn((e: any) => e),
 }));
 
@@ -36,7 +38,7 @@ import {
   ALERT_COOLDOWN_MS,
   type StorageAlertConfig,
   type StorageAlertStates,
-} from "@/services/storage-alert-service";
+} from "@/services/storage/storage-alert-service";
 
 // ── Helpers ────────────────────────────────────────────────────
 
@@ -102,6 +104,8 @@ describe("StorageAlertService", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-02-22T12:00:00Z"));
+    // Default: getNotificationConfig returns empty events (no custom reminder intervals)
+    mockGetNotificationConfig.mockResolvedValue({ globalChannels: [], events: {} });
   });
 
   afterEach(() => {
@@ -1046,6 +1050,167 @@ describe("StorageAlertService", () => {
         expect(savedState.storageLimit.active).toBe(false);
         expect(savedState.storageLimit.lastNotifiedAt).toBeNull();
       });
+
+      it("should reset active usageSpike state when usageSpikeEnabled is disabled", async () => {
+        // usageSpike was active, but is now disabled - another alert keeps the entry eligible
+        mockAlertSetting("cfg-1",
+          {
+            usageSpikeEnabled: false,
+            storageLimitEnabled: true,
+            storageLimitBytes: 10000,
+          },
+          { usageSpike: { active: true, lastNotifiedAt: "2026-02-22T10:00:00Z" } }
+        );
+
+        // size below limit → no limit alert fires
+        await checkStorageAlerts([makeEntry({ size: 800 })]);
+
+        expect(mockNotify).not.toHaveBeenCalled();
+
+        const upsertCall = prismaMock.systemSetting.upsert.mock.calls.find(
+          (c: any[]) => c[0].where.key === "storage.alerts.cfg-1.state"
+        );
+        const savedState = JSON.parse(upsertCall![0].update.value as string);
+        expect(savedState.usageSpike.active).toBe(false);
+        expect(savedState.usageSpike.lastNotifiedAt).toBeNull();
+      });
+
+      it("should reset active missingBackup state when missingBackupEnabled is disabled", async () => {
+        // missingBackup was active, but is now disabled - another alert keeps the entry eligible
+        mockAlertSetting("cfg-1",
+          {
+            missingBackupEnabled: false,
+            storageLimitEnabled: true,
+            storageLimitBytes: 10000,
+          },
+          { missingBackup: { active: true, lastNotifiedAt: "2026-02-22T10:00:00Z" } }
+        );
+
+        // size below limit → no limit alert fires
+        await checkStorageAlerts([makeEntry({ size: 800 })]);
+
+        expect(mockNotify).not.toHaveBeenCalled();
+
+        const upsertCall = prismaMock.systemSetting.upsert.mock.calls.find(
+          (c: any[]) => c[0].where.key === "storage.alerts.cfg-1.state"
+        );
+        const savedState = JSON.parse(upsertCall![0].update.value as string);
+        expect(savedState.missingBackup.active).toBe(false);
+        expect(savedState.missingBackup.lastNotifiedAt).toBeNull();
+      });
+    });
+  });
+
+  describe("shouldNotify edge cases", () => {
+    it("should notify when state is active but lastNotifiedAt is null (defensive guard)", async () => {
+      // Covers the defensive branch: state.active=true but lastNotifiedAt not yet set
+      mockAlertSetting("cfg-1",
+        { storageLimitEnabled: true, storageLimitBytes: 1000 },
+        { storageLimit: { active: true, lastNotifiedAt: null } }
+      );
+
+      await checkStorageAlerts([makeEntry({ size: 950 })]);
+
+      // Should fire because lastNotifiedAt is null → shouldNotify returns true
+      expect(mockNotify).toHaveBeenCalled();
+    });
+  });
+
+  // ── Notification Config Reminder Intervals ─────────────────
+
+  describe("notification config reminder intervals", () => {
+    it("should use per-event reminderIntervalHours as cooldown instead of the default 24h", async () => {
+      // storageLimit alert was sent 3 hours ago - within default 24h cooldown
+      mockAlertSetting("cfg-1",
+        { storageLimitEnabled: true, storageLimitBytes: 1000 },
+        { storageLimit: { active: true, lastNotifiedAt: "2026-02-22T09:00:00Z" } }
+      );
+
+      // Notification config provides a 2-hour reminder interval for this event
+      mockGetNotificationConfig.mockResolvedValue({
+        globalChannels: [],
+        events: {
+          [NOTIFICATION_EVENTS.STORAGE_LIMIT_WARNING]: {
+            enabled: true,
+            channels: [],
+            reminderIntervalHours: 2,
+          },
+        },
+      });
+
+      // 950 / 1000 = 95% → condition still active
+      // Default 24h cooldown: 3h < 24h → no resend
+      // Custom 2h cooldown: 3h > 2h → should resend
+      await checkStorageAlerts([makeEntry({ size: 950 })]);
+
+      expect(mockNotify).toHaveBeenCalledOnce();
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({ eventType: NOTIFICATION_EVENTS.STORAGE_LIMIT_WARNING })
+      );
+    });
+
+    it("should not resend when within the custom reminder interval", async () => {
+      // alert sent 1 hour ago, custom interval is 2 hours
+      mockAlertSetting("cfg-1",
+        { storageLimitEnabled: true, storageLimitBytes: 1000 },
+        { storageLimit: { active: true, lastNotifiedAt: "2026-02-22T11:00:00Z" } }
+      );
+
+      mockGetNotificationConfig.mockResolvedValue({
+        globalChannels: [],
+        events: {
+          [NOTIFICATION_EVENTS.STORAGE_LIMIT_WARNING]: {
+            enabled: true,
+            channels: [],
+            reminderIntervalHours: 2,
+          },
+        },
+      });
+
+      await checkStorageAlerts([makeEntry({ size: 950 })]);
+
+      // 1h < 2h → still within cooldown
+      expect(mockNotify).not.toHaveBeenCalled();
+    });
+
+    it("should fall back to default 24h cooldown when getNotificationConfig throws", async () => {
+      // alert sent 3 hours ago - would resend with 2h interval but NOT with 24h default
+      mockAlertSetting("cfg-1",
+        { storageLimitEnabled: true, storageLimitBytes: 1000 },
+        { storageLimit: { active: true, lastNotifiedAt: "2026-02-22T09:00:00Z" } }
+      );
+
+      mockGetNotificationConfig.mockRejectedValue(new Error("Config unavailable"));
+
+      await checkStorageAlerts([makeEntry({ size: 950 })]);
+
+      // 3h < 24h default cooldown → no resend
+      expect(mockNotify).not.toHaveBeenCalled();
+    });
+
+    it("should ignore events with reminderIntervalHours = 0 (reminders disabled)", async () => {
+      // alert sent 1 hour ago, reminderIntervalHours=0 means no reminders
+      mockAlertSetting("cfg-1",
+        { storageLimitEnabled: true, storageLimitBytes: 1000 },
+        { storageLimit: { active: true, lastNotifiedAt: "2026-02-22T11:00:00Z" } }
+      );
+
+      mockGetNotificationConfig.mockResolvedValue({
+        globalChannels: [],
+        events: {
+          [NOTIFICATION_EVENTS.STORAGE_LIMIT_WARNING]: {
+            enabled: true,
+            channels: [],
+            reminderIntervalHours: 0,
+          },
+        },
+      });
+
+      await checkStorageAlerts([makeEntry({ size: 950 })]);
+
+      // reminderIntervalHours=0 is excluded from the cooldown map → uses default 24h
+      // 1h < 24h → no resend
+      expect(mockNotify).not.toHaveBeenCalled();
     });
   });
 });

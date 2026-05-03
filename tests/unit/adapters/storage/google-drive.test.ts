@@ -3,7 +3,7 @@ import { GoogleDriveAdapter } from "@/lib/adapters/storage/google-drive";
 import { Readable } from "stream";
 
 // --- Hoisted mocks (available in vi.mock factories) ---
-const { mockDrive, mockSetCredentials, mockFs } = vi.hoisted(() => ({
+const { mockDrive, mockSetCredentials, mockFs, mockPipeline } = vi.hoisted(() => ({
     mockDrive: {
         files: {
             list: vi.fn(),
@@ -14,6 +14,7 @@ const { mockDrive, mockSetCredentials, mockFs } = vi.hoisted(() => ({
         },
     },
     mockSetCredentials: vi.fn(),
+    mockPipeline: vi.fn().mockResolvedValue(undefined),
     mockFs: {
         stat: vi.fn(),
         mkdir: vi.fn(),
@@ -59,9 +60,9 @@ vi.mock("fs", () => ({
 }));
 
 vi.mock("stream/promises", () => ({
-    pipeline: vi.fn().mockResolvedValue(undefined),
+    pipeline: mockPipeline,
     default: {
-        pipeline: vi.fn().mockResolvedValue(undefined),
+        pipeline: mockPipeline,
     },
 }));
 
@@ -574,6 +575,186 @@ describe("GoogleDriveAdapter", () => {
             const result = await GoogleDriveAdapter.delete(validConfig, "important.sql");
 
             expect(result).toBe(false);
+        });
+
+        it("should resolve path and delete a file in a subdirectory", async () => {
+            // resolveOrCreatePath: find "daily" folder
+            mockDrive.files.list
+                .mockResolvedValueOnce({
+                    data: { files: [{ id: "daily-folder", name: "daily" }] },
+                })
+                .mockResolvedValueOnce({
+                    // findFile: find the file
+                    data: { files: [{ id: "sub-file-id", name: "backup.sql" }] },
+                });
+            mockDrive.files.delete.mockResolvedValue({});
+
+            const result = await GoogleDriveAdapter.delete(validConfig, "daily/backup.sql");
+
+            expect(result).toBe(true);
+            expect(mockDrive.files.delete).toHaveBeenCalledWith({ fileId: "sub-file-id" });
+        });
+    });
+
+    // ====================================================================
+    // download() with onProgress
+    // ====================================================================
+    describe("download() with onProgress", () => {
+        it("should use tracker transform when onProgress is provided and file has size", async () => {
+            // resolveOrCreatePath for "daily" folder
+            mockDrive.files.list
+                .mockResolvedValueOnce({
+                    data: { files: [{ id: "daily-folder-id", name: "daily" }] },
+                })
+                .mockResolvedValueOnce({
+                    data: {
+                        files: [{ id: "dl-file-id", name: "backup.sql", size: "2048" }],
+                    },
+                });
+
+            const mockStream = Readable.from(["file content"]);
+            mockDrive.files.get.mockResolvedValue({ data: mockStream });
+            mockFs.mkdir.mockResolvedValue(undefined);
+
+            const onProgress = vi.fn();
+            const result = await GoogleDriveAdapter.download(
+                validConfig,
+                "daily/backup.sql",
+                "/tmp/restore.sql",
+                onProgress
+            );
+
+            // With onProgress + file.size > 0, the tracker branch is entered
+            expect(result).toBe(true);
+        });
+    });
+
+    // ====================================================================
+    // read() with subdirectory path
+    // ====================================================================
+    describe("read() with subdirectory path", () => {
+        it("should resolve subdirectory via resolveOrCreatePath", async () => {
+            // resolveOrCreatePath: find "subdir" folder
+            mockDrive.files.list.mockResolvedValueOnce({
+                data: { files: [{ id: "subdir-folder-id", name: "subdir" }] },
+            });
+            // findFile: find the meta file
+            mockDrive.files.list.mockResolvedValueOnce({
+                data: { files: [{ id: "meta-file-id", name: "backup.meta.json" }] },
+            });
+
+            mockDrive.files.get.mockResolvedValue({
+                data: '{"iv":"abc"}',
+            });
+
+            const result = await GoogleDriveAdapter.read!(validConfig, "subdir/backup.meta.json");
+
+            expect(result).toBe('{"iv":"abc"}');
+        });
+    });
+
+    // ====================================================================
+    // list() with non-empty dir
+    // ====================================================================
+    describe("list() with subdirectory dir", () => {
+        it("should resolve the dir folder before listing", async () => {
+            // resolveOrCreatePath: find "daily" folder
+            mockDrive.files.list
+                .mockResolvedValueOnce({
+                    data: { files: [{ id: "daily-folder-id", name: "daily" }] },
+                })
+                .mockResolvedValueOnce({
+                    // listFilesRecursive
+                    data: {
+                        files: [
+                            {
+                                id: "f1",
+                                name: "backup.sql",
+                                size: "512",
+                                modifiedTime: "2025-01-01T00:00:00Z",
+                                mimeType: "application/octet-stream",
+                            },
+                        ],
+                        nextPageToken: undefined,
+                    },
+                });
+
+            const result = await GoogleDriveAdapter.list(validConfig, "daily");
+
+            expect(result).toHaveLength(1);
+            expect(result[0].name).toBe("backup.sql");
+        });
+    });
+
+    // ====================================================================
+    // resolveOrCreatePath - folder creation (lines 75-83)
+    // ====================================================================
+    describe("resolveOrCreatePath - creates missing folders", () => {
+        it("creates a new folder when it does not exist in Google Drive", async () => {
+            // resolveOrCreatePath: "newdir" folder does not exist → create it
+            mockDrive.files.list
+                .mockResolvedValueOnce({ data: { files: [] } }) // folder missing
+                .mockResolvedValueOnce({ data: { files: [] } }); // findFile: file missing
+
+            mockDrive.files.create
+                .mockResolvedValueOnce({ data: { id: "new-folder-id" } }) // folder creation
+                .mockResolvedValueOnce({ data: { id: "new-file-id" } }); // file creation
+
+            mockFs.stat.mockResolvedValue({ size: 100 });
+
+            const result = await GoogleDriveAdapter.upload(
+                validConfig,
+                "/tmp/dump.sql",
+                "newdir/backup.sql"
+            );
+
+            expect(result).toBe(true);
+            // Verify folder create was called with folder mimeType
+            expect(mockDrive.files.create).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    requestBody: expect.objectContaining({
+                        mimeType: "application/vnd.google-apps.folder",
+                    }),
+                })
+            );
+        });
+    });
+
+    // ====================================================================
+    // download() tracker transform body (lines 262-264)
+    // ====================================================================
+    describe("download() tracker transform body coverage", () => {
+        it("invokes onProgress via the tracker transform callback", async () => {
+            mockDrive.files.list
+                .mockResolvedValueOnce({
+                    data: { files: [{ id: "folder-id", name: "daily" }] },
+                })
+                .mockResolvedValueOnce({
+                    data: { files: [{ id: "dl-id", name: "backup.sql", size: "1024" }] },
+                });
+
+            const mockStream = Readable.from(["chunk data"]);
+            mockDrive.files.get.mockResolvedValue({ data: mockStream });
+            mockFs.mkdir.mockResolvedValue(undefined);
+
+            const onProgress = vi.fn();
+
+            // Override pipeline to invoke the tracker's _transform so lines 262-264 run
+            mockPipeline.mockImplementationOnce(async (_src: any, tracker: any, _dst: any) => {
+                if (tracker && tracker._transform) {
+                    tracker._transform(Buffer.from("chunk data"), "buffer", () => {});
+                }
+            });
+
+            const result = await GoogleDriveAdapter.download(
+                validConfig,
+                "daily/backup.sql",
+                "/tmp/restore.sql",
+                onProgress
+            );
+
+            expect(result).toBe(true);
+            expect(onProgress).toHaveBeenCalled();
         });
     });
 });

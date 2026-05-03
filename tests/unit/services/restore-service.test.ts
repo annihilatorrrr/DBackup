@@ -1,25 +1,31 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { prismaMock } from '@/lib/testing/prisma-mock';
-import { RestoreService } from '@/services/restore-service';
+import { RestoreService } from '@/services/restore/restore-service';
 import { registry } from '@/lib/core/registry';
 import { StorageAdapter, DatabaseAdapter } from '@/lib/core/interfaces';
-import * as encryptionService from '@/services/encryption-service';
-import * as cryptoStream from '@/lib/crypto-stream';
+import * as encryptionService from '@/services/backup/encryption-service';
+import * as cryptoStream from '@/lib/crypto/stream';
 import fs from 'fs';
 import { PassThrough } from 'stream';
 
 // Mock Dependencies
-vi.mock('@/services/encryption-service', () => ({
+vi.mock('@/services/backup/encryption-service', () => ({
     getProfileMasterKey: vi.fn(),
     getEncryptionProfiles: vi.fn(),
 }));
 
-vi.mock('@/lib/crypto-stream', () => ({
+vi.mock('@/lib/crypto/stream', () => ({
     createDecryptionStream: vi.fn(),
 }));
 
 vi.mock('@/lib/crypto', () => ({
     decryptConfig: (input: any) => input,
+}));
+
+vi.mock('@/lib/adapters/config-resolver', () => ({
+    resolveAdapterConfig: vi.fn(async (adapter: any) => {
+        try { return JSON.parse(adapter.config); } catch { return {}; }
+    }),
 }));
 
 vi.mock('@/lib/core/registry', () => ({

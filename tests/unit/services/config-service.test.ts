@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ConfigService } from '../../../src/services/config-service';
+import { ConfigService } from '../../../src/services/config/config-service';
 // Mock Prisma
 vi.mock('@/lib/prisma', () => ({
   default: {
@@ -14,6 +14,11 @@ vi.mock('@/lib/prisma', () => ({
     encryptionProfile: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     $transaction: vi.fn((callback) => callback(prismaMock)),
   },
+}));
+
+// Mock restore-pipeline so ConfigService.restoreFromStorage is testable in isolation
+vi.mock('@/services/config/restore-pipeline', () => ({
+  restoreFromStorage: vi.fn().mockResolvedValue('execution-id-facade'),
 }));
 
 import prisma from '@/lib/prisma';
@@ -84,5 +89,14 @@ describe('ConfigService', () => {
     // Actually we can't easily mock partial crypto.
 
     // Let's focus on the Service logic: it calls Prisma.
+  });
+
+  it('should delegate restoreFromStorage to the pipeline function and return executionId (line 34)', async () => {
+    const { restoreFromStorage: mockPipeline } = await import('@/services/config/restore-pipeline');
+
+    const result = await service.restoreFromStorage('storage-1', 'backup.json', 'profile-1');
+
+    expect(mockPipeline).toHaveBeenCalledWith('storage-1', 'backup.json', 'profile-1', undefined);
+    expect(result).toBe('execution-id-facade');
   });
 });

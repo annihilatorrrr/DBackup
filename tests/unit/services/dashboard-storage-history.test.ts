@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { prismaMock } from "@/lib/testing/prisma-mock";
 
 // Mock logger to prevent output during tests
-vi.mock("@/lib/logger", () => ({
+vi.mock("@/lib/logging/logger", () => ({
   logger: {
     child: () => ({
       info: vi.fn(),
@@ -14,7 +14,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 // Mock errors module
-vi.mock("@/lib/errors", () => ({
+vi.mock("@/lib/logging/errors", () => ({
   wrapError: (e: unknown) => e,
 }));
 

@@ -1,7 +1,7 @@
 export const STORAGE_CONNECTION_KEYS = [
     'host', 'port',
     'endpoint', 'region',
-    'accountId', 'bucket', 'basePath',
+    'accountId', 'bucket', 'jurisdiction', 'basePath',
     'address', 'domain', 'url',
     'user', 'username',
     'password', 'accessKeyId', 'secretAccessKey',
@@ -19,7 +19,7 @@ export const NOTIFICATION_CONNECTION_KEYS = [
     'method', 'contentType', 'authHeader',
     'serverUrl', 'appToken', 'accessToken', 'topic',
     'botToken', 'chatId',
-    'accountSid', 'authToken', 'from', 'to',
+    'accountSid', 'authToken',
 ];
 
 export const NOTIFICATION_CONFIG_KEYS = ['from', 'to', 'username', 'avatarUrl', 'channel', 'iconEmoji', 'customHeaders', 'payloadTemplate', 'priority', 'parseMode', 'disableNotification'];

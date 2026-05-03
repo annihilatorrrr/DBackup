@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
-import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { decryptConfig } from "@/lib/crypto";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/logging/logger";
 
 const log = logger.child({ route: "adapters/onedrive/auth" });
 
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Build callback URL from the request origin
-        const origin = req.nextUrl.origin;
+        const origin = process.env.BETTER_AUTH_URL || req.nextUrl.origin;
         const redirectUri = `${origin}/api/adapters/onedrive/callback`;
 
         const authUrl = new URL("https://login.microsoftonline.com/common/oauth2/v2.0/authorize");

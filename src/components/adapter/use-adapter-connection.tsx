@@ -9,17 +9,21 @@ interface UseAdapterConnectionProps {
     form: UseFormReturn<any>;
     onSuccess?: (data: any) => Promise<void>;
     initialDataId?: string;
+    primaryCredentialId?: string | null;
+    sshCredentialId?: string | null;
 }
 
-export function useAdapterConnection({ adapterId, form, initialDataId }: UseAdapterConnectionProps) {
+export function useAdapterConnection({ adapterId, form, initialDataId, primaryCredentialId, sshCredentialId }: UseAdapterConnectionProps) {
     const [connectionError, setConnectionError] = useState<string | null>(null);
     const [pendingSubmission, setPendingSubmission] = useState<any | null>(null);
     const [detectedVersion, setDetectedVersion] = useState<string | null>(null);
     const [availableDatabases, setAvailableDatabases] = useState<string[]>([]);
     const [isLoadingDbs, setIsLoadingDbs] = useState(false);
     const [isDbListOpen, setIsDbListOpen] = useState(false);
+    const [isTesting, setIsTesting] = useState(false);
 
     const testConnection = async () => {
+        setIsTesting(true);
         const data = form.getValues();
         // Use adapterId from form (regular form) or fall back to hook prop (Quick Setup)
         const resolvedAdapterId = data.adapterId || adapterId;
@@ -36,7 +40,9 @@ export function useAdapterConnection({ adapterId, form, initialDataId }: UseAdap
                 body: JSON.stringify({
                     adapterId: resolvedAdapterId,
                     config: data.config,
-                    configId: initialDataId
+                    configId: initialDataId,
+                    primaryCredentialId: primaryCredentialId ?? null,
+                    sshCredentialId: sshCredentialId ?? null
                 })
             });
             const result = await res.json();
@@ -57,6 +63,8 @@ export function useAdapterConnection({ adapterId, form, initialDataId }: UseAdap
             toast.dismiss(toastId);
             toast.error("Failed to test connection");
             return false;
+        } finally {
+            setIsTesting(false);
         }
     };
 
@@ -69,7 +77,12 @@ export function useAdapterConnection({ adapterId, form, initialDataId }: UseAdap
              const testRes = await fetch('/api/adapters/test-connection', {
                  method: 'POST',
                  headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({ adapterId: adapterId, config: currentConfig })
+                 body: JSON.stringify({
+                     adapterId: adapterId,
+                     config: currentConfig,
+                     primaryCredentialId: primaryCredentialId ?? null,
+                     sshCredentialId: sshCredentialId ?? null
+                 })
              });
              const testResult = await testRes.json();
 
@@ -84,7 +97,12 @@ export function useAdapterConnection({ adapterId, form, initialDataId }: UseAdap
              const res = await fetch('/api/adapters/access-check', {
                  method: 'POST',
                  headers: { 'Content-Type': 'application/json' },
-                 body: JSON.stringify({ adapterId: adapterId, config: currentConfig })
+                 body: JSON.stringify({
+                     adapterId: adapterId,
+                     config: currentConfig,
+                     primaryCredentialId: primaryCredentialId ?? null,
+                     sshCredentialId: sshCredentialId ?? null
+                 })
              });
              const data = await res.json();
 
@@ -130,6 +148,7 @@ export function useAdapterConnection({ adapterId, form, initialDataId }: UseAdap
         isLoadingDbs,
         isDbListOpen,
         setIsDbListOpen,
+        isTesting,
         testConnection,
         fetchDatabases
     };

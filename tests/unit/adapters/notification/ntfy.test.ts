@@ -177,6 +177,28 @@ describe("ntfy Adapter", () => {
             expect(headers.Priority).toBe("4");
         });
 
+        it("should keep default priority when context has no success flag", async () => {
+            mockFetch.mockResolvedValue({ ok: true });
+
+            await NtfyAdapter.send(
+                { ...baseConfig, priority: 4 },
+                "Info",
+                { title: "Informational" },
+            );
+
+            const headers = mockFetch.mock.calls[0][1].headers;
+            expect(headers.Priority).toBe("4");
+        });
+
+        it("should use backup tag only for neutral context", async () => {
+            mockFetch.mockResolvedValue({ ok: true });
+
+            await NtfyAdapter.send(baseConfig, "Info", { title: "Informational" });
+
+            const headers = mockFetch.mock.calls[0][1].headers;
+            expect(headers.Tags).toBe("backup");
+        });
+
         it("should send plain message without context fields", async () => {
             mockFetch.mockResolvedValue({ ok: true });
 

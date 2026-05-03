@@ -1,6 +1,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { authService } from '@/services/auth-service';
+import { authService } from '@/services/auth/auth-service';
 
 // Mock the auth library
 const mockSignUpEmail = vi.fn();

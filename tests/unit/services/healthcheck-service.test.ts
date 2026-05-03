@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { prismaMock } from '@/lib/testing/prisma-mock';
-import { HealthCheckService } from '@/services/healthcheck-service';
+import { HealthCheckService } from '@/services/system/healthcheck-service';
 import { registry } from '@/lib/core/registry';
 
 // Mock registry and crypto
@@ -12,6 +12,19 @@ vi.mock('@/lib/core/registry', () => ({
 
 vi.mock('@/lib/crypto', () => ({
     decryptConfig: vi.fn((config) => config)
+}));
+
+vi.mock('@/lib/adapters/config-resolver', () => ({
+    resolveAdapterConfig: vi.fn().mockResolvedValue({}),
+}));
+
+const mockNotify = vi.fn().mockResolvedValue(undefined);
+const mockGetNotificationConfig = vi.fn().mockResolvedValue({
+    events: {},
+});
+vi.mock('@/services/notifications/system-notification-service', () => ({
+    notify: (...args: unknown[]) => mockNotify(...args),
+    getNotificationConfig: () => mockGetNotificationConfig(),
 }));
 
 describe('HealthCheckService', () => {
@@ -154,5 +167,166 @@ describe('HealthCheckService', () => {
 
         // Assert
         expect(prismaMock.healthCheckLog.deleteMany).toHaveBeenCalled();
+    });
+
+    it('should handle adapter not found by setting status to OFFLINE via catch', async () => {
+        const mockAdapters = [
+            { id: '1', name: 'DB 1', adapterId: 'unknown-adapter', config: '{}', consecutiveFailures: 2, type: 'database' }
+        ];
+        prismaMock.adapterConfig.findMany.mockResolvedValue(mockAdapters as any);
+        (registry.get as any).mockReturnValue(null);
+
+        await service.performHealthCheck();
+
+        expect(prismaMock.adapterConfig.update).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({ lastStatus: 'OFFLINE' })
+        }));
+    });
+
+    it('should skip adapter that does not support test()', async () => {
+        const mockAdapters = [
+            { id: '1', name: 'DB 1', adapterId: 'mysql', config: '{}', consecutiveFailures: 0, type: 'database' }
+        ];
+        prismaMock.adapterConfig.findMany.mockResolvedValue(mockAdapters as any);
+        (registry.get as any).mockReturnValue({ /* no test fn */ });
+
+        await service.performHealthCheck();
+
+        // No log or update should be created for adapters without test support
+        expect(prismaMock.healthCheckLog.create).not.toHaveBeenCalled();
+    });
+
+    it('should set errorMsg from result.message on failed test', async () => {
+        const mockAdapters = [
+            { id: '1', name: 'DB 1', adapterId: 'mysql', config: '{}', consecutiveFailures: 0, type: 'database' }
+        ];
+        prismaMock.adapterConfig.findMany.mockResolvedValue(mockAdapters as any);
+        (registry.get as any).mockReturnValue({
+            test: vi.fn().mockResolvedValue({ success: false, message: 'Timeout on port 3306' })
+        });
+
+        await service.performHealthCheck();
+
+        expect(prismaMock.healthCheckLog.create).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({ error: 'Timeout on port 3306' })
+        }));
+    });
+
+    it('should send OFFLINE notification when adapter first goes offline', async () => {
+        const mockAdapters = [
+            { id: '1', name: 'My DB', adapterId: 'mysql', config: '{}', consecutiveFailures: 2, type: 'database', metadata: null }
+        ];
+        prismaMock.adapterConfig.findMany.mockResolvedValue(mockAdapters as any);
+        prismaMock.systemSetting.findUnique.mockResolvedValue(null);
+        prismaMock.systemSetting.upsert.mockResolvedValue({} as any);
+        (registry.get as any).mockReturnValue({
+            test: vi.fn().mockResolvedValue({ success: false, message: 'refused' })
+        });
+
+        await service.performHealthCheck();
+
+        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+            eventType: 'connection_offline',
+        }));
+        expect(prismaMock.systemSetting.upsert).toHaveBeenCalled();
+    });
+
+    it('should send recovery notification when adapter comes back online', async () => {
+        const mockAdapters = [
+            { id: '1', name: 'My DB', adapterId: 'mysql', config: '{}', consecutiveFailures: 5, type: 'database', metadata: null }
+        ];
+        prismaMock.adapterConfig.findMany.mockResolvedValue(mockAdapters as any);
+
+        // Stored offline state with active notification
+        const offlineState = JSON.stringify({
+            '1': { active: true, lastNotifiedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() }
+        });
+        prismaMock.systemSetting.findUnique.mockResolvedValue({ key: 'healthcheck.offline.state', value: offlineState } as any);
+        prismaMock.systemSetting.upsert.mockResolvedValue({} as any);
+        (registry.get as any).mockReturnValue({
+            test: vi.fn().mockResolvedValue({ success: true, message: 'OK' })
+        });
+
+        await service.performHealthCheck();
+
+        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+            eventType: 'connection_online',
+        }));
+    });
+
+    it('should skip offline notification when healthNotificationsDisabled is set', async () => {
+        const mockAdapters = [
+            {
+                id: '1', name: 'Silent DB', adapterId: 'mysql', config: '{}',
+                consecutiveFailures: 2, type: 'database',
+                metadata: JSON.stringify({ healthNotificationsDisabled: true })
+            }
+        ];
+        prismaMock.adapterConfig.findMany.mockResolvedValue(mockAdapters as any);
+        prismaMock.systemSetting.findUnique.mockResolvedValue(null);
+        (registry.get as any).mockReturnValue({
+            test: vi.fn().mockResolvedValue({ success: false, message: 'refused' })
+        });
+
+        await service.performHealthCheck();
+
+        expect(mockNotify).not.toHaveBeenCalled();
+    });
+
+    it('should use custom reminder cooldown from notification config', async () => {
+        mockGetNotificationConfig.mockResolvedValue({
+            events: { 'connection.offline': { reminderIntervalHours: 1 } }
+        });
+        prismaMock.adapterConfig.findMany.mockResolvedValue([]);
+
+        await service.performHealthCheck();
+
+        // No assertion on behavior - just verify no crash when custom config is loaded
+        expect(prismaMock.healthCheckLog.deleteMany).toHaveBeenCalled();
+    });
+
+    it('should fall back to default cooldown when getNotificationConfig throws', async () => {
+        mockGetNotificationConfig.mockRejectedValue(new Error('config error'));
+        prismaMock.adapterConfig.findMany.mockResolvedValue([]);
+
+        await expect(service.performHealthCheck()).resolves.toBeUndefined();
+    });
+
+    it('should handle loadOfflineStates when stored JSON is invalid', async () => {
+        prismaMock.systemSetting.findUnique.mockResolvedValue(
+            { key: 'healthcheck.offline.state', value: 'not-valid-json' } as any
+        );
+        prismaMock.adapterConfig.findMany.mockResolvedValue([]);
+
+        await expect(service.performHealthCheck()).resolves.toBeUndefined();
+    });
+
+    it('should handle log retention cleanup failure gracefully', async () => {
+        prismaMock.adapterConfig.findMany.mockResolvedValue([]);
+        prismaMock.healthCheckLog.deleteMany.mockRejectedValue(new Error('DB error'));
+
+        await expect(service.performHealthCheck()).resolves.toBeUndefined();
+    });
+
+    it('should not re-send offline notification when still within cooldown', async () => {
+        const mockAdapters = [
+            { id: '1', name: 'My DB', adapterId: 'mysql', config: '{}', consecutiveFailures: 2, type: 'database', metadata: null }
+        ];
+        prismaMock.adapterConfig.findMany.mockResolvedValue(mockAdapters as any);
+
+        // State: active with notification sent 1 hour ago, cooldown 24h
+        const offlineState = JSON.stringify({
+            '1': { active: true, lastNotifiedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString() }
+        });
+        prismaMock.systemSetting.findUnique.mockResolvedValue({ key: 'healthcheck.offline.state', value: offlineState } as any);
+        prismaMock.systemSetting.upsert.mockResolvedValue({} as any);
+        (registry.get as any).mockReturnValue({
+            test: vi.fn().mockResolvedValue({ success: false, message: 'refused' })
+        });
+
+        await service.performHealthCheck();
+
+        // Should NOT re-notify (within 24h default cooldown)
+        expect(mockNotify).not.toHaveBeenCalled();
     });
 });

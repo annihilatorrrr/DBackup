@@ -9,7 +9,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { deleteGroup } from "@/app/actions/group"
+import { deleteGroup } from "@/app/actions/auth/group"
 import { toast } from "sonner"
 import { DateDisplay } from "@/components/utils/date-display"
 import { DataTable } from "@/components/ui/data-table"
@@ -49,6 +49,7 @@ export function GroupTable({ data, canManage }: GroupTableProps) {
             cell: ({ row }) => <span className="font-medium">{row.getValue("name")}</span>
         },
         {
+            id: "members",
             accessorKey: "_count.users",
             header: "Members",
             cell: ({ row }) => (

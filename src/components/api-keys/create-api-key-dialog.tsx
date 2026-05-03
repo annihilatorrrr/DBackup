@@ -30,8 +30,8 @@ import { toast } from "sonner"
 import { Loader2, Plus, CalendarIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { DateDisplay } from "@/components/utils/date-display"
-import { createApiKey } from "@/app/actions/api-key"
-import { PermissionPicker } from "@/components/permission-picker"
+import { createApiKey } from "@/app/actions/auth/api-key"
+import { PermissionPicker } from "@/components/permissions/permission-picker"
 import { ApiKeyRevealDialog } from "./api-key-reveal-dialog"
 
 const formSchema = z.object({

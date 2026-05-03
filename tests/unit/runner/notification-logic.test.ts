@@ -24,11 +24,17 @@ vi.mock('@/lib/crypto', () => ({
     decryptConfig: vi.fn((config) => config), // Return config as is
 }));
 
+vi.mock('@/lib/adapters/config-resolver', () => ({
+    resolveAdapterConfig: vi.fn(async (adapter: any) => {
+        try { return JSON.parse(adapter.config); } catch { return {}; }
+    }),
+}));
+
 vi.mock('@/services/dashboard-service', () => ({
     refreshStorageStatsCache: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('@/services/notification-log-service', () => ({
+vi.mock('@/services/notifications/notification-log-service', () => ({
     recordNotificationLog: vi.fn().mockResolvedValue(undefined),
 }));
 

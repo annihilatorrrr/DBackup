@@ -111,7 +111,7 @@ describe("SystemNotificationEmail Template", () => {
       />
     );
 
-    expect(html).toContain("https://dbackup.app/logo.png");
+    expect(html).toContain("https://docs.dbackup.app/logo.png");
     expect(html).toContain('alt="DBackup"');
   });
 

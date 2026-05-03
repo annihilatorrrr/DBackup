@@ -55,6 +55,20 @@ describe("Teams Adapter", () => {
             expect(result.message).toContain("400");
         });
 
+        it("should use statusText when test failure body is empty", async () => {
+            mockFetch.mockResolvedValue({
+                ok: false,
+                status: 400,
+                statusText: "Bad Request",
+                text: vi.fn().mockResolvedValue(""),
+            });
+
+            const result = await TeamsAdapter.test!(baseConfig);
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain("Bad Request");
+        });
+
         it("should handle network error", async () => {
             mockFetch.mockRejectedValue(new Error("DNS resolution failed"));
 
@@ -155,6 +169,48 @@ describe("Teams Adapter", () => {
             expect(subtleBlock).toBeDefined();
             // Should be an ISO timestamp
             expect(subtleBlock.text).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+        });
+
+        it("should use dash for empty field values in FactSet", async () => {
+            mockFetch.mockResolvedValue({ ok: true });
+
+            await TeamsAdapter.send(baseConfig, "Backup completed", {
+                title: "Backup",
+                success: true,
+                fields: [{ name: "Error", value: "" }],
+            });
+
+            const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+            const factSet = body.attachments[0].content.body.find((b: any) => b.type === "FactSet");
+            expect(factSet.facts[0].value).toBe("-");
+        });
+
+        it("should map blue-ish colors to Accent", async () => {
+            mockFetch.mockResolvedValue({ ok: true });
+
+            await TeamsAdapter.send(baseConfig, "Info", {
+                title: "Info",
+                color: "#1e40ff",
+                success: true,
+            });
+
+            const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+            const titleBlock = body.attachments[0].content.body.find((b: any) => b.size === "Large");
+            expect(titleBlock.color).toBe("Accent");
+        });
+
+        it("should map orange-ish colors to Warning", async () => {
+            mockFetch.mockResolvedValue({ ok: true });
+
+            await TeamsAdapter.send(baseConfig, "Warn", {
+                title: "Warning",
+                color: "#f5a623",
+                success: false,
+            });
+
+            const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+            const titleBlock = body.attachments[0].content.body.find((b: any) => b.size === "Large");
+            expect(titleBlock.color).toBe("Warning");
         });
 
         it("should return false on HTTP error", async () => {

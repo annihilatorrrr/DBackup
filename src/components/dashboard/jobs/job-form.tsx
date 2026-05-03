@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Lock, History, ChevronsUpDown, Plus, Trash2, ChevronDown, ChevronRight, Database, Info } from "lucide-react";
+import { Lock, History, ChevronsUpDown, Plus, Trash2, ChevronDown, ChevronRight, Database, Info, Loader2 } from "lucide-react";
 import { SchedulePicker } from "./schedule-picker";
 import { AdapterIcon } from "@/components/adapter/adapter-icon";
 import { DatabasePicker } from "@/components/adapter/database-picker";
@@ -232,7 +232,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
     const pgMajorVersion = isPgSource ? parsePgMajorVersion(selectedSource?.metadata) : null;
 
     const pgCompressionAlgo = (form.watch("pgCompressionAlgo") ?? "LEGACY") as PgCompressionAlgo;
-    const isNativeCompressionActive = ["LEGACY", "GZIP", "LZ4", "ZSTD"].includes(pgCompressionAlgo);
+    const isNativeCompressionActive = isPgSource && ["LEGACY", "GZIP", "LZ4", "ZSTD"].includes(pgCompressionAlgo);
 
     // Auto-disable external compression when native pg compression is active
     useEffect(() => {
@@ -368,7 +368,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                     <TabsList className="grid w-full grid-cols-4">
                         <TabsTrigger value="config">General</TabsTrigger>
                         <TabsTrigger value="destinations">Destinations</TabsTrigger>
-                        <TabsTrigger value="security">Security</TabsTrigger>
+                        <TabsTrigger value="advanced">Advanced</TabsTrigger>
                         <TabsTrigger value="notifications">Notify</TabsTrigger>
                     </TabsList>
 
@@ -518,7 +518,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                                     </div>
                                 )}
                                 {fields.length > 0 && (
-                                    <ScrollArea className="[&>[data-slot=scroll-area-viewport]]:max-h-[400px]">
+                                    <ScrollArea className="*:data-[slot=scroll-area-viewport]:max-h-100">
                                         <div className="space-y-3 pr-3">
                                             {fields.map((field, index) => (
                                                 <DestinationRow
@@ -553,8 +553,8 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                         </Card>
                     </TabsContent>
 
-                    {/* TAB 3: SECURITY & OPTIMIZATION */}
-                    <TabsContent value="security" className="space-y-4 pt-4">
+                    {/* TAB 3: ADVANCED (Compression & Encryption) */}
+                    <TabsContent value="advanced" className="space-y-4 pt-4">
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField control={form.control} name="encryptionProfileId" render={({ field }) => (
                                 <FormItem>
@@ -791,7 +791,10 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                 </Tabs>
 
                 <div className="pt-4 border-t">
-                    <Button type="submit" className="w-full">Save Job Configuration</Button>
+                    <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                        {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Save Job Configuration
+                    </Button>
                 </div>
             </form>
         </Form>

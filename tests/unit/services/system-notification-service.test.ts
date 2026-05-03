@@ -23,7 +23,7 @@ vi.mock("@/lib/core/registry", () => ({
   },
 }));
 
-vi.mock("@/lib/logger", () => ({
+vi.mock("@/lib/logging/logger", () => ({
   logger: {
     child: () => ({
       debug: vi.fn(),
@@ -34,15 +34,18 @@ vi.mock("@/lib/logger", () => ({
   },
 }));
 
-vi.mock("@/lib/errors", () => ({
+vi.mock("@/lib/logging/errors", () => ({
   wrapError: vi.fn((e: any) => e),
 }));
+
+import { registry } from "@/lib/core/registry";
 
 import {
   getNotificationConfig,
   saveNotificationConfig,
+  getAvailableChannels,
   notify,
-} from "@/services/system-notification-service";
+} from "@/services/notifications/system-notification-service";
 
 describe("SystemNotificationService", () => {
   beforeEach(() => {
@@ -140,6 +143,9 @@ describe("SystemNotificationService", () => {
       lastHealthCheck: null,
       lastStatus: "ONLINE",
       consecutiveFailures: 0,
+      lastError: null,
+      primaryCredentialId: null,
+      sshCredentialId: null,
     };
 
     const discordChannel = {
@@ -154,6 +160,9 @@ describe("SystemNotificationService", () => {
       lastHealthCheck: null,
       lastStatus: "ONLINE",
       consecutiveFailures: 0,
+      lastError: null,
+      primaryCredentialId: null,
+      sshCredentialId: null,
     };
 
     it("should skip disabled events", async () => {
@@ -445,6 +454,157 @@ describe("SystemNotificationService", () => {
         expect.any(String),
         expect.any(Object)
       );
+    });
+  });
+
+  // ── getAvailableChannels ──────────────────────────────────────
+
+  describe("getAvailableChannels", () => {
+    it("should return all notification channels", async () => {
+      const mockChannels = [
+        { id: "ch-1", name: "Email", adapterId: "email" },
+        { id: "ch-2", name: "Discord", adapterId: "discord" },
+      ];
+      prismaMock.adapterConfig.findMany.mockResolvedValue(mockChannels as any);
+
+      const result = await getAvailableChannels();
+
+      expect(prismaMock.adapterConfig.findMany).toHaveBeenCalledWith({
+        where: { type: "notification" },
+        select: { id: true, name: true, adapterId: true },
+      });
+      expect(result).toEqual(mockChannels);
+    });
+  });
+
+  // ── Additional notify edge cases ──────────────────────────────
+
+  describe("notify - additional cases", () => {
+    const slackChannel = {
+      id: "ch-slack",
+      name: "Slack",
+      adapterId: "slack",
+      type: "notification",
+      config: JSON.stringify({ webhookUrl: "https://hooks.slack.com/test" }),
+      metadata: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      lastHealthCheck: null,
+      lastStatus: "ONLINE",
+      consecutiveFailures: 0,
+      lastError: null,
+      primaryCredentialId: null,
+      sshCredentialId: null,
+    };
+
+    const emailChannel = {
+      id: "ch-email",
+      name: "SMTP",
+      adapterId: "email",
+      type: "notification",
+      config: JSON.stringify({ host: "smtp.test.com", from: "bot@test.com", to: "admin@test.com" }),
+      metadata: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      lastHealthCheck: null,
+      lastStatus: "ONLINE",
+      consecutiveFailures: 0,
+      lastError: null,
+      primaryCredentialId: null,
+      sshCredentialId: null,
+    };
+
+    it("should skip channel and not send when adapter is not registered", async () => {
+      prismaMock.systemSetting.findUnique.mockResolvedValue({
+        key: "notifications.config",
+        value: JSON.stringify({
+          globalChannels: ["ch-email"],
+          events: { user_login: { enabled: true, channels: null } },
+        }),
+        description: null,
+        updatedAt: new Date(),
+      });
+      prismaMock.adapterConfig.findMany.mockResolvedValue([emailChannel]);
+      vi.mocked(registry.get).mockReturnValueOnce(undefined as any);
+
+      await expect(
+        notify({
+          eventType: NOTIFICATION_EVENTS.USER_LOGIN,
+          data: { userName: "Alice", email: "alice@test.com", timestamp: "2026-01-01T00:00:00Z" },
+        })
+      ).resolves.toBeUndefined();
+
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it("should build Slack payload and send notification", async () => {
+      prismaMock.systemSetting.findUnique.mockResolvedValue({
+        key: "notifications.config",
+        value: JSON.stringify({
+          globalChannels: ["ch-slack"],
+          events: { user_login: { enabled: true, channels: null } },
+        }),
+        description: null,
+        updatedAt: new Date(),
+      });
+      prismaMock.adapterConfig.findMany.mockResolvedValue([slackChannel]);
+
+      await notify({
+        eventType: NOTIFICATION_EVENTS.USER_LOGIN,
+        data: { userName: "Alice", email: "alice@test.com", timestamp: "2026-01-01T00:00:00Z" },
+      });
+
+      expect(mockSend).toHaveBeenCalledTimes(1);
+      expect(mockSend).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(String),
+        expect.objectContaining({ eventType: "user_login" })
+      );
+    });
+
+    it("should log debug and skip when notifyUser set but no email channel available", async () => {
+      // notifyUser "only" but the only channel is Discord (no email) - no sends expected
+      prismaMock.systemSetting.findUnique.mockResolvedValue({
+        key: "notifications.config",
+        value: JSON.stringify({
+          globalChannels: ["ch-slack"],
+          events: { user_login: { enabled: true, channels: null, notifyUser: "only" } },
+        }),
+        description: null,
+        updatedAt: new Date(),
+      });
+      prismaMock.adapterConfig.findMany.mockResolvedValue([slackChannel]);
+
+      await expect(
+        notify({
+          eventType: NOTIFICATION_EVENTS.USER_LOGIN,
+          data: { userName: "Alice", email: "alice@test.com", timestamp: "2026-01-01T00:00:00Z" },
+        })
+      ).resolves.toBeUndefined();
+
+      // No sends: notifyUser "only" means only email, but no email channel exists
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it("should not throw when user-targeted email send fails", async () => {
+      prismaMock.systemSetting.findUnique.mockResolvedValue({
+        key: "notifications.config",
+        value: JSON.stringify({
+          globalChannels: ["ch-email"],
+          events: { user_login: { enabled: true, channels: null, notifyUser: "only" } },
+        }),
+        description: null,
+        updatedAt: new Date(),
+      });
+      prismaMock.adapterConfig.findMany.mockResolvedValue([emailChannel]);
+      mockSend.mockRejectedValueOnce(new Error("SMTP connection refused"));
+
+      await expect(
+        notify({
+          eventType: NOTIFICATION_EVENTS.USER_LOGIN,
+          data: { userName: "Alice", email: "alice@test.com", timestamp: "2026-01-01T00:00:00Z" },
+        })
+      ).resolves.toBeUndefined();
     });
   });
 });

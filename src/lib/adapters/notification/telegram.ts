@@ -1,7 +1,7 @@
 import { NotificationAdapter } from "@/lib/core/interfaces";
 import { TelegramSchema, TelegramConfig } from "@/lib/adapters/definitions";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ adapter: "telegram" });
 
@@ -53,6 +53,7 @@ export const TelegramAdapter: NotificationAdapter = {
     type: "notification",
     name: "Telegram",
     configSchema: TelegramSchema,
+    credentials: { primary: "TOKEN" },
 
     async test(config: TelegramConfig): Promise<{ success: boolean; message: string }> {
         try {

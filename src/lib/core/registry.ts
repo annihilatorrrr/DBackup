@@ -1,5 +1,5 @@
 import { BaseAdapter, DatabaseAdapter, StorageAdapter, NotificationAdapter } from "./interfaces";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/logging/logger";
 
 type AdapterType = 'database' | 'storage' | 'notification';
 

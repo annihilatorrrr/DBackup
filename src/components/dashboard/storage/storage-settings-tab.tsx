@@ -33,7 +33,7 @@ import {
 import {
   getStorageAlertSettings,
   updateStorageAlertSettings,
-} from "@/app/actions/storage-alerts";
+} from "@/app/actions/storage/storage-alerts";
 
 interface StorageAlertConfig {
   usageSpikeEnabled: boolean;

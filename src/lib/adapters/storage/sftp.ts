@@ -4,8 +4,8 @@ import Client from "ssh2-sftp-client";
 import { createReadStream } from "fs";
 import path from "path";
 import { LogLevel, LogType } from "@/lib/core/logs";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ adapter: "sftp" });
 
@@ -37,6 +37,7 @@ export const SFTPAdapter: StorageAdapter = {
     type: "storage",
     name: "SFTP (SSH)",
     configSchema: SFTPSchema,
+    credentials: { primary: "SSH_KEY" },
 
     async upload(config: SFTPConfig, localPath: string, remotePath: string, onProgress?: (percent: number) => void, onLog?: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void): Promise<boolean> {
         let sftp: Client | null = null;

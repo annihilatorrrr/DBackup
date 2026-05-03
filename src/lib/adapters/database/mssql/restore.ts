@@ -367,7 +367,9 @@ async function extractTarArchive(
                 const safeName = path.basename(header.name);
                 const outputPath = path.join(outputDir, safeName);
                 if (!outputPath.startsWith(outputDir)) {
+                    /* istanbul ignore next -- path.basename already prevents traversal; defensive guard */
                     reject(new Error(`Zip Slip detected: ${header.name}`));
+                    /* istanbul ignore next */
                     return;
                 }
                 log(`Extracting: ${safeName}`);

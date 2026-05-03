@@ -381,5 +381,57 @@ describe("MSSQL Dump", () => {
             expect(result.success).toBe(false);
             expect(result.error).toContain("SSH connection refused");
         });
+
+        it("should return failure when backup file is empty (size 0)", async () => {
+            mockFsStat.mockResolvedValue({ size: 0 });
+            const config = buildConfig({ fileTransferMode: "local" });
+
+            const result = await dump(config, "/dest/backup.bak");
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain("Backup file is empty");
+        });
+    });
+
+    describe("Database string formats", () => {
+        it("should parse comma-separated database string", async () => {
+            const config = buildConfig({
+                database: "db1,db2,db3",
+                fileTransferMode: "ssh",
+                sshUsername: "deploy",
+            });
+
+            const result = await dump(config, "/dest/multi.tar");
+
+            expect(result.success).toBe(true);
+            expect(mockExecuteQueryWithMessages).toHaveBeenCalledTimes(3);
+        });
+
+        it("should log found databases after auto-discovery", async () => {
+            mockGetDatabases.mockResolvedValue(["SalesDB", "HRdb"]);
+            const logs: string[] = [];
+            const config = buildConfig({ database: "", fileTransferMode: "ssh", sshUsername: "deploy" });
+
+            await dump(config, "/dest/backup.bak", (msg) => logs.push(msg));
+
+            expect(logs.some((l) => l.includes("Found 2 database(s)"))).toBe(true);
+        });
+
+        it("should invoke onLog progress callback for SQL Server messages", async () => {
+            const config = buildConfig({ fileTransferMode: "local" });
+            const logs: string[] = [];
+
+            // Simulate a SQL Server info message callback
+            mockExecuteQueryWithMessages.mockImplementation(
+                async (_cfg: any, _q: any, _db: any, _timeout: any, onMessage: any) => {
+                    if (onMessage) onMessage({ message: "10 percent processed." });
+                    return { result: { recordset: [] }, messages: [] };
+                }
+            );
+
+            await dump(config, "/dest/backup.bak", (msg) => logs.push(msg));
+
+            expect(logs.some((l) => l.includes("SQL Server: 10 percent processed."))).toBe(true);
+        });
     });
 });

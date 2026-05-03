@@ -7,7 +7,7 @@ import {
     buildMongoArgs,
     remoteBinaryCheck,
 } from "@/lib/ssh";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/logging/logger";
 
 const log = logger.child({ service: "mongodb-connection" });
 

@@ -27,15 +27,15 @@ sync_files() {
   local VERSION="$1"
   echo "Syncing version $VERSION ..."
 
-  # wiki/package.json
+  # docs/package.json
   node -e "
     const fs = require('fs');
-    const path = '$ROOT_DIR/wiki/package.json';
+    const path = '$ROOT_DIR/docs/package.json';
     const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
     pkg.version = '$VERSION';
     fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');
   "
-  echo "  ✓ wiki/package.json"
+  echo "  ✓ docs/package.json"
 
   # public/openapi.yaml
   sed -i '' "s/^  version: .*/  version: $VERSION/" "$ROOT_DIR/public/openapi.yaml"
@@ -49,7 +49,7 @@ sync_files() {
 # ── Insert changelog block for new version ────────────────────────
 insert_changelog() {
   local VERSION="$1"
-  local CHANGELOG="$ROOT_DIR/wiki/changelog.md"
+  local CHANGELOG="$ROOT_DIR/docs/changelog.md"
 
   # Skip if block already exists
   if grep -q "## v${VERSION}" "$CHANGELOG"; then
@@ -93,7 +93,7 @@ insert_changelog() {
     content = content.slice(0, insertAt) + block + content.slice(insertAt);
     fs.writeFileSync(path, content);
   " "$TAG_ALIASES"
-  echo "  ✓ wiki/changelog.md (new v${VERSION} block)"
+  echo "  ✓ docs/changelog.md (new v${VERSION} block)"
 }
 
 # ══════════════════════════════════════════════════════════════════

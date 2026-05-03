@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { AuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PermissionError, ApiKeyError } from "@/lib/errors";
-import { PERMISSIONS, AVAILABLE_PERMISSIONS } from "@/lib/permissions";
+import { AuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PermissionError, ApiKeyError, AuthenticationError } from "@/lib/logging/errors";
+import { PERMISSIONS, AVAILABLE_PERMISSIONS } from "@/lib/auth/permissions";
 
 // Mock logger
-vi.mock("@/lib/logger", () => ({
+vi.mock("@/lib/logging/logger", () => ({
   logger: {
     child: () => ({
       info: vi.fn(),
@@ -54,14 +54,20 @@ vi.mock("@/lib/prisma", () => ({
 
 // Mock apiKeyService
 const mockValidate = vi.fn();
-vi.mock("@/services/api-key-service", () => ({
+vi.mock("@/services/auth/api-key-service", () => ({
   apiKeyService: {
     validate: (...args: any[]) => mockValidate(...args),
   },
 }));
 
-// Import getAuthContext after mocks are defined
-const { getAuthContext } = await import("@/lib/access-control");
+// Import functions after mocks are defined
+const {
+  getAuthContext,
+  getCurrentUserWithGroup,
+  checkPermission,
+  getUserPermissions,
+  hasPermission,
+} = await import("@/lib/auth/access-control");
 
 describe("Access Control", () => {
   beforeEach(() => {
@@ -238,6 +244,28 @@ describe("Access Control", () => {
       expect(ctx!.authMethod).toBe("apikey");
     });
 
+    it("should fall back to API key when session user has no group", async () => {
+      mockGetSession.mockResolvedValue({ user: { id: "user-1" } });
+      // User exists but has no group assigned.
+      mockPrismaUser.findUnique.mockResolvedValue({
+        id: "user-1",
+        group: null,
+      });
+      mockValidate.mockResolvedValue({
+        id: "key-1",
+        userId: "user-1",
+        permissions: ["jobs:read"],
+      });
+
+      const headers = new Headers({
+        authorization: "Bearer dbackup_fallbackkey",
+      });
+      const ctx = await getAuthContext(headers);
+
+      // Session auth was incomplete (no group), so API key auth takes over.
+      expect(ctx!.authMethod).toBe("apikey");
+    });
+
     it("should ignore non-Bearer authorization headers", async () => {
       mockGetSession.mockResolvedValue(null);
 
@@ -338,6 +366,257 @@ describe("Access Control", () => {
       expect(() => {
         checkPermissionWithContext(ctx, PERMISSIONS.JOBS.WRITE);
       }).toThrow(PermissionError);
+    });
+  });
+
+  // ========================================================================
+  // getCurrentUserWithGroup()
+  // ========================================================================
+  describe("getCurrentUserWithGroup", () => {
+    it("should return null when session throws", async () => {
+      mockGetSession.mockRejectedValue(new Error("headers unavailable"));
+
+      const result = await getCurrentUserWithGroup();
+
+      expect(result).toBeNull();
+    });
+
+    it("should return null when no session user", async () => {
+      mockGetSession.mockResolvedValue(null);
+
+      const result = await getCurrentUserWithGroup();
+
+      expect(result).toBeNull();
+    });
+
+    it("should return user with group", async () => {
+      mockGetSession.mockResolvedValue({ user: { id: "user-1" } });
+      mockPrismaUser.findUnique.mockResolvedValue({
+        id: "user-1",
+        groupId: "g-1",
+        group: { name: "Editors", permissions: '["jobs:read"]' },
+      });
+
+      const result = await getCurrentUserWithGroup();
+
+      expect(result).not.toBeNull();
+      expect(result!.id).toBe("user-1");
+      expect(result!.group!.name).toBe("Editors");
+    });
+
+    it("should auto-promote single user to SuperAdmin when no group is assigned", async () => {
+      mockGetSession.mockResolvedValue({ user: { id: "user-1" } });
+      mockPrismaUser.findUnique.mockResolvedValue({
+        id: "user-1",
+        groupId: null,
+        group: null,
+      });
+      mockPrismaUser.count.mockResolvedValue(1);
+      mockPrismaGroup.upsert.mockResolvedValue({ id: "g-1", name: "SuperAdmin" });
+      mockPrismaUser.update.mockResolvedValue({
+        id: "user-1",
+        groupId: "g-1",
+        group: { name: "SuperAdmin", permissions: "[]" },
+      });
+
+      const result = await getCurrentUserWithGroup();
+
+      expect(result!.group!.name).toBe("SuperAdmin");
+      expect(mockPrismaGroup.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { name: "SuperAdmin" } }),
+      );
+    });
+
+    it("should not auto-promote when multiple users exist", async () => {
+      mockGetSession.mockResolvedValue({ user: { id: "user-1" } });
+      mockPrismaUser.findUnique.mockResolvedValue({
+        id: "user-1",
+        groupId: null,
+        group: null,
+      });
+      mockPrismaUser.count.mockResolvedValue(3);
+
+      const result = await getCurrentUserWithGroup();
+
+      expect(mockPrismaGroup.upsert).not.toHaveBeenCalled();
+      expect(result!.groupId).toBeNull();
+    });
+  });
+
+  // ========================================================================
+  // checkPermission()
+  // ========================================================================
+  describe("checkPermission", () => {
+    it("should throw AuthenticationError when no user is found", async () => {
+      mockGetSession.mockResolvedValue(null);
+
+      await expect(checkPermission(PERMISSIONS.JOBS.READ)).rejects.toThrow(AuthenticationError);
+    });
+
+    it("should throw PermissionError when user has no group", async () => {
+      mockGetSession.mockResolvedValue({ user: { id: "user-1" } });
+      mockPrismaUser.findUnique.mockResolvedValue({
+        id: "user-1",
+        groupId: null,
+        group: null,
+      });
+      mockPrismaUser.count.mockResolvedValue(2); // no auto-promote
+
+      await expect(checkPermission(PERMISSIONS.JOBS.READ)).rejects.toThrow(PermissionError);
+    });
+
+    it("should return user for SuperAdmin regardless of permission", async () => {
+      mockGetSession.mockResolvedValue({ user: { id: "admin-1" } });
+      mockPrismaUser.findUnique.mockResolvedValue({
+        id: "admin-1",
+        groupId: "g-admin",
+        group: { name: "SuperAdmin", permissions: "[]" },
+      });
+
+      const user = await checkPermission(PERMISSIONS.SETTINGS.WRITE);
+
+      expect(user.id).toBe("admin-1");
+    });
+
+    it("should return user when permission is present in group", async () => {
+      mockGetSession.mockResolvedValue({ user: { id: "user-1" } });
+      mockPrismaUser.findUnique.mockResolvedValue({
+        id: "user-1",
+        groupId: "g-1",
+        group: { name: "Operators", permissions: '["jobs:read","jobs:execute"]' },
+      });
+
+      const user = await checkPermission(PERMISSIONS.JOBS.EXECUTE);
+
+      expect(user.id).toBe("user-1");
+    });
+
+    it("should throw PermissionError when permission is missing from group", async () => {
+      mockGetSession.mockResolvedValue({ user: { id: "user-1" } });
+      mockPrismaUser.findUnique.mockResolvedValue({
+        id: "user-1",
+        groupId: "g-1",
+        group: { name: "ReadOnly", permissions: '["jobs:read"]' },
+      });
+
+      await expect(checkPermission(PERMISSIONS.JOBS.EXECUTE)).rejects.toThrow(PermissionError);
+    });
+
+    it("should throw PermissionError when group permissions JSON is invalid", async () => {
+      mockGetSession.mockResolvedValue({ user: { id: "user-1" } });
+      mockPrismaUser.findUnique.mockResolvedValue({
+        id: "user-1",
+        groupId: "g-1",
+        group: { id: "g-1", name: "Broken", permissions: "not-valid-json" },
+      });
+
+      await expect(checkPermission(PERMISSIONS.JOBS.READ)).rejects.toThrow(PermissionError);
+    });
+  });
+
+  // ========================================================================
+  // getUserPermissions()
+  // ========================================================================
+  describe("getUserPermissions", () => {
+    it("should return empty array when no user session", async () => {
+      mockGetSession.mockResolvedValue(null);
+
+      const perms = await getUserPermissions();
+
+      expect(perms).toEqual([]);
+    });
+
+    it("should return empty array when user has no group", async () => {
+      mockGetSession.mockResolvedValue({ user: { id: "user-1" } });
+      mockPrismaUser.findUnique.mockResolvedValue({
+        id: "user-1",
+        groupId: null,
+        group: null,
+      });
+      mockPrismaUser.count.mockResolvedValue(2);
+
+      const perms = await getUserPermissions();
+
+      expect(perms).toEqual([]);
+    });
+
+    it("should return all available permissions for SuperAdmin", async () => {
+      mockGetSession.mockResolvedValue({ user: { id: "admin-1" } });
+      mockPrismaUser.findUnique.mockResolvedValue({
+        id: "admin-1",
+        groupId: "g-admin",
+        group: { name: "SuperAdmin", permissions: "[]" },
+      });
+
+      const perms = await getUserPermissions();
+
+      expect(perms.length).toBe(AVAILABLE_PERMISSIONS.length);
+      expect(perms).toContain(PERMISSIONS.SETTINGS.WRITE);
+    });
+
+    it("should return parsed permissions for regular user", async () => {
+      mockGetSession.mockResolvedValue({ user: { id: "user-1" } });
+      mockPrismaUser.findUnique.mockResolvedValue({
+        id: "user-1",
+        groupId: "g-1",
+        group: { name: "Editors", permissions: '["jobs:read","history:read"]' },
+      });
+
+      const perms = await getUserPermissions();
+
+      expect(perms).toEqual(["jobs:read", "history:read"]);
+    });
+
+    it("should return empty array when permissions JSON is invalid", async () => {
+      mockGetSession.mockResolvedValue({ user: { id: "user-1" } });
+      mockPrismaUser.findUnique.mockResolvedValue({
+        id: "user-1",
+        groupId: "g-1",
+        group: { name: "Broken", permissions: "{invalid" },
+      });
+
+      const perms = await getUserPermissions();
+
+      expect(perms).toEqual([]);
+    });
+  });
+
+  // ========================================================================
+  // hasPermission()
+  // ========================================================================
+  describe("hasPermission", () => {
+    it("should return true when user has the permission", async () => {
+      mockGetSession.mockResolvedValue({ user: { id: "user-1" } });
+      mockPrismaUser.findUnique.mockResolvedValue({
+        id: "user-1",
+        groupId: "g-1",
+        group: { name: "Operators", permissions: '["jobs:execute"]' },
+      });
+
+      const result = await hasPermission(PERMISSIONS.JOBS.EXECUTE);
+
+      expect(result).toBe(true);
+    });
+
+    it("should return false when user lacks the permission", async () => {
+      mockGetSession.mockResolvedValue({ user: { id: "user-1" } });
+      mockPrismaUser.findUnique.mockResolvedValue({
+        id: "user-1",
+        groupId: "g-1",
+        group: { name: "ReadOnly", permissions: '["jobs:read"]' },
+      });
+
+      const result = await hasPermission(PERMISSIONS.JOBS.EXECUTE);
+
+      expect(result).toBe(false);
+    });
+
+    it("should return false when no user session exists", async () => {
+      mockGetSession.mockResolvedValue(null);
+
+      const result = await hasPermission(PERMISSIONS.JOBS.READ);
+
+      expect(result).toBe(false);
     });
   });
 });

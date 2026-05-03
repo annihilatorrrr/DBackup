@@ -41,6 +41,15 @@ describe('Discord Adapter', () => {
         expect(result.message).toContain('404');
     });
 
+    it('should handle test network error', async () => {
+        mockFetch.mockRejectedValueOnce(new Error('Network down'));
+
+        const result = await DiscordAdapter.test!({ webhookUrl: 'https://discord.com/api/webhooks/xxx' });
+
+        expect(result.success).toBe(false);
+        expect(result.message).toContain('Network down');
+    });
+
     it('should send backup notification with embed', async () => {
         mockFetch.mockResolvedValue({ ok: true });
 
@@ -92,5 +101,31 @@ describe('Discord Adapter', () => {
         expect(body.embeds[0].color).toBe(0xff0000); // Red
         expect(body.embeds[0].title).toBe('Backup Failed');
         expect(body.embeds[0].description).toContain('Failed');
+    });
+
+    it('should return false on HTTP error in send()', async () => {
+        mockFetch.mockResolvedValueOnce({
+            ok: false,
+            status: 500,
+            statusText: 'Server Error',
+        });
+
+        const result = await DiscordAdapter.send(
+            { webhookUrl: 'https://discord.com/api/webhooks/test' },
+            'Failed'
+        );
+
+        expect(result).toBe(false);
+    });
+
+    it('should return false on network error in send()', async () => {
+        mockFetch.mockRejectedValueOnce(new Error('Timeout'));
+
+        const result = await DiscordAdapter.send(
+            { webhookUrl: 'https://discord.com/api/webhooks/test' },
+            'Failed'
+        );
+
+        expect(result).toBe(false);
     });
 });

@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { prismaMock } from '@/lib/testing/prisma-mock';
-import { JobService, CreateJobInput } from '@/services/job-service';
-import { scheduler } from '@/lib/scheduler';
+import { JobService, CreateJobInput } from '@/services/jobs/job-service';
+import { scheduler } from '@/lib/server/scheduler';
 
 // Mock the global scheduler singleton to avoid side effects (like starting cron timers)
-vi.mock('@/lib/scheduler', () => ({
+vi.mock('@/lib/server/scheduler', () => ({
     scheduler: {
         refresh: vi.fn().mockResolvedValue(undefined)
     }
@@ -77,6 +77,32 @@ describe('JobService', () => {
             // 3. Check result
             expect(result).toEqual(expectedJob);
         });
+
+        it('should use default values when optional fields are omitted', async () => {
+            prismaMock.job.create.mockResolvedValue({ id: 'job-defaults' } as any);
+
+            await service.createJob({
+                name: 'Minimal Job',
+                schedule: '0 * * * *',
+                sourceId: 'src-1',
+                destinations: [{ configId: 'd-1', priority: 1, retention: '' }],
+            });
+
+            expect(prismaMock.job.create).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    data: expect.objectContaining({
+                        enabled: true,
+                        compression: 'NONE',
+                        notificationEvents: 'ALWAYS',
+                        encryptionProfileId: null,
+                        notifications: { connect: [] },
+                        destinations: {
+                            create: [{ configId: 'd-1', priority: 1, retention: '{}' }],
+                        },
+                    }),
+                })
+            );
+        });
     });
 
     describe('getJobs', () => {
@@ -107,6 +133,165 @@ describe('JobService', () => {
                 orderBy: { createdAt: 'desc' }
             });
             expect(result).toHaveLength(2);
+        });
+    });
+
+    describe('getJobById', () => {
+        it('should return a job when found', async () => {
+            const mockJob = { id: 'job-1', name: 'Test Job', source: {}, destinations: [], notifications: [] };
+            prismaMock.job.findUnique.mockResolvedValue(mockJob as any);
+
+            const result = await service.getJobById('job-1');
+
+            expect(prismaMock.job.findUnique).toHaveBeenCalledWith({
+                where: { id: 'job-1' },
+                include: expect.objectContaining({ source: true, notifications: true }),
+            });
+            expect(result).toEqual(mockJob);
+        });
+
+        it('should return null when job does not exist', async () => {
+            prismaMock.job.findUnique.mockResolvedValue(null);
+
+            const result = await service.getJobById('missing');
+
+            expect(result).toBeNull();
+        });
+    });
+
+    describe('createJob - name uniqueness', () => {
+        it('should throw when a job with the same name already exists', async () => {
+            prismaMock.job.findFirst.mockResolvedValue({ id: 'other', name: 'Duplicate' } as any);
+
+            await expect(
+                service.createJob({
+                    name: 'Duplicate',
+                    schedule: '0 0 * * *',
+                    sourceId: 's-1',
+                    destinations: [],
+                })
+            ).rejects.toThrow('A job with the name "Duplicate" already exists.');
+
+            expect(prismaMock.job.create).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('updateJob', () => {
+        it('should update job fields and refresh the scheduler', async () => {
+            const updatedJob = { id: 'job-1', name: 'Renamed', enabled: false };
+            prismaMock.job.findFirst.mockResolvedValue(null);
+            prismaMock.$transaction.mockImplementation(async (callback: any) => callback(prismaMock));
+            prismaMock.job.update.mockResolvedValue(updatedJob as any);
+
+            const result = await service.updateJob('job-1', { name: 'Renamed', enabled: false });
+
+            expect(prismaMock.job.update).toHaveBeenCalledWith(
+                expect.objectContaining({ where: { id: 'job-1' } })
+            );
+            expect(scheduler.refresh).toHaveBeenCalledTimes(1);
+            expect(result).toEqual(updatedJob);
+        });
+
+        it('should replace destinations when provided', async () => {
+            prismaMock.job.findFirst.mockResolvedValue(null);
+            prismaMock.$transaction.mockImplementation(async (callback: any) => callback(prismaMock));
+            prismaMock.jobDestination.deleteMany.mockResolvedValue({ count: 2 } as any);
+            prismaMock.jobDestination.createMany.mockResolvedValue({ count: 1 } as any);
+            prismaMock.job.update.mockResolvedValue({ id: 'job-1' } as any);
+
+            await service.updateJob('job-1', {
+                destinations: [{ configId: 'dest-2', priority: 0, retention: '{}' }],
+            });
+
+            expect(prismaMock.jobDestination.deleteMany).toHaveBeenCalledWith({ where: { jobId: 'job-1' } });
+            expect(prismaMock.jobDestination.createMany).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    data: expect.arrayContaining([
+                        expect.objectContaining({ configId: 'dest-2', jobId: 'job-1' }),
+                    ]),
+                })
+            );
+        });
+
+        it('should throw when updated name conflicts with another job', async () => {
+            prismaMock.job.findFirst.mockResolvedValue({ id: 'other-job', name: 'Taken' } as any);
+
+            await expect(service.updateJob('job-1', { name: 'Taken' }))
+                .rejects.toThrow('A job with the name "Taken" already exists.');
+        });
+
+        it('should connect notification channels when notificationIds provided', async () => {
+            prismaMock.job.findFirst.mockResolvedValue(null);
+            prismaMock.$transaction.mockImplementation(async (callback: any) => callback(prismaMock));
+            prismaMock.job.update.mockResolvedValue({ id: 'job-1' } as any);
+
+            await service.updateJob('job-1', { notificationIds: ['notif-1', 'notif-2'] });
+
+            expect(prismaMock.job.update).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    data: expect.objectContaining({
+                        notifications: {
+                            set: [],
+                            connect: [{ id: 'notif-1' }, { id: 'notif-2' }],
+                        },
+                    }),
+                })
+            );
+        });
+
+        it('should clear encryptionProfileId when empty string is passed', async () => {
+            prismaMock.job.findFirst.mockResolvedValue(null);
+            prismaMock.$transaction.mockImplementation(async (callback: any) => callback(prismaMock));
+            prismaMock.job.update.mockResolvedValue({ id: 'job-1' } as any);
+
+            await service.updateJob('job-1', { encryptionProfileId: '' });
+
+            expect(prismaMock.job.update).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    data: expect.objectContaining({ encryptionProfileId: null }),
+                })
+            );
+        });
+
+        it('should serialize databases array and use "{}" default for empty retention', async () => {
+            prismaMock.job.findFirst.mockResolvedValue(null);
+            prismaMock.$transaction.mockImplementation(async (callback: any) => callback(prismaMock));
+            prismaMock.jobDestination.deleteMany.mockResolvedValue({ count: 0 } as any);
+            prismaMock.jobDestination.createMany.mockResolvedValue({ count: 1 } as any);
+            prismaMock.job.update.mockResolvedValue({ id: 'job-1' } as any);
+
+            await service.updateJob('job-1', {
+                databases: ['db1', 'db2'],
+                destinations: [{ configId: 'd-1', priority: 0, retention: '' }],
+            });
+
+            expect(prismaMock.job.update).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    data: expect.objectContaining({
+                        databases: JSON.stringify(['db1', 'db2']),
+                    }),
+                })
+            );
+            expect(prismaMock.jobDestination.createMany).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    data: expect.arrayContaining([
+                        expect.objectContaining({ retention: '{}' }),
+                    ]),
+                })
+            );
+        });
+    });
+
+    describe('deleteJob', () => {
+        it('should delete a job and refresh the scheduler', async () => {
+            const deletedJob = { id: 'job-1', name: 'Old Job' };
+            prismaMock.job.delete.mockResolvedValue(deletedJob as any);
+
+            const result = await service.deleteJob('job-1');
+
+            expect(prismaMock.job.delete).toHaveBeenCalledWith({ where: { id: 'job-1' } });
+            expect(scheduler.refresh).toHaveBeenCalledTimes(1);
+            expect(result).toEqual(deletedJob);
         });
     });
 });

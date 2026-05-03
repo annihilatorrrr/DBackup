@@ -5,8 +5,8 @@ import path from "path";
 import fs from "fs/promises";
 import os from "os";
 import { LogLevel, LogType } from "@/lib/core/logs";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ adapter: "smb" });
 
@@ -62,6 +62,7 @@ export const SMBAdapter: StorageAdapter = {
     type: "storage",
     name: "SMB (Samba)",
     configSchema: SMBSchema,
+    credentials: { primary: "USERNAME_PASSWORD" },
 
     async upload(config: SMBConfig, localPath: string, remotePath: string, onProgress?: (percent: number) => void, onLog?: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void): Promise<boolean> {
         try {
@@ -153,7 +154,7 @@ export const SMBAdapter: StorageAdapter = {
                         ? normalize(currentDir) + "/" + item.name
                         : item.name;
 
-                    if (item.type === "D") {
+                    if (item.type.includes("D")) {
                         await walk(fullPath);
                     } else {
                         // Calculate relative path (strip prefix)

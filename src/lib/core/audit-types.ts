@@ -20,6 +20,7 @@ export const AUDIT_RESOURCES = {
   SYSTEM: "SYSTEM",
   ADAPTER: "ADAPTER",
   VAULT: "VAULT", // Encryption profiles / recovery kits
+  CREDENTIAL: "CREDENTIAL", // Credential profiles (DB/SSH/storage credentials)
   API_KEY: "API_KEY",
 } as const;
 

@@ -1,7 +1,7 @@
 import { NotificationAdapter } from "@/lib/core/interfaces";
 import { GotifySchema, GotifyConfig } from "@/lib/adapters/definitions";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 import { validateOutboundUrl } from "@/lib/url-validation";
 
 const log = logger.child({ adapter: "gotify" });
@@ -52,6 +52,7 @@ export const GotifyAdapter: NotificationAdapter = {
     type: "notification",
     name: "Gotify",
     configSchema: GotifySchema,
+    credentials: { primary: "TOKEN" },
 
     async test(config: GotifyConfig): Promise<{ success: boolean; message: string }> {
         try {

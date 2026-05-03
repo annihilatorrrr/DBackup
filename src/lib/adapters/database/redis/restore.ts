@@ -3,7 +3,7 @@ import { LogLevel, LogType } from "@/lib/core/logs";
 import { buildConnectionArgs } from "./connection";
 import { execFile } from "child_process";
 import util from "util";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/logging/logger";
 import { RedisConfig } from "@/lib/adapters/definitions";
 
 const execFileAsync = util.promisify(execFile);

@@ -7,7 +7,7 @@ import { SshClient, shellEscape, extractSqliteSshConfig, remoteBinaryCheck } fro
 
 const execFileAsync = promisify(execFile);
 
-export const test: DatabaseAdapter["test"] = async (config) => {
+export const test: NonNullable<DatabaseAdapter["test"]> = async (config) => {
     try {
         const mode = config.mode || "local";
         const dbPath = config.path;
@@ -64,14 +64,14 @@ export const test: DatabaseAdapter["test"] = async (config) => {
     }
 };
 
-export const getDatabases: DatabaseAdapter["getDatabases"] = async (config) => {
+export const getDatabases: NonNullable<DatabaseAdapter["getDatabases"]> = async (config) => {
      // For SQLite, the path itself is the database. We can return the filename.
      const path = config.path as string;
      const name = path.split(/[\\/]/).pop() || "database.sqlite";
      return [name];
 };
 
-export const getDatabasesWithStats: DatabaseAdapter["getDatabasesWithStats"] = async (config) => {
+export const getDatabasesWithStats: NonNullable<DatabaseAdapter["getDatabasesWithStats"]> = async (config) => {
     const dbPath = config.path as string;
     const name = dbPath.split(/[\\/]/).pop() || "database.sqlite";
     const mode = config.mode || "local";

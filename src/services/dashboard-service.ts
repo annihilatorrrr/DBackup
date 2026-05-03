@@ -2,11 +2,11 @@ import prisma from "@/lib/prisma";
 import { format, subDays, startOfDay } from "date-fns";
 import { registry } from "@/lib/core/registry";
 import { StorageAdapter } from "@/lib/core/interfaces";
-import { decryptConfig } from "@/lib/crypto";
+import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import { registerAdapters } from "@/lib/adapters";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
-import { checkStorageAlerts } from "@/services/storage-alert-service";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
+import { checkStorageAlerts } from "@/services/storage/storage-alert-service";
 
 export interface DashboardStats {
   totalJobs: number;
@@ -282,7 +282,7 @@ export async function refreshStorageStatsCache(): Promise<StorageVolumeEntry[]> 
       const adapter = registry.get(adapterConfig.adapterId) as StorageAdapter;
       if (!adapter) return null;
 
-      const config = decryptConfig(JSON.parse(adapterConfig.config));
+      const config = await resolveAdapterConfig(adapterConfig);
       const files = await adapter.list(config, "");
 
       // Filter out .meta.json sidecar files (they are not backup data)

@@ -1,7 +1,7 @@
 import { Client, ConnectConfig, SFTPWrapper } from "ssh2";
 import { createReadStream, createWriteStream } from "fs";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 import { MSSQLConfig } from "@/lib/adapters/definitions";
 
 const log = logger.child({ adapter: "mssql", module: "ssh-transfer" });

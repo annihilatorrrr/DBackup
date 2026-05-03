@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
+import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
 import { registry } from "@/lib/core/registry";
 import { registerAdapters } from "@/lib/adapters";
-import { decryptConfig } from "@/lib/crypto";
+import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 import prisma from "@/lib/prisma";
 
 registerAdapters();
@@ -40,7 +40,7 @@ export async function GET(
     }
 
     try {
-        const config = decryptConfig(JSON.parse(adapterConfig.config));
+        const config = await resolveAdapterConfig(adapterConfig);
         const databases = await adapter.getDatabases(config);
         return NextResponse.json({ success: true, databases });
     } catch (error: unknown) {

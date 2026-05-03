@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: DBackup API
-  version: 1.4.8
+  version: 2.0.0
   description: |
     REST API for DBackup - a self-hosted database backup automation platform with encryption, compression, and smart retention.
 
@@ -28,7 +28,7 @@ info:
     url: https://www.gnu.org/licenses/gpl-3.0.html
 externalDocs:
   description: DBackup Support
-  url: https://dbackup.app/#community-support
+  url: https://docs.dbackup.app/#community-support
 
 servers:
   - url: "{protocol}://{host}/api"
@@ -58,7 +58,7 @@ tags:
   - name: Storage Explorer
     description: "Browse, download, delete, and restore backup files"
   - name: Vault
-    description: Encryption profiles and recovery kits
+    description: Encryption profiles, credential profiles, and recovery kits
   - name: Settings
     description: System tasks and configuration
   - name: Health
@@ -207,6 +207,34 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /jobs/{id}/clone:
+    post:
+      tags: [Jobs]
+      summary: Clone Job
+      description: |
+        Creates a copy of the job with the suffix `(Copy)` appended to the name.
+        The clone is created in a disabled state.
+
+        **Required permission:** `jobs:write`
+      operationId: cloneJob
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "201":
+          description: Cloned job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   # ─── Executions ────────────────────────────────────────────────
   /executions/{id}:
     get:
@@ -246,6 +274,44 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /executions/{id}/cancel:
+    post:
+      tags: [Executions]
+      summary: Cancel Execution
+      description: |
+        Cancel a pending or running execution.
+
+        - A `Pending` execution is cancelled immediately.
+        - A `Running` execution receives an abort signal. If the process is not
+          running in this server instance the status is forced to `Cancelled` in
+          the database.
+
+        **Required permission:** `jobs:execute`
+      operationId: cancelExecution
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Execution cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: Execution is already completed and cannot be cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   # ─── History ───────────────────────────────────────────────────
   /history:
@@ -475,6 +541,35 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /adapters/{id}/clone:
+    post:
+      tags: [Adapters]
+      summary: Clone Adapter
+      description: |
+        Creates a copy of the adapter configuration with the suffix `(Copy)` appended to
+        the name. The same write permission as the adapter type is required:
+        - `database` - `sources:write`
+        - `storage` - `destinations:write`
+        - `notification` - `notifications:write`
+      operationId: cloneAdapter
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "201":
+          description: Cloned adapter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdapterConfig"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /adapters/{id}/databases:
     get:
       tags: [Adapters]
@@ -585,6 +680,12 @@ paths:
                 configId:
                   type: string
                   description: Existing adapter ID (updates metadata on success)
+                primaryCredentialId:
+                  type: string
+                  description: Credential profile ID to overlay on the primary connection config (username, password, access key, token, etc.)
+                sshCredentialId:
+                  type: string
+                  description: Credential profile ID to overlay on the SSH tunnel config (SSH key or password)
       responses:
         "401":
           $ref: "#/components/responses/Unauthorized"
@@ -1484,13 +1585,14 @@ components:
 
     ExecutionStatus:
       type: string
-      enum: [Pending, Running, Success, Failed, Partial]
+      enum: [Pending, Running, Success, Failed, Partial, Cancelled]
       description: |
         - `Pending` - Queued, waiting for an execution slot
         - `Running` - Currently executing
         - `Success` - Completed successfully
         - `Failed` - Execution failed
         - `Partial` - Some destinations succeeded, others failed
+        - `Cancelled` - Cancelled by a user before or during execution
 
     # ─── Adapters ────────────────────────────────────────────────
     AdapterConfig:

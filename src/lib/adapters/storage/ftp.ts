@@ -6,8 +6,8 @@ import fs from "fs/promises";
 import path from "path";
 import os from "os";
 import { LogLevel, LogType } from "@/lib/core/logs";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ adapter: "ftp" });
 
@@ -64,6 +64,7 @@ export const FTPAdapter: StorageAdapter = {
     type: "storage",
     name: "FTP / FTPS",
     configSchema: FTPSchema,
+    credentials: { primary: "USERNAME_PASSWORD" },
 
     async upload(config: FTPConfig, localPath: string, remotePath: string, onProgress?: (percent: number) => void, onLog?: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void): Promise<boolean> {
         let client: Client | null = null;
@@ -74,8 +75,11 @@ export const FTPAdapter: StorageAdapter = {
 
             const destination = resolvePath(config, remotePath);
 
-            // Ensure directory exists
+            // Ensure directory exists. basic-ftp's ensureDir changes CWD to the
+            // created directory, so reset to root afterwards to allow absolute-style
+            // path resolution in the subsequent uploadFrom call.
             await ensureDir(client, destination);
+            await client.cd("/");
 
             if (onLog) onLog(`Starting FTP upload to: ${destination}`, "info", "storage");
 

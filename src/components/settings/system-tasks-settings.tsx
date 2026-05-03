@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Play } from "lucide-react";
+import { Play, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
@@ -22,6 +22,8 @@ export function SystemTasksSettings() {
     const [tasks, setTasks] = useState<SystemTask[]>([]);
     const [loading, setLoading] = useState(false);
     const [editing, setEditing] = useState<Record<string, string>>({});
+    const [saving, setSaving] = useState<Record<string, boolean>>({});
+    const [running, setRunning] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         fetchTasks();
@@ -45,6 +47,7 @@ export function SystemTasksSettings() {
         const schedule = editing[taskId];
         if (!schedule) return;
 
+        setSaving(s => ({ ...s, [taskId]: true }));
         try {
             const res = await fetch("/api/settings/system-tasks", {
                 method: "POST",
@@ -53,7 +56,7 @@ export function SystemTasksSettings() {
             });
             if (res.ok) {
                 toast.success("Schedule updated");
-                fetchTasks(); // Refresh to clean state
+                fetchTasks();
                 const newEdit = { ...editing };
                 delete newEdit[taskId];
                 setEditing(newEdit);
@@ -62,6 +65,8 @@ export function SystemTasksSettings() {
             }
         } catch {
             toast.error("Error saving schedule");
+        } finally {
+            setSaving(s => ({ ...s, [taskId]: false }));
         }
     };
 
@@ -116,6 +121,7 @@ export function SystemTasksSettings() {
     };
 
     const handleRun = async (taskId: string) => {
+        setRunning(r => ({ ...r, [taskId]: true }));
         try {
             const res = await fetch("/api/settings/system-tasks", {
                 method: "PUT",
@@ -129,6 +135,8 @@ export function SystemTasksSettings() {
             }
         } catch {
             toast.error("Error starting task");
+        } finally {
+            setRunning(r => ({ ...r, [taskId]: false }));
         }
     };
 
@@ -171,12 +179,15 @@ export function SystemTasksSettings() {
                                     />
                                 </div>
                                 {editing[task.id] && (
-                                     <Button size="sm" onClick={() => handleSave(task.id)}>Save</Button>
+                                    <Button size="sm" onClick={() => handleSave(task.id)} disabled={saving[task.id]}>
+                                        {saving[task.id] ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                                    </Button>
                                 )}
 
                                 <div className="flex items-center border-l pl-4 mx-2">
-                                    <Button size="sm" variant="outline" onClick={() => handleRun(task.id)}>
-                                        <Play className="h-4 w-4 mr-1" /> Run Now
+                                    <Button size="sm" variant="outline" onClick={() => handleRun(task.id)} disabled={running[task.id]}>
+                                        {running[task.id] ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Play className="h-4 w-4 mr-1" />}
+                                        Run Now
                                     </Button>
                                 </div>
 

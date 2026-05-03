@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getCompressionStream, getDecompressionStream, getCompressionExtension } from '@/lib/compression';
+import { getCompressionStream, getDecompressionStream, getCompressionExtension } from '@/lib/crypto/compression';
 import { pipeline } from 'stream/promises';
 import { Readable } from 'stream';
 

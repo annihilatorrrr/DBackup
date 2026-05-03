@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getAuthLimiter, getApiLimiter, getMutationLimiter, applyExternalConfig } from "./lib/rate-limit";
 import type { RateLimitConfig } from "./lib/rate-limit";
-import { logger } from "./lib/logger";
+import { logger } from "./lib/logging/logger";
 
 const log = logger.child({ module: "Middleware" });
 

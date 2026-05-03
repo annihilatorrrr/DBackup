@@ -1,6 +1,6 @@
 import * as React from "react";
 
-const LOGO_URL = "https://dbackup.app/logo.png";
+const LOGO_URL = "https://docs.dbackup.app/logo.png";
 
 /**
  * Shadcn/UI-inspired email notification template.
@@ -295,7 +295,7 @@ export const SystemNotificationEmail: React.FC<SystemNotificationEmailProps> = (
               >
                 Sent by{" "}
                 <a
-                  href="https://dbackup.app"
+                  href="https://docs.dbackup.app"
                   style={{
                     color: tokens.foregroundMuted,
                     textDecoration: "none",

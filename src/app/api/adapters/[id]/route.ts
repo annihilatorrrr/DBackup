@@ -4,10 +4,14 @@ import { encryptConfig } from "@/lib/crypto";
 import { headers } from "next/headers";
 import { auditService } from "@/services/audit-service";
 import { AUDIT_ACTIONS, AUDIT_RESOURCES } from "@/lib/core/audit-types";
-import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PERMISSIONS, Permission } from "@/lib/permissions";
-import { logger } from "@/lib/logger";
-import { wrapError, getErrorMessage } from "@/lib/errors";
+import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PERMISSIONS, Permission } from "@/lib/auth/permissions";
+import { logger } from "@/lib/logging/logger";
+import { wrapError, getErrorMessage, ValidationError, NotFoundError } from "@/lib/logging/errors";
+import { registerAdapters } from "@/lib/adapters";
+import { validateCredentialAssignments } from "@/lib/adapters/credential-validation";
+
+registerAdapters();
 
 const log = logger.child({ route: "adapters/[id]" });
 
@@ -107,7 +111,7 @@ export async function PUT(
         // RBAC: Check permission based on adapter type
         const existingAdapter = await prisma.adapterConfig.findUnique({
             where: { id: params.id },
-            select: { type: true }
+            select: { type: true, adapterId: true, lastError: true }
         });
         if (!existingAdapter) {
             return NextResponse.json({ success: false, error: "Adapter not found" }, { status: 404 });
@@ -115,7 +119,26 @@ export async function PUT(
         checkPermissionWithContext(ctx, getWritePermissionForType(existingAdapter.type));
 
         const body = await req.json();
-        const { name, config, metadata } = body;
+        const { name, config, metadata, primaryCredentialId, sshCredentialId } = body;
+
+        // Validate credential profile assignments (if provided)
+        if (primaryCredentialId !== undefined || sshCredentialId !== undefined) {
+            try {
+                await validateCredentialAssignments(
+                    existingAdapter.adapterId,
+                    primaryCredentialId ?? null,
+                    sshCredentialId ?? null
+                );
+            } catch (e) {
+                if (e instanceof ValidationError) {
+                    return NextResponse.json({ error: e.message }, { status: 400 });
+                }
+                if (e instanceof NotFoundError) {
+                    return NextResponse.json({ error: e.message }, { status: 404 });
+                }
+                throw e;
+            }
+        }
 
         // Check name uniqueness within the same type (excluding current adapter)
         if (name) {
@@ -137,7 +160,13 @@ export async function PUT(
             data: {
                 name,
                 config: configString,
+                ...(primaryCredentialId !== undefined ? { primaryCredentialId: primaryCredentialId ?? null } : {}),
+                ...(sshCredentialId !== undefined ? { sshCredentialId: sshCredentialId ?? null } : {}),
                 ...(metadata !== undefined ? { metadata: JSON.stringify(metadata) } : {}),
+                // Clear the "No credential profile assigned" OFFLINE/DEGRADED flag when a profile is now assigned.
+                ...(primaryCredentialId && existingAdapter.lastError === "No credential profile assigned"
+                    ? { lastStatus: "ONLINE", lastError: null, consecutiveFailures: 0 }
+                    : {}),
             }
         });
 

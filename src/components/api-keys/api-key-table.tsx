@@ -10,14 +10,14 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { deleteApiKey, toggleApiKey, rotateApiKey } from "@/app/actions/api-key"
+import { deleteApiKey, toggleApiKey, rotateApiKey } from "@/app/actions/auth/api-key"
 import { toast } from "sonner"
 import { DateDisplay } from "@/components/utils/date-display"
 import { DataTable } from "@/components/ui/data-table"
 import { Badge } from "@/components/ui/badge"
 import { useState } from "react"
 import { ApiKeyRevealDialog } from "./api-key-reveal-dialog"
-import type { ApiKeyListItem } from "@/services/api-key-service"
+import type { ApiKeyListItem } from "@/services/auth/api-key-service"
 import {
     AlertDialog,
     AlertDialogAction,

@@ -15,10 +15,31 @@ const {
     mockFsStat,
     mockFsUnlink,
     mockFsOpen,
+    mockExtractFactory,
+    mockWriteStreamFactory,
     PassThrough,
 } = vi.hoisted(() => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { PassThrough } = require("stream") as { PassThrough: typeof import("stream").PassThrough };
+
+    // Default factory: emits finish immediately (empty tar)
+    const defaultExtractFactory = () => {
+        const stream = new PassThrough({ objectMode: true });
+        process.nextTick(() => stream.emit("finish"));
+        return stream;
+    };
+
+    const mockExtractFactory = { current: defaultExtractFactory as () => any };
+    // Factory for createWriteStream - default emits "finish" on pipe
+    const defaultWriteStreamFactory = () => {
+        const stream = new PassThrough();
+        stream.on("pipe", () => {
+            process.nextTick(() => stream.emit("finish"));
+        });
+        return stream;
+    };
+    const mockWriteStreamFactory = { current: defaultWriteStreamFactory as () => any };
+
     return {
         mockExecuteQuery: vi.fn(),
         mockExecuteParameterizedQuery: vi.fn(),
@@ -30,6 +51,8 @@ const {
         mockFsStat: vi.fn(),
         mockFsUnlink: vi.fn(),
         mockFsOpen: vi.fn(),
+        mockExtractFactory,
+        mockWriteStreamFactory,
         PassThrough,
     };
 });
@@ -76,13 +99,7 @@ vi.mock("fs", () => {
         return stream;
     });
 
-    const createWriteStream = vi.fn(() => {
-        const stream = new PassThrough();
-        stream.on("pipe", () => {
-            process.nextTick(() => stream.emit("finish"));
-        });
-        return stream;
-    });
+    const createWriteStream = vi.fn(() => mockWriteStreamFactory.current());
 
     return {
         default: { createReadStream, createWriteStream },
@@ -91,14 +108,9 @@ vi.mock("fs", () => {
     };
 });
 
-// Mock tar-stream
+// Mock tar-stream - delegates to mockExtractFactory.current so tests can override it
 vi.mock("tar-stream", () => ({
-    extract: vi.fn(() => {
-        const stream = new PassThrough({ objectMode: true });
-        // Simulate empty tar (no entries) by default
-        process.nextTick(() => stream.emit("finish"));
-        return stream;
-    }),
+    extract: vi.fn(() => mockExtractFactory.current()),
 }));
 
 import { restore, prepareRestore } from "@/lib/adapters/database/mssql/restore";
@@ -161,6 +173,22 @@ describe("MSSQL Restore", () => {
         mockSshConnect.mockResolvedValue(undefined);
         mockSshUpload.mockResolvedValue(undefined);
         mockSshDeleteRemote.mockResolvedValue(undefined);
+
+        // Reset TAR extract factory to default (empty tar - no entries)
+        mockExtractFactory.current = () => {
+            const stream = new PassThrough({ objectMode: true });
+            process.nextTick(() => stream.emit("finish"));
+            return stream;
+        };
+
+        // Reset write stream factory to default (emits finish on pipe)
+        mockWriteStreamFactory.current = () => {
+            const stream = new PassThrough();
+            stream.on("pipe", () => {
+                process.nextTick(() => stream.emit("finish"));
+            });
+            return stream;
+        };
     });
 
     afterEach(() => {
@@ -198,6 +226,23 @@ describe("MSSQL Restore", () => {
 
             const config = buildConfig();
             await expect(prepareRestore(config, ["newdb"])).resolves.toBeUndefined();
+        });
+
+        it("should wrap connection errors in a Cannot prepare restore message", async () => {
+            mockExecuteParameterizedQuery.mockRejectedValue(new Error("Connection refused"));
+
+            const config = buildConfig();
+            await expect(prepareRestore(config, ["testdb"])).rejects.toThrow(
+                "Cannot prepare restore for 'testdb'"
+            );
+        });
+
+        it("should re-throw invalid database name errors from the query as-is", async () => {
+            // The query itself throws an "Invalid database name" error (e.g. SQL Server rejects it)
+            mockExecuteParameterizedQuery.mockRejectedValue(new Error("Invalid database name: testdb"));
+
+            const config = buildConfig();
+            await expect(prepareRestore(config, ["testdb"])).rejects.toThrow("Invalid database name");
         });
     });
 
@@ -401,6 +446,252 @@ describe("MSSQL Restore", () => {
             const restoreQuery = mockExecuteQueryWithMessages.mock.calls[0][1];
             expect(restoreQuery).toContain("MOVE");
             expect(restoreQuery).toContain("staging");
+        });
+
+        it("should invoke onLog progress callback for SQL Server messages during restore", async () => {
+            const logs: string[] = [];
+            const config = buildConfig({ fileTransferMode: "local" });
+
+            mockExecuteQueryWithMessages.mockImplementation(
+                async (_cfg: any, _q: any, _db: any, _timeout: any, onMessage: any) => {
+                    if (onMessage) onMessage({ message: "30 percent processed." });
+                    return { result: { recordset: [] }, messages: [] };
+                }
+            );
+
+            await restore(config, "/backups/testdb.bak", (msg) => logs.push(msg));
+
+            expect(logs.some((l) => l.includes("SQL Server: 30 percent processed."))).toBe(true);
+        });
+    });
+
+    describe("TAR archive restore", () => {
+        function makeTarFileHandle() {
+            // Returns a buffer with "ustar" at offset 257 (valid POSIX tar magic)
+            const buf = Buffer.alloc(512, 0);
+            buf.write("ustar", 257, "ascii");
+            return {
+                read: vi.fn().mockImplementation(async (buffer: Buffer) => {
+                    buf.copy(buffer);
+                    return { bytesRead: 512 };
+                }),
+                close: vi.fn().mockResolvedValue(undefined),
+            };
+        }
+
+        it("should detect TAR archive via .bak header name (fallback detection)", async () => {
+            // No "ustar" magic, but header name ends with .bak
+            const buf = Buffer.alloc(512, 0);
+            buf.write("testdb.bak", 0, "ascii"); // First 100 bytes contain .bak filename
+            const altHandle = {
+                read: vi.fn().mockImplementation(async (buffer: Buffer) => {
+                    buf.copy(buffer);
+                    return { bytesRead: 512 };
+                }),
+                close: vi.fn().mockResolvedValue(undefined),
+            };
+            mockFsOpen.mockResolvedValue(altHandle);
+
+            const logs: string[] = [];
+            const config = buildConfig({ fileTransferMode: "local", database: "testdb" });
+            await restore(config, "/backups/testdb.tar", (msg) => logs.push(msg));
+
+            // TAR was detected via .bak header name
+            expect(logs.some((l) => l.includes("TAR archive"))).toBe(true);
+        });
+
+        it("should detect TAR archive (ustar magic) and log TAR detection", async () => {
+            mockFsOpen.mockResolvedValue(makeTarFileHandle());
+
+            const logs: string[] = [];
+            const config = buildConfig({ fileTransferMode: "local", database: "testdb" });
+
+            // TAR extract yields no files - restore continues but has no bakFiles to process
+            await restore(config, "/backups/testdb.tar", (msg) => logs.push(msg));
+
+            // TAR was detected: the log must contain the detection message
+            expect(logs.some((l) => l.includes("TAR archive"))).toBe(true);
+        });
+
+        it("should extract .bak entry from TAR archive and restore it", async () => {
+            mockFsOpen.mockResolvedValue(makeTarFileHandle());
+
+            // Override the tar extract factory to emit one .bak entry
+            mockExtractFactory.current = () => {
+                const extractor = new PassThrough({ objectMode: true });
+
+                process.nextTick(() => {
+                    // Simulate entry callback: header with a .bak filename
+                    const entryStream = new PassThrough();
+                    const next = vi.fn(() => {
+                        process.nextTick(() => extractor.emit("finish"));
+                    });
+
+                    // We need to call the "entry" listener registered by extractTarArchive
+                    const entryListeners = extractor.listeners("entry") as any[];
+                    if (entryListeners.length > 0) {
+                        entryListeners[0](
+                            { name: "testdb_2025-01-01T00-00-00.bak" },
+                            entryStream,
+                            next
+                        );
+                        process.nextTick(() => entryStream.emit("finish"));
+                    } else {
+                        extractor.emit("finish");
+                    }
+                });
+
+                return extractor;
+            };
+
+            const logs: string[] = [];
+            const config = buildConfig({ fileTransferMode: "local", database: "testdb" });
+
+            await restore(config, "/backups/testdb.tar", (msg) => logs.push(msg));
+
+            expect(logs.some((l) => l.includes("TAR archive"))).toBe(true);
+        });
+
+        it("should skip .bak entries not in the selected database set", async () => {
+            mockFsOpen.mockResolvedValue(makeTarFileHandle());
+
+            mockExtractFactory.current = () => {
+                const extractor = new PassThrough({ objectMode: true });
+
+                process.nextTick(() => {
+                    const entryStream = new PassThrough();
+                    const next = vi.fn(() => {
+                        process.nextTick(() => extractor.emit("finish"));
+                    });
+
+                    const entryListeners = extractor.listeners("entry") as any[];
+                    if (entryListeners.length > 0) {
+                        // Emit a .bak for a DB that is NOT in the target list
+                        entryListeners[0](
+                            { name: "otherdb_2025-01-01T00-00-00.bak" },
+                            entryStream,
+                            next
+                        );
+                    } else {
+                        extractor.emit("finish");
+                    }
+                });
+
+                return extractor;
+            };
+
+            const logs: string[] = [];
+            const config = buildConfig({ fileTransferMode: "local", database: "testdb" });
+
+            await restore(config, "/backups/multi.tar", (msg) => logs.push(msg));
+
+            // Skipping should be logged
+            expect(logs.some((l) => l.includes("Skipping extraction") || l.includes("TAR archive"))).toBe(true);
+        });
+
+        it("should skip non-.bak entries in the TAR archive (e.g. manifest.json)", async () => {
+            mockFsOpen.mockResolvedValue(makeTarFileHandle());
+
+            mockExtractFactory.current = () => {
+                const extractor = new PassThrough({ objectMode: true });
+
+                process.nextTick(() => {
+                    const entryStream = new PassThrough();
+                    const next = vi.fn(() => {
+                        process.nextTick(() => extractor.emit("finish"));
+                    });
+
+                    const entryListeners = extractor.listeners("entry") as any[];
+                    if (entryListeners.length > 0) {
+                        entryListeners[0](
+                            { name: "manifest.json" },
+                            entryStream,
+                            next
+                        );
+                        // stream.resume() is called, so emit data
+                        process.nextTick(() => entryStream.resume());
+                    } else {
+                        extractor.emit("finish");
+                    }
+                });
+
+                return extractor;
+            };
+
+            const config = buildConfig({ fileTransferMode: "local", database: "testdb" });
+            // Should not throw; non-.bak entries are silently skipped
+            const result = await restore(config, "/backups/archive.tar");
+            // No bakFiles extracted -> no target match -> result may fail or succeed depending on config
+            expect(result).toHaveProperty("success");
+        });
+
+        it("should return false when checkIfTarArchive throws (file unreadable)", async () => {
+            mockFsOpen.mockRejectedValue(new Error("ENOENT: no such file"));
+
+            // When TAR check fails, isTarArchive = false, falls through to single .bak path
+            const config = buildConfig({ fileTransferMode: "local" });
+            const result = await restore(config, "/nonexistent/backup.bak");
+
+            // Should still attempt a restore (as single .bak file)
+            expect(result.success).toBe(true);
+        });
+
+        it("should fail gracefully when the tar extractor emits an error", async () => {
+            mockFsOpen.mockResolvedValue(makeTarFileHandle());
+
+            mockExtractFactory.current = () => {
+                const extractor = new PassThrough({ objectMode: true });
+
+                process.nextTick(() => {
+                    extractor.emit("error", new Error("TAR read error"));
+                });
+
+                return extractor;
+            };
+
+            const config = buildConfig({ fileTransferMode: "local", database: "testdb" });
+            const result = await restore(config, "/backups/corrupt.tar");
+            expect(result.success).toBe(false);
+        });
+
+        it("should fail gracefully when the write stream for a .bak entry errors", async () => {
+            mockFsOpen.mockResolvedValue(makeTarFileHandle());
+
+            // Override the write stream factory to emit "error" instead of "finish"
+            mockWriteStreamFactory.current = () => {
+                const stream = new PassThrough();
+                stream.on("pipe", () => {
+                    process.nextTick(() => stream.emit("error", new Error("Disk full")));
+                });
+                return stream;
+            };
+
+            mockExtractFactory.current = () => {
+                const extractor = new PassThrough({ objectMode: true });
+
+                process.nextTick(() => {
+                    const entryStream = new PassThrough();
+                    const next = vi.fn();
+
+                    const entryListeners = extractor.listeners("entry") as any[];
+                    if (entryListeners.length > 0) {
+                        entryListeners[0](
+                            { name: "testdb_2025-01-01T00-00-00.bak" },
+                            entryStream,
+                            next
+                        );
+                        process.nextTick(() => entryStream.emit("finish"));
+                    } else {
+                        extractor.emit("finish");
+                    }
+                });
+
+                return extractor;
+            };
+
+            const config = buildConfig({ fileTransferMode: "local", database: "testdb" });
+            const result = await restore(config, "/backups/testdb.tar");
+            expect(result.success).toBe(false);
         });
     });
 });

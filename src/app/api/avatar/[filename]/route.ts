@@ -1,11 +1,11 @@
 import { headers } from "next/headers";
-import { getAuthContext } from "@/lib/access-control";
+import { getAuthContext } from "@/lib/auth/access-control";
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import fs from "fs/promises";
 import { existsSync } from "fs";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ route: "avatar" });
 

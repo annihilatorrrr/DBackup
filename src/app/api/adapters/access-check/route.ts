@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { registry } from "@/lib/core/registry";
 import { registerAdapters } from "@/lib/adapters";
+import { overlayCredentialsOnConfig } from "@/lib/adapters/config-resolver";
 import { headers } from "next/headers";
-import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PERMISSIONS, Permission } from "@/lib/permissions";
+import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PERMISSIONS, Permission } from "@/lib/auth/permissions";
 
 // Ensure adapters are registered
 registerAdapters();
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const { adapterId, config } = body;
+        const { adapterId, config, primaryCredentialId, sshCredentialId } = body;
 
         // RBAC: Check permission based on adapter type
         const requiredPermission = getPermissionForAdapter(adapterId || '');
@@ -51,7 +52,14 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, message: "This adapter does not support listing databases." });
         }
 
-        const databases = await adapter.getDatabases(config);
+        const mergedConfig = await overlayCredentialsOnConfig(
+            adapterId,
+            { ...config },
+            primaryCredentialId ?? null,
+            sshCredentialId ?? null
+        );
+
+        const databases = await adapter.getDatabases(mergedConfig);
 
         return NextResponse.json({ success: true, databases });
 

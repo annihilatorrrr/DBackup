@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: DBackup API
-  version: 1.4.8
+  version: 2.0.0
   description: |
     REST API for DBackup - a self-hosted database backup automation platform with encryption, compression, and smart retention.
 
@@ -28,7 +28,7 @@ info:
     url: https://www.gnu.org/licenses/gpl-3.0.html
 externalDocs:
   description: DBackup Support
-  url: https://dbackup.app/#community-support
+  url: https://docs.dbackup.app/#community-support
 
 servers:
   - url: "{protocol}://{host}/api"
@@ -58,7 +58,7 @@ tags:
   - name: Storage Explorer
     description: "Browse, download, delete, and restore backup files"
   - name: Vault
-    description: Encryption profiles and recovery kits
+    description: Encryption profiles, credential profiles, and recovery kits
   - name: Settings
     description: System tasks and configuration
   - name: Health
@@ -207,6 +207,34 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /jobs/{id}/clone:
+    post:
+      tags: [Jobs]
+      summary: Clone Job
+      description: |
+        Creates a copy of the job with the suffix `(Copy)` appended to the name.
+        The clone is created in a disabled state.
+
+        **Required permission:** `jobs:write`
+      operationId: cloneJob
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "201":
+          description: Cloned job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   # ─── Executions ────────────────────────────────────────────────
   /executions/{id}:
     get:
@@ -246,6 +274,44 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /executions/{id}/cancel:
+    post:
+      tags: [Executions]
+      summary: Cancel Execution
+      description: |
+        Cancel a pending or running execution.
+
+        - A `Pending` execution is cancelled immediately.
+        - A `Running` execution receives an abort signal. If the process is not
+          running in this server instance the status is forced to `Cancelled` in
+          the database.
+
+        **Required permission:** `jobs:execute`
+      operationId: cancelExecution
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Execution cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: Execution is already completed and cannot be cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   # ─── History ───────────────────────────────────────────────────
   /history:
@@ -475,6 +541,35 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /adapters/{id}/clone:
+    post:
+      tags: [Adapters]
+      summary: Clone Adapter
+      description: |
+        Creates a copy of the adapter configuration with the suffix `(Copy)` appended to
+        the name. The same write permission as the adapter type is required:
+        - `database` - `sources:write`
+        - `storage` - `destinations:write`
+        - `notification` - `notifications:write`
+      operationId: cloneAdapter
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "201":
+          description: Cloned adapter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdapterConfig"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /adapters/{id}/databases:
     get:
       tags: [Adapters]
@@ -585,6 +680,12 @@ paths:
                 configId:
                   type: string
                   description: Existing adapter ID (updates metadata on success)
+                primaryCredentialId:
+                  type: string
+                  description: Credential profile ID to overlay on the primary connection config (username, password, access key, token, etc.)
+                sshCredentialId:
+                  type: string
+                  description: Credential profile ID to overlay on the SSH tunnel config (SSH key or password)
       responses:
         "401":
           $ref: "#/components/responses/Unauthorized"
@@ -1074,6 +1175,227 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  # ─── Credentials ───────────────────────────────────────────────
+  /credentials:
+    get:
+      tags: [Vault]
+      summary: List Credential Profiles
+      description: |
+        Returns all credential profiles. Secrets are never included in the
+        response - use `GET /credentials/{id}/reveal` for that. Filter by
+        `type` to scope results (e.g. only `USERNAME_PASSWORD` profiles).
+      operationId: listCredentialProfiles
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: type
+          schema:
+            $ref: "#/components/schemas/CredentialType"
+          required: false
+      responses:
+        "200":
+          description: Sanitized credential profile list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CredentialProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Vault]
+      summary: Create Credential Profile
+      description: |
+        Create a new credential profile. The `data` payload is validated
+        against the per-type Zod schema and stored AES-256-GCM encrypted.
+      operationId: createCredentialProfile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CredentialProfileInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /credentials/{id}:
+    get:
+      tags: [Vault]
+      summary: Get Credential Profile
+      description: Returns the sanitized profile (no secret payload).
+      operationId: getCredentialProfile
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialProfile"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Vault]
+      summary: Update Credential Profile
+      description: |
+        Update name, description, and/or rotate the secret payload. Send only
+        the fields you want to change. The `type` is immutable after creation.
+      operationId: updateCredentialProfile
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+                data:
+                  description: Type-specific payload (see CredentialProfileInput.data)
+                  oneOf:
+                    - $ref: "#/components/schemas/UsernamePasswordData"
+                    - $ref: "#/components/schemas/SshKeyData"
+                    - $ref: "#/components/schemas/AccessKeyData"
+                    - $ref: "#/components/schemas/TokenData"
+                    - $ref: "#/components/schemas/SmtpData"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Vault]
+      summary: Delete Credential Profile
+      description: |
+        Deletes the profile if no adapter still references it. Returns
+        `409 Conflict` with the reference count if the profile is in use.
+      operationId: deleteCredentialProfile
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Profile is still referenced by one or more adapters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  references:
+                    type: integer
+
+  /credentials/{id}/usage:
+    get:
+      tags: [Vault]
+      summary: Get Credential Profile Usage
+      description: Returns the list of adapter configs that reference this profile.
+      operationId: getCredentialProfileUsage
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Reference list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  adapters:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        adapterId:
+                          type: string
+                        slot:
+                          type: string
+                          enum: [primary, ssh]
+
+  /credentials/{id}/reveal:
+    get:
+      tags: [Vault]
+      summary: Reveal Credential Profile Secrets
+      description: |
+        Returns the decrypted credential payload. Requires the
+        `CREDENTIALS.REVEAL` permission and is recorded in the audit log.
+      operationId: revealCredentialProfile
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Decrypted payload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    $ref: "#/components/schemas/CredentialType"
+                  data:
+                    description: Decrypted secret payload (shape depends on `type`)
+                    oneOf:
+                      - $ref: "#/components/schemas/UsernamePasswordData"
+                      - $ref: "#/components/schemas/SshKeyData"
+                      - $ref: "#/components/schemas/AccessKeyData"
+                      - $ref: "#/components/schemas/TokenData"
+                      - $ref: "#/components/schemas/SmtpData"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   # ─── Settings ──────────────────────────────────────────────────
   /settings/system-tasks:
     get:
@@ -1233,6 +1555,12 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+    BadRequest:
+      description: Invalid request payload (validation failure)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
 
   schemas:
     Error:
@@ -1258,6 +1586,125 @@ components:
           type: integer
         total:
           type: integer
+
+    # ─── Credentials ─────────────────────────────────────────────
+    CredentialType:
+      type: string
+      enum:
+        - USERNAME_PASSWORD
+        - SSH_KEY
+        - ACCESS_KEY
+        - TOKEN
+        - SMTP
+      description: |
+        Discriminator for the secret payload shape. The matching adapters are:
+        - `USERNAME_PASSWORD`: MySQL, MariaDB, Postgres, MongoDB, MSSQL, Redis, FTP, SMB, WebDAV
+        - `SSH_KEY`: SFTP, Rsync, and the SSH tunnel slot of any DB adapter
+        - `ACCESS_KEY`: S3 (AWS, generic, R2, Hetzner)
+        - `TOKEN`: Gotify, ntfy, Telegram
+        - `SMTP`: Email
+
+    CredentialProfile:
+      type: object
+      description: Sanitized credential profile (no secret payload).
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          $ref: "#/components/schemas/CredentialType"
+        description:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CredentialProfileInput:
+      type: object
+      required: [name, type, data]
+      properties:
+        name:
+          type: string
+        type:
+          $ref: "#/components/schemas/CredentialType"
+        description:
+          type: string
+          nullable: true
+        data:
+          description: Type-specific secret payload. Shape MUST match `type`.
+          oneOf:
+            - $ref: "#/components/schemas/UsernamePasswordData"
+            - $ref: "#/components/schemas/SshKeyData"
+            - $ref: "#/components/schemas/AccessKeyData"
+            - $ref: "#/components/schemas/TokenData"
+            - $ref: "#/components/schemas/SmtpData"
+
+    UsernamePasswordData:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+
+    SshKeyData:
+      type: object
+      required: [username, authType]
+      properties:
+        username:
+          type: string
+        authType:
+          type: string
+          enum: [password, privateKey, agent]
+        password:
+          type: string
+          format: password
+          description: Required when `authType = password`
+        privateKey:
+          type: string
+          description: PEM-encoded private key. Required when `authType = privateKey`
+        passphrase:
+          type: string
+          format: password
+          description: Optional passphrase for encrypted private keys
+
+    AccessKeyData:
+      type: object
+      required: [accessKeyId, secretAccessKey]
+      properties:
+        accessKeyId:
+          type: string
+        secretAccessKey:
+          type: string
+          format: password
+
+    TokenData:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          format: password
+          description: |
+            Bearer / API token. Internally aliased to `appToken`, `accessToken`,
+            and `botToken` so it works with all token-using adapters.
+
+    SmtpData:
+      type: object
+      required: [user, password]
+      properties:
+        user:
+          type: string
+        password:
+          type: string
+          format: password
 
     # ─── Jobs ────────────────────────────────────────────────────
     Job:
@@ -1484,13 +1931,14 @@ components:
 
     ExecutionStatus:
       type: string
-      enum: [Pending, Running, Success, Failed, Partial]
+      enum: [Pending, Running, Success, Failed, Partial, Cancelled]
       description: |
         - `Pending` - Queued, waiting for an execution slot
         - `Running` - Currently executing
         - `Success` - Completed successfully
         - `Failed` - Execution failed
         - `Partial` - Some destinations succeeded, others failed
+        - `Cancelled` - Cancelled by a user before or during execution
 
     # ─── Adapters ────────────────────────────────────────────────
     AdapterConfig:

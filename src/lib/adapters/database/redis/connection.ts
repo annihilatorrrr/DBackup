@@ -1,7 +1,7 @@
 import { execFile } from "child_process";
 import util from "util";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 import { RedisConfig } from "@/lib/adapters/definitions";
 import {
     SshClient,

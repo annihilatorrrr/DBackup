@@ -16,7 +16,7 @@ const SRC_DIR = path.resolve(__dirname, "../../../src");
 
 // Files that are allowed to use console directly
 const ALLOWED_FILES = [
-  "src/lib/logger.ts", // Logger itself uses console
+  "src/lib/logging/logger.ts", // Logger itself uses console
   "src/instrumentation.ts", // Next.js instrumentation hook
 ];
 
@@ -205,7 +205,7 @@ describe("Logging Standards", () => {
       // HARD FAIL: Enforce no direct console usage
       expect.fail(
         `Found ${allViolations.length} direct console usage(s). ` +
-        `Use 'logger' from '@/lib/logger' instead:\n${report}`
+        `Use 'logger' from '@/lib/logging/logger' instead:\n${report}`
       );
     }
 
@@ -228,8 +228,8 @@ describe("Logging Standards", () => {
 
       // Check if file imports logger
       const usesLogger =
-        content.includes('from "@/lib/logger"') ||
-        content.includes("from '@/lib/logger'");
+        content.includes('from "@/lib/logging/logger"') ||
+        content.includes("from '@/lib/logging/logger'");
 
       // Check if it creates a child logger (recommended pattern)
       const usesChildLogger = content.includes("logger.child(");
@@ -292,7 +292,7 @@ describe("Error Handling Standards", () => {
       // HARD FAIL: Enforce proper error typing
       expect.fail(
         `Found ${violations.length} 'catch (e: any)' pattern(s).\n` +
-        `Use 'catch (e: unknown)' with wrapError() from '@/lib/errors' instead.\n\n` +
+        `Use 'catch (e: unknown)' with wrapError() from '@/lib/logging/errors' instead.\n\n` +
         `${report}`
       );
     }
@@ -315,8 +315,8 @@ describe("Error Handling Standards", () => {
 
       const hasTryCatch = /try\s*\{/.test(content);
       const hasErrorImport =
-        content.includes('from "@/lib/errors"') ||
-        content.includes("from '@/lib/errors'");
+        content.includes('from "@/lib/logging/errors"') ||
+        content.includes("from '@/lib/logging/errors'");
 
       if (hasTryCatch && !hasErrorImport) {
         servicesWithTryCatchButNoErrorImport.push(relativePath);

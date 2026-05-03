@@ -6,7 +6,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # for all environmentvariables, check out: https://dbackup.app/developer-guide/reference/environment
+      # for all environmentvariables, check out: https://docs.dbackup.app/developer-guide/reference/environment
       - ENCRYPTION_KEY= # openssl rand -hex 32
       - BETTER_AUTH_URL=https://localhost:3000
       - BETTER_AUTH_SECRET= # openssl rand -base64 32

@@ -20,7 +20,7 @@ import { formatBytes, compareVersions } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { DateDisplay } from "@/components/utils/date-display";
 import { AdapterIcon } from "@/components/adapter/adapter-icon";
-import { restoreFromStorageAction } from "@/app/actions/config-management";
+import { restoreFromStorageAction } from "@/app/actions/backup/config-management";
 import { RestoreOptions } from "@/lib/types/config-backup";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";

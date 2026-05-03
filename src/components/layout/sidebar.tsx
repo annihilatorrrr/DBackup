@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { LayoutDashboard, Database, HardDrive, FolderOpen, CalendarClock, History, Settings, Bell, ChevronsUpDown, LogOut, Moon, Sun, Monitor, Users, User, Lock, BookOpen, SearchCode, Rocket, ArrowUpCircle, FileCode2, Globe } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { useSession, signOut } from "@/lib/auth-client"
+import { useSession, signOut } from "@/lib/auth/client"
 import Image from "next/image"
 import {
     DropdownMenu,
@@ -28,7 +28,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useTheme } from "next-themes"
-import { PERMISSIONS } from "@/lib/permissions"
+import { PERMISSIONS } from "@/lib/auth/permissions"
 
 interface SidebarItem {
     icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
@@ -115,7 +115,7 @@ export function Sidebar({ permissions = [], isSuperAdmin = false, updateAvailabl
     };
 
     return (
-        <div className="w-64 border-r bg-background h-screen flex flex-col hidden md:flex sticky top-0 overflow-hidden">
+        <div className="w-64 border-r bg-background h-screen hidden md:flex flex-col sticky top-0 overflow-hidden">
             <div className="h-16 flex items-center px-6 border-b gap-3">
                 <Image
                     src="/logo.svg"
@@ -277,7 +277,7 @@ export function Sidebar({ permissions = [], isSuperAdmin = false, updateAvailabl
                                 </DropdownMenuSubTrigger>
                                 <DropdownMenuPortal>
                                     <DropdownMenuSubContent>
-                                        <DropdownMenuItem onClick={() => window.open('https://dbackup.app', '_blank')}>
+                                        <DropdownMenuItem onClick={() => window.open('https://docs.dbackup.app', '_blank')}>
                                             <BookOpen className="mr-2 h-4 w-4" />
                                             <span>Dokumentation</span>
                                         </DropdownMenuItem>

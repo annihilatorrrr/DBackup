@@ -1,7 +1,7 @@
 import { NotificationAdapter } from "@/lib/core/interfaces";
 import { NtfySchema, NtfyConfig } from "@/lib/adapters/definitions";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 import { validateOutboundUrl } from "@/lib/url-validation";
 
 const log = logger.child({ adapter: "ntfy" });
@@ -56,6 +56,7 @@ export const NtfyAdapter: NotificationAdapter = {
     type: "notification",
     name: "ntfy",
     configSchema: NtfySchema,
+    credentials: { primary: "TOKEN" },
 
     async test(config: NtfyConfig): Promise<{ success: boolean; message: string }> {
         try {

@@ -1,6 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { renderTemplate } from "@/lib/notifications/templates";
 import { NOTIFICATION_EVENTS } from "@/lib/notifications/types";
+// Import from the barrel to give index.ts coverage
+import {
+  NOTIFICATION_EVENTS as BARREL_EVENTS,
+  renderTemplate as barrelRenderTemplate,
+  getEventDefinition,
+  getEventsByCategory,
+} from "@/lib/notifications";
 
 describe("Notification Templates", () => {
   describe("renderTemplate", () => {
@@ -189,6 +196,39 @@ describe("Notification Templates", () => {
           ])
         );
       });
+
+      it("should render all optional fields when provided", () => {
+        const payload = renderTemplate({
+          eventType: NOTIFICATION_EVENTS.RESTORE_COMPLETE,
+          data: {
+            sourceName: "mysql-prod",
+            targetDatabase: "staging_db",
+            databaseType: "mysql",
+            storageName: "s3-bucket",
+            backupFile: "backup.sql",
+            size: 2048,
+            duration: 4000,
+            timestamp: "2026-02-15T12:00:00Z",
+          },
+        });
+
+        const fieldNames = payload.fields?.map((f) => f.name) ?? [];
+        expect(fieldNames).toContain("Database Type");
+        expect(fieldNames).toContain("Storage");
+        expect(fieldNames).toContain("Backup File");
+        expect(fieldNames).toContain("Size");
+      });
+
+      it("should omit Target DB from message when targetDatabase is not provided", () => {
+        const payload = renderTemplate({
+          eventType: NOTIFICATION_EVENTS.RESTORE_COMPLETE,
+          data: { timestamp: "2026-02-15T12:00:00Z" },
+        });
+
+        expect(payload.message).not.toContain("Target:");
+        const fieldNames = payload.fields?.map((f) => f.name) ?? [];
+        expect(fieldNames).not.toContain("Target DB");
+      });
     });
 
     describe("RESTORE_FAILURE", () => {
@@ -210,6 +250,40 @@ describe("Notification Templates", () => {
             expect.objectContaining({ name: "Error", value: "Permission denied" }),
           ])
         );
+      });
+
+      it("should render all optional fields when provided", () => {
+        const payload = renderTemplate({
+          eventType: NOTIFICATION_EVENTS.RESTORE_FAILURE,
+          data: {
+            sourceName: "mysql-prod",
+            databaseType: "mysql",
+            targetDatabase: "staging_db",
+            backupFile: "backup.sql",
+            error: "timeout",
+            duration: 1000,
+            timestamp: "2026-02-15T12:00:00Z",
+          },
+        });
+
+        const fieldNames = payload.fields?.map((f) => f.name) ?? [];
+        expect(fieldNames).toContain("Database Type");
+        expect(fieldNames).toContain("Target DB");
+        expect(fieldNames).toContain("Backup File");
+        expect(fieldNames).toContain("Duration");
+      });
+
+      it("should render minimal payload when no optional fields are provided", () => {
+        const payload = renderTemplate({
+          eventType: NOTIFICATION_EVENTS.RESTORE_FAILURE,
+          data: { timestamp: "2026-02-15T12:00:00Z" },
+        });
+
+        expect(payload.success).toBe(false);
+        expect(payload.message).toBe("Database restore failed.");
+        const fieldNames = payload.fields?.map((f) => f.name) ?? [];
+        expect(fieldNames).not.toContain("Source");
+        expect(fieldNames).not.toContain("Error");
       });
     });
 
@@ -442,5 +516,157 @@ describe("Notification Templates", () => {
         expect(fieldNames).toContain("Hours Since Last Backup");
       });
     });
+
+    // ── Update / Connection Templates ─────────────────────────────
+
+    describe("UPDATE_AVAILABLE", () => {
+      it("should render update available payload with releaseUrl", () => {
+        const payload = renderTemplate({
+          eventType: NOTIFICATION_EVENTS.UPDATE_AVAILABLE,
+          data: {
+            latestVersion: "2.0.0",
+            currentVersion: "1.5.0",
+            releaseUrl: "https://github.com/dbackup/releases/2.0.0",
+            timestamp: "2026-02-22T10:00:00Z",
+          },
+        });
+
+        expect(payload.title).toBe("Update Available");
+        expect(payload.message).toContain("2.0.0");
+        expect(payload.message).toContain("1.5.0");
+        expect(payload.success).toBe(true);
+        expect(payload.badge).toBe("Update");
+        expect(payload.color).toBe("#3b82f6");
+        const fieldNames = payload.fields?.map((f) => f.name) ?? [];
+        expect(fieldNames).toContain("Latest Version");
+        expect(fieldNames).toContain("Current Version");
+        expect(fieldNames).toContain("Release Notes");
+      });
+
+      it("should omit Release Notes field when releaseUrl is not provided", () => {
+        const payload = renderTemplate({
+          eventType: NOTIFICATION_EVENTS.UPDATE_AVAILABLE,
+          data: {
+            latestVersion: "2.0.0",
+            currentVersion: "1.5.0",
+            timestamp: "2026-02-22T10:00:00Z",
+          },
+        });
+
+        const fieldNames = payload.fields?.map((f) => f.name) ?? [];
+        expect(fieldNames).not.toContain("Release Notes");
+      });
+    });
+
+    describe("CONNECTION_OFFLINE", () => {
+      it("should render database source as offline with last error", () => {
+        const payload = renderTemplate({
+          eventType: NOTIFICATION_EVENTS.CONNECTION_OFFLINE,
+          data: {
+            adapterName: "prod-mysql",
+            adapterType: "database",
+            adapterId: "mysql",
+            consecutiveFailures: 3,
+            lastError: "ECONNREFUSED",
+            timestamp: "2026-02-22T10:00:00Z",
+          },
+        });
+
+        expect(payload.title).toBe("Source Offline");
+        expect(payload.message).toContain("prod-mysql");
+        expect(payload.message).toContain("3");
+        expect(payload.success).toBe(false);
+        expect(payload.badge).toBe("Offline");
+        expect(payload.color).toBe("#ef4444");
+        const fieldNames = payload.fields?.map((f) => f.name) ?? [];
+        expect(fieldNames).toContain("Source");
+        expect(fieldNames).toContain("Type");
+        expect(fieldNames).toContain("Failed Checks");
+        expect(fieldNames).toContain("Last Error");
+      });
+
+      it("should use Destination label for storage adapter type", () => {
+        const payload = renderTemplate({
+          eventType: NOTIFICATION_EVENTS.CONNECTION_OFFLINE,
+          data: {
+            adapterName: "s3-bucket",
+            adapterType: "storage",
+            adapterId: "s3",
+            consecutiveFailures: 1,
+            timestamp: "2026-02-22T10:00:00Z",
+          },
+        });
+
+        expect(payload.title).toBe("Destination Offline");
+        const fieldNames = payload.fields?.map((f) => f.name) ?? [];
+        expect(fieldNames).not.toContain("Last Error");
+      });
+    });
+
+    describe("CONNECTION_ONLINE", () => {
+      it("should render database source as recovered with downtime", () => {
+        const payload = renderTemplate({
+          eventType: NOTIFICATION_EVENTS.CONNECTION_ONLINE,
+          data: {
+            adapterName: "prod-mysql",
+            adapterType: "database",
+            adapterId: "mysql",
+            downtime: "15m",
+            timestamp: "2026-02-22T10:00:00Z",
+          },
+        });
+
+        expect(payload.title).toBe("Source Recovered");
+        expect(payload.message).toContain("prod-mysql");
+        expect(payload.message).toContain("15m");
+        expect(payload.success).toBe(true);
+        expect(payload.badge).toBe("Recovered");
+        expect(payload.color).toBe("#22c55e");
+        const fieldNames = payload.fields?.map((f) => f.name) ?? [];
+        expect(fieldNames).toContain("Downtime");
+      });
+
+      it("should use Destination label for storage adapter and omit downtime when not provided", () => {
+        const payload = renderTemplate({
+          eventType: NOTIFICATION_EVENTS.CONNECTION_ONLINE,
+          data: {
+            adapterName: "s3-bucket",
+            adapterType: "storage",
+            adapterId: "s3",
+            timestamp: "2026-02-22T10:00:00Z",
+          },
+        });
+
+        expect(payload.title).toBe("Destination Recovered");
+        const fieldNames = payload.fields?.map((f) => f.name) ?? [];
+        expect(fieldNames).not.toContain("Downtime");
+      });
+    });
+  });
+});
+
+// ── Barrel export (index.ts) ──────────────────────────────────
+
+describe("notifications/index barrel exports", () => {
+  it("re-exports NOTIFICATION_EVENTS", () => {
+    expect(BARREL_EVENTS.BACKUP_SUCCESS).toBe("backup_success");
+  });
+
+  it("re-exports renderTemplate and it works", () => {
+    const payload = barrelRenderTemplate({
+      eventType: BARREL_EVENTS.SYSTEM_ERROR,
+      data: { component: "test", error: "fail", timestamp: "2026-01-01T00:00:00Z" },
+    });
+    expect(payload.title).toBe("System Error");
+  });
+
+  it("re-exports getEventDefinition", () => {
+    const def = getEventDefinition(BARREL_EVENTS.USER_LOGIN);
+    expect(def?.id).toBe("user_login");
+  });
+
+  it("re-exports getEventsByCategory", () => {
+    const grouped = getEventsByCategory();
+    expect(Object.keys(grouped).length).toBeGreaterThan(0);
   });
 });

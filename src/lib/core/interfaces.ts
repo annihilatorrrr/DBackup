@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { LogLevel, LogType } from "./logs";
+import type { AdapterCredentialRequirements } from "./credentials";
 
 /**
  * Base configuration type for adapters.
@@ -65,6 +66,13 @@ export interface BaseAdapter {
     id: string; // Unique identifier (e.g., 'mysql', 's3')
     name: string; // Display name
     configSchema: z.ZodObject<z.ZodRawShape>; // Schema for configuration
+    /**
+     * Declares which credential profile types this adapter consumes.
+     * Adapters without this field do not require a credential profile (e.g.
+     * local-filesystem, OAuth-based storage, webhook notifications).
+     * Read by the credential picker (UI) and the config resolver (runtime).
+     */
+    credentials?: AdapterCredentialRequirements;
     /**
      * Optional method to test the connection configuration
      */
@@ -178,7 +186,7 @@ export interface StorageAdapter extends BaseAdapter {
  * of the backup-specific ones.
  */
 export interface NotificationContext {
-    success: boolean;
+    success?: boolean;
     adapterName?: string;
     duration?: number;
     size?: number;

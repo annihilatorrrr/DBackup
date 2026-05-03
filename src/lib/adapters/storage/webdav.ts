@@ -7,8 +7,8 @@ import fs from "fs/promises";
 import path from "path";
 import { pipeline } from "stream/promises";
 import { LogLevel, LogType } from "@/lib/core/logs";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const log = logger.child({ adapter: "webdav" });
 
@@ -47,6 +47,7 @@ export const WebDAVAdapter: StorageAdapter = {
     type: "storage",
     name: "WebDAV",
     configSchema: WebDAVSchema,
+    credentials: { primary: "USERNAME_PASSWORD" },
 
     async upload(config: WebDAVConfig, localPath: string, remotePath: string, onProgress?: (percent: number) => void, onLog?: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void): Promise<boolean> {
         try {

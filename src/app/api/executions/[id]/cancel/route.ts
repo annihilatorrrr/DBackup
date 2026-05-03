@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { headers } from "next/headers";
-import { getAuthContext, checkPermissionWithContext } from "@/lib/access-control";
-import { PERMISSIONS } from "@/lib/permissions";
-import { abortExecution, isExecutionRunning } from "@/lib/execution-abort";
+import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-control";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { abortExecution, isExecutionRunning } from "@/lib/execution/abort";
 
 /**
  * POST /api/executions/[id]/cancel

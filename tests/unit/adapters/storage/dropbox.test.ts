@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { DropboxAdapter } from "@/lib/adapters/storage/dropbox";
 
 // --- Hoisted mocks (available in vi.mock factories) ---
-const { mockDbx, mockFs } = vi.hoisted(() => ({
+const { mockDbx, mockFs, mockCreateReadStream, capturedDropboxOpts } = vi.hoisted(() => ({
+    capturedDropboxOpts: { fetch: undefined as typeof fetch | undefined },
     mockDbx: {
         usersGetCurrentAccount: vi.fn(),
         filesGetMetadata: vi.fn(),
@@ -16,6 +17,7 @@ const { mockDbx, mockFs } = vi.hoisted(() => ({
         filesUploadSessionAppendV2: vi.fn(),
         filesUploadSessionFinish: vi.fn(),
     },
+    mockCreateReadStream: vi.fn(),
     mockFs: {
         stat: vi.fn(),
         readFile: vi.fn(),
@@ -27,7 +29,8 @@ const { mockDbx, mockFs } = vi.hoisted(() => ({
 vi.mock("dropbox", () => {
     // Class-based mock so `new Dropbox(...)` works as a constructor
     class MockDropbox {
-        constructor() {
+        constructor(opts: any) {
+            capturedDropboxOpts.fetch = opts?.fetch;
             return mockDbx;
         }
     }
@@ -45,9 +48,9 @@ vi.mock("fs/promises", () => ({
 
 vi.mock("fs", () => ({
     default: {
-        createReadStream: vi.fn(),
+        createReadStream: mockCreateReadStream,
     },
-    createReadStream: vi.fn(),
+    createReadStream: mockCreateReadStream,
 }));
 
 // --- Base config ---
@@ -534,6 +537,141 @@ describe("DropboxAdapter", () => {
             const result = await DropboxAdapter.delete(validConfig, "protected.sql");
 
             expect(result).toBe(false);
+        });
+    });
+
+    describe("upload() - session upload (> 150 MB)", () => {
+        it("should use session upload for large files (start -> append -> finish)", async () => {
+            const CHUNK_SIZE = 8 * 1024 * 1024;
+            const SIMPLE_LIMIT = 150 * 1024 * 1024;
+            // fileSize = CHUNK_SIZE * 2 + 1 is less than SIMPLE_LIMIT, so we need to exceed 150MB.
+            // Use fileSize as exactly chunk1 + chunk2 where total > SIMPLE_LIMIT.
+            const chunk1 = Buffer.alloc(CHUNK_SIZE);                      // 8 MB
+            const chunk2 = Buffer.alloc(SIMPLE_LIMIT - CHUNK_SIZE + 1);   // ~142 MB (ensures isLast on chunk2)
+            const fileSize = chunk1.length + chunk2.length;               // ~150 MB + 1
+
+            mockFs.stat.mockResolvedValue({ size: fileSize });
+
+            const { Readable } = await import("stream");
+            mockCreateReadStream.mockReturnValue(Readable.from([chunk1, chunk2]));
+
+            mockDbx.filesUploadSessionStart.mockResolvedValue({ result: { session_id: "sess-1" } });
+            mockDbx.filesUploadSessionAppendV2.mockResolvedValue({});
+            mockDbx.filesUploadSessionFinish.mockResolvedValue({});
+
+            const onProgress = vi.fn();
+            const result = await DropboxAdapter.upload(
+                validConfig,
+                "/tmp/large.sql",
+                "backup/large.sql",
+                onProgress
+            );
+
+            expect(result).toBe(true);
+            expect(mockDbx.filesUploadSessionStart).toHaveBeenCalled();
+            expect(mockDbx.filesUploadSessionFinish).toHaveBeenCalled();
+            expect(onProgress).toHaveBeenCalledWith(100);
+        });
+
+        it("should use append step when more than 2 chunks are yielded", async () => {
+            const CHUNK_SIZE = 8 * 1024 * 1024;
+            const SIMPLE_LIMIT = 150 * 1024 * 1024;
+            const chunk1 = Buffer.alloc(CHUNK_SIZE);
+            const chunk2 = Buffer.alloc(CHUNK_SIZE);
+            const chunk3 = Buffer.alloc(SIMPLE_LIMIT - CHUNK_SIZE * 2 + 1);
+            const fileSize = chunk1.length + chunk2.length + chunk3.length;
+
+            mockFs.stat.mockResolvedValue({ size: fileSize });
+
+            const { Readable } = await import("stream");
+            mockCreateReadStream.mockReturnValue(Readable.from([chunk1, chunk2, chunk3]));
+
+            mockDbx.filesUploadSessionStart.mockResolvedValue({ result: { session_id: "sess-2" } });
+            mockDbx.filesUploadSessionAppendV2.mockResolvedValue({});
+            mockDbx.filesUploadSessionFinish.mockResolvedValue({});
+
+            const result = await DropboxAdapter.upload(validConfig, "/tmp/large2.sql", "backup/large2.sql");
+
+            expect(result).toBe(true);
+            expect(mockDbx.filesUploadSessionStart).toHaveBeenCalled();
+            expect(mockDbx.filesUploadSessionAppendV2).toHaveBeenCalled();
+            expect(mockDbx.filesUploadSessionFinish).toHaveBeenCalled();
+        });
+    });
+
+    // ====================================================================
+    // test() - folder creation conflict / failure branches
+    // ====================================================================
+    describe("test() - folder creation edge cases", () => {
+        it("should succeed when folder creation reports path/conflict (already exists)", async () => {
+            mockDbx.usersGetCurrentAccount.mockResolvedValue({
+                result: { name: { display_name: "Test User" } },
+            });
+            mockDbx.filesGetMetadata.mockRejectedValue(new Error("not_found"));
+            // filesCreateFolderV2 throws with path/conflict - treated as "folder already exists"
+            mockDbx.filesCreateFolderV2.mockRejectedValue({ error_summary: "path/conflict/folder/..." });
+            mockDbx.filesUpload.mockResolvedValue({});
+            mockDbx.filesDeleteV2.mockResolvedValue({});
+
+            const result = await DropboxAdapter.test!(validConfig);
+
+            expect(result.success).toBe(true);
+        });
+
+        it("should fail when folder creation fails with non-conflict error", async () => {
+            mockDbx.usersGetCurrentAccount.mockResolvedValue({
+                result: { name: { display_name: "Test User" } },
+            });
+            mockDbx.filesGetMetadata.mockRejectedValue(new Error("not_found"));
+            mockDbx.filesCreateFolderV2.mockRejectedValue(new Error("insufficient_space"));
+
+            const result = await DropboxAdapter.test!(validConfig);
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain("could not be created");
+        });
+    });
+
+    // ====================================================================
+    // dropboxFetch - internal fetch wrapper (captured from constructor)
+    // ====================================================================
+    describe("dropboxFetch internal wrapper", () => {
+        beforeEach(async () => {
+            // Ensure capturedDropboxOpts.fetch is populated by creating a client
+            mockDbx.usersGetCurrentAccount.mockResolvedValue({
+                result: { name: { display_name: "Fetch Tester" } },
+            });
+            mockDbx.filesUpload.mockResolvedValue({});
+            mockDbx.filesDeleteV2.mockResolvedValue({});
+            await DropboxAdapter.test!(validConfig);
+        });
+
+        it("adds buffer() when Response has no buffer method", async () => {
+            const mockArrayBuffer = new ArrayBuffer(8);
+            const mockResponse = {
+                arrayBuffer: vi.fn().mockResolvedValue(mockArrayBuffer),
+            };
+            vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockResponse));
+
+            const result = await capturedDropboxOpts.fetch!("https://api.dropbox.com/test", {});
+
+            expect(typeof (result as any).buffer).toBe("function");
+            const buf = await (result as any).buffer();
+            expect(Buffer.isBuffer(buf)).toBe(true);
+
+            vi.unstubAllGlobals();
+        });
+
+        it("does not overwrite buffer() when already present on Response", async () => {
+            const existingBuffer = vi.fn().mockResolvedValue(Buffer.from("existing"));
+            const mockResponse = { buffer: existingBuffer };
+            vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockResponse));
+
+            const result = await capturedDropboxOpts.fetch!("https://api.dropbox.com/test", {});
+
+            expect((result as any).buffer).toBe(existingBuffer);
+
+            vi.unstubAllGlobals();
         });
     });
 });

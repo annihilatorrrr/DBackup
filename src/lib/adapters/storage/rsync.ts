@@ -7,8 +7,8 @@ import fs from "fs/promises";
 import path from "path";
 import os from "os";
 import { LogLevel, LogType } from "@/lib/core/logs";
-import { logger } from "@/lib/logger";
-import { wrapError } from "@/lib/errors";
+import { logger } from "@/lib/logging/logger";
+import { wrapError } from "@/lib/logging/errors";
 
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
@@ -265,6 +265,7 @@ export const RsyncAdapter: StorageAdapter = {
     type: "storage",
     name: "Rsync (SSH)",
     configSchema: RsyncSchema,
+    credentials: { primary: "SSH_KEY" },
 
     async upload(config: RsyncConfig, localPath: string, remotePath: string, onProgress?: (percent: number) => void, onLog?: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void): Promise<boolean> {
         let keyFile: string | undefined;

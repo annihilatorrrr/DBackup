@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -45,13 +45,34 @@ interface SourceStepProps {
 export function SourceStep({ adapters, wizardData, onUpdate, onNext, onPrev }: SourceStepProps) {
     const [selectedAdapter, setSelectedAdapter] = useState<AdapterDefinition | null>(null);
     const [isSaved, setIsSaved] = useState(!!wizardData.sourceId);
+    const [primaryCredentialId, setPrimaryCredentialId] = useState<string | null>(null);
+    const [sshCredentialId, setSshCredentialId] = useState<string | null>(null);
     const [connectionError, setConnectionError] = useState<string | null>(null);
     const [pendingSubmission, setPendingSubmission] = useState<Record<string, unknown> | null>(null);
+
+    // Patch schema: make credential-managed fields optional so hidden inputs
+    // don't cause silent required-field validation failures.
+    const configSchema = useMemo(() => {
+        if (!selectedAdapter) return z.any();
+        const base = selectedAdapter.configSchema;
+        if (!(base instanceof z.ZodObject)) return base;
+        const keys: string[] = [];
+        if (selectedAdapter.credentials?.primary === "USERNAME_PASSWORD") keys.push("user", "username", "password");
+        if (selectedAdapter.credentials?.primary === "SSH_KEY") keys.push("username", "authType", "password", "privateKey", "passphrase");
+        if (selectedAdapter.credentials?.primary === "ACCESS_KEY") keys.push("accessKeyId", "secretAccessKey");
+        if (selectedAdapter.credentials?.primary === "TOKEN") keys.push("token", "appToken", "accessToken", "botToken");
+        if (selectedAdapter.credentials?.primary === "SMTP") keys.push("user", "password");
+        if (selectedAdapter.credentials?.ssh === "SSH_KEY") keys.push("sshUsername", "sshAuthType", "sshPassword", "sshPrivateKey", "sshPassphrase", "username", "authType", "privateKey", "passphrase");
+        if (keys.length === 0) return base;
+        const shape = { ...base.shape };
+        for (const k of keys) { if (shape[k]) shape[k] = shape[k].optional(); }
+        return z.object(shape);
+    }, [selectedAdapter]);
 
     // Dynamic schema based on selected adapter
     const schema = z.object({
         name: z.string().min(1, "Name is required"),
-        config: selectedAdapter ? selectedAdapter.configSchema : z.any(),
+        config: configSchema,
     });
 
     const form = useForm({
@@ -68,11 +89,15 @@ export function SourceStep({ adapters, wizardData, onUpdate, onNext, onPrev }: S
     } = useAdapterConnection({
         adapterId: selectedAdapter?.id || "",
         form: form as unknown as ReturnType<typeof useForm>,
+        primaryCredentialId,
+        sshCredentialId,
     });
 
     const handleAdapterSelect = (adapter: AdapterDefinition) => {
         setSelectedAdapter(adapter);
         form.reset({ name: "", config: {} });
+        setPrimaryCredentialId(null);
+        setSshCredentialId(null);
         setIsSaved(false);
     };
 
@@ -83,6 +108,8 @@ export function SourceStep({ adapters, wizardData, onUpdate, onNext, onPrev }: S
                 adapterId: selectedAdapter!.id,
                 config: data.config,
                 type: "database",
+                primaryCredentialId,
+                sshCredentialId,
             };
 
             const res = await fetch("/api/adapters", {
@@ -118,6 +145,8 @@ export function SourceStep({ adapters, wizardData, onUpdate, onNext, onPrev }: S
                 body: JSON.stringify({
                     adapterId: selectedAdapter!.id,
                     config: data.config,
+                    primaryCredentialId,
+                    sshCredentialId,
                 }),
             });
             const testResult = await testRes.json();
@@ -270,6 +299,10 @@ export function SourceStep({ adapters, wizardData, onUpdate, onNext, onPrev }: S
                             <DatabaseFormContent
                                 adapter={selectedAdapter}
                                 detectedVersion={detectedVersion}
+                                primaryCredentialId={primaryCredentialId}
+                                sshCredentialId={sshCredentialId}
+                                onPrimaryChange={setPrimaryCredentialId}
+                                onSshChange={setSshCredentialId}
                             />
 
                             {/* Actions */}

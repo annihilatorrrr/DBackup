@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { createEncryptionStream, createDecryptionStream } from '@/lib/crypto-stream';
+import { createEncryptionStream, createDecryptionStream } from '@/lib/crypto/stream';
 import { pipeline } from 'stream/promises';
 import { Readable, Writable } from 'stream';
-
 describe('Crypto Stream Integrity', () => {
     it('should fail decryption if authTag is tampered', async () => {
         const key = Buffer.alloc(32, 'a'); // Mock Key (32 bytes)
@@ -84,5 +83,31 @@ describe('Crypto Stream Integrity', () => {
         );
 
         expect(Buffer.concat(decryptedChunks).toString()).toBe(inputData);
+    });
+});
+
+describe('Key validation', () => {
+    it('createEncryptionStream throws for a key shorter than 32 bytes', () => {
+        const shortKey = Buffer.alloc(16, 'a');
+        expect(() => createEncryptionStream(shortKey)).toThrow('Invalid key length');
+    });
+
+    it('createEncryptionStream throws for a key longer than 32 bytes', () => {
+        const longKey = Buffer.alloc(64, 'a');
+        expect(() => createEncryptionStream(longKey)).toThrow('Invalid key length');
+    });
+
+    it('createDecryptionStream throws for a key shorter than 32 bytes', () => {
+        const shortKey = Buffer.alloc(16, 'a');
+        const iv = Buffer.alloc(16);
+        const authTag = Buffer.alloc(16);
+        expect(() => createDecryptionStream(shortKey, iv, authTag)).toThrow('Invalid key length');
+    });
+
+    it('createDecryptionStream throws for a key longer than 32 bytes', () => {
+        const longKey = Buffer.alloc(64, 'a');
+        const iv = Buffer.alloc(16);
+        const authTag = Buffer.alloc(16);
+        expect(() => createDecryptionStream(longKey, iv, authTag)).toThrow('Invalid key length');
     });
 });

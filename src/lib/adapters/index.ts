@@ -26,7 +26,7 @@ import { TelegramAdapter } from "./notification/telegram";
 import { TwilioSmsAdapter } from "./notification/twilio-sms";
 import { EmailAdapter } from "./notification/email";
 import { initMysqlTools } from "./database/mysql/tools";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/logging/logger";
 
 const log = logger.child({ module: "Adapters" });
 

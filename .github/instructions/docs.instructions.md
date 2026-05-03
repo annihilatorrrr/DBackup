@@ -1,5 +1,5 @@
 ---
-applyTo: "wiki/**/*.md"
+applyTo: "docs/**/*.md"
 ---
 
 # Wiki / Documentation Guidelines

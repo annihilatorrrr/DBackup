@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 // import { prismaMock } from '@/lib/testing/prisma-mock';
-import { BackupService } from '@/services/backup-service';
+import { BackupService } from '@/services/backup/backup-service';
 import { runJob } from '@/lib/runner';
 
 // Mock the runner function since we don't want to actually execute a job in this service test

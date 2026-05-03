@@ -3,11 +3,11 @@ import prisma from "@/lib/prisma";
 import fs from "fs/promises";
 import { registry } from "@/lib/core/registry";
 import { NotificationAdapter } from "@/lib/core/interfaces";
-import { decryptConfig } from "@/lib/crypto";
-import { logger } from "@/lib/logger";
-import { wrapError, getErrorMessage } from "@/lib/errors";
+import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
+import { logger } from "@/lib/logging/logger";
+import { wrapError, getErrorMessage } from "@/lib/logging/errors";
 import { renderTemplate, NOTIFICATION_EVENTS } from "@/lib/notifications";
-import { recordNotificationLog } from "@/services/notification-log-service";
+import { recordNotificationLog } from "@/services/notifications/notification-log-service";
 import { PIPELINE_STAGES } from "@/lib/core/logs";
 
 const log = logger.child({ step: "04-completion" });
@@ -88,7 +88,7 @@ export async function stepFinalize(ctx: RunnerContext) {
                     const notifyAdapter = registry.get(channel.adapterId) as NotificationAdapter;
 
                     if (notifyAdapter) {
-                        const channelConfig = decryptConfig(JSON.parse(channel.config));
+                        const channelConfig = await resolveAdapterConfig(channel) as any;
                         const eventType = isSuccess
                             ? NOTIFICATION_EVENTS.BACKUP_SUCCESS
                             : isPartial

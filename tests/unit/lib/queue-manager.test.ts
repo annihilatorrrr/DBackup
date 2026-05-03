@@ -24,7 +24,7 @@ vi.mock('@/lib/runner', () => ({
 }));
 
 // 2. Import System Under Test
-import { processQueue } from '@/lib/queue-manager';
+import { processQueue } from '@/lib/execution/queue-manager';
 
 describe('Queue Manager Concurrency', () => {
     beforeEach(() => {

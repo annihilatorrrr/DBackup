@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { decryptConfig, encryptConfig } from "@/lib/crypto";
-import { logger } from "@/lib/logger";
+import { logger } from "@/lib/logging/logger";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
@@ -14,7 +14,7 @@ const log = logger.child({ route: "adapters/onedrive/callback" });
  * Redirects back to the destinations page with success/error status.
  */
 export async function GET(req: NextRequest) {
-    const origin = req.nextUrl.origin;
+    const origin = process.env.BETTER_AUTH_URL || req.nextUrl.origin;
 
     // Verify the user is authenticated before processing the OAuth callback
     const session = await auth.api.getSession({ headers: await headers() });

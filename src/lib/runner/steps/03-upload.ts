@@ -4,12 +4,12 @@ import fs from "fs/promises";
 import { createReadStream, createWriteStream } from "fs";
 import { pipeline } from "stream/promises";
 import { BackupMetadata } from "@/lib/core/interfaces";
-import { getProfileMasterKey } from "@/services/encryption-service";
-import { createEncryptionStream } from "@/lib/crypto-stream";
-import { getCompressionStream, getCompressionExtension, CompressionType } from "@/lib/compression";
+import { getProfileMasterKey } from "@/services/backup/encryption-service";
+import { createEncryptionStream } from "@/lib/crypto/stream";
+import { getCompressionStream, getCompressionExtension, CompressionType } from "@/lib/crypto/compression";
 import { ProgressMonitorStream } from "@/lib/streams/progress-monitor";
 import { formatBytes } from "@/lib/utils";
-import { calculateFileChecksum, verifyFileChecksum } from "@/lib/checksum";
+import { calculateFileChecksum, verifyFileChecksum } from "@/lib/crypto/checksum";
 import { getTempDir } from "@/lib/temp-dir";
 import { PIPELINE_STAGES } from "@/lib/core/logs";
 

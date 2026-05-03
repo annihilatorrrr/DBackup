@@ -89,6 +89,7 @@ export function SchemaField({
     if (fieldKey === 'sshPassword') label = "SSH Password";
     if (fieldKey === 'sshPrivateKey') label = "SSH Private Key";
     if (fieldKey === 'sshPassphrase') label = "SSH Key Passphrase";
+    if (fieldKey === 'jurisdiction') label = "Bucket Jurisdiction";
 
     const isBoolean = unwrappedShape instanceof z.ZodBoolean || (unwrappedShape as any)._def?.typeName === "ZodBoolean";
     const isEnum = unwrappedShape instanceof z.ZodEnum || (unwrappedShape as any)._def?.typeName === "ZodEnum";
