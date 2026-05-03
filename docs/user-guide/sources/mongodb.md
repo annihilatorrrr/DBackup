@@ -19,14 +19,17 @@ DBackup uses `mongodump` from MongoDB Database Tools.
 
 ## Configuration
 
+::: info Credential Profiles required
+MongoDB requires a [Credential Profile](/user-guide/security/credential-profiles). Create an `USERNAME_PASSWORD` profile in **Settings → Vault → Credentials** before saving the source. SSH mode additionally requires an `SSH_KEY` profile.
+:::
+
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
 | **Connection Mode** | Direct (TCP) or SSH | `Direct` | ✅ |
 | **Connection URI** | Full MongoDB URI (overrides other settings) | - | ❌ |
 | **Host** | Database server hostname | `localhost` | ✅ |
 | **Port** | MongoDB port | `27017` | ✅ |
-| **User** | Database username | - | ❌ |
-| **Password** | Database password | - | ❌ |
+| **Primary Credential** | `USERNAME_PASSWORD` credential profile (username + password) | - | ❌ |
 | **Auth Database** | Authentication database | `admin` | ❌ |
 | **Database** | Database name(s) to backup | All databases | ❌ |
 | **Additional Options** | Extra `mongodump` flags | - | ❌ |
@@ -39,11 +42,7 @@ These fields appear when **Connection Mode** is set to **SSH**:
 | :--- | :--- | :--- | :--- |
 | **SSH Host** | SSH server hostname or IP | - | ✅ |
 | **SSH Port** | SSH server port | `22` | ❌ |
-| **SSH Username** | SSH login username | - | ✅ |
-| **SSH Auth Type** | Password, Private Key, or Agent | `Password` | ✅ |
-| **SSH Password** | SSH password | - | ❌ |
-| **SSH Private Key** | PEM-formatted private key | - | ❌ |
-| **SSH Passphrase** | Passphrase for encrypted key | - | ❌ |
+| **SSH Credential** | `SSH_KEY` credential profile (username + key or password) | - | ✅ |
 
 ## Prerequisites
 

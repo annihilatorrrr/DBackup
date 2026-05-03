@@ -4,43 +4,45 @@ Store backups on a remote server via SSH File Transfer Protocol. Supports passwo
 
 ## Configuration
 
+::: info Credential Profile required
+SFTP requires a [Credential Profile](/user-guide/security/credential-profiles) of type `SSH_KEY`. Create one in **Settings → Vault → Credentials** before saving the destination.
+:::
+
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
 | **Name** | Friendly name for this destination | - | ✅ |
 | **Host** | Hostname or IP of the SFTP server | - | ✅ |
 | **Port** | SSH port | `22` | ❌ |
-| **Username** | SSH username | - | ✅ |
-| **Auth Type** | Authentication method | `password` | ❌ |
-| **Password** | User password (when Auth Type = `password`) | - | ❌ |
-| **Private Key** | PEM-encoded private key (when Auth Type = `privateKey`) | - | ❌ |
-| **Passphrase** | Passphrase for encrypted private keys | - | ❌ |
+| **Primary Credential** | `SSH_KEY` credential profile (username + key or password) | - | ✅ |
 | **Path Prefix** | Remote directory for backups | - | ❌ |
 
-### Authentication Methods
+### Authentication Methods (via `SSH_KEY` profile)
 
 | Auth Type | Description |
 | :--- | :--- |
-| `password` | Username + password (default) |
-| `privateKey` | SSH private key (paste PEM content directly) |
+| `password` | Username + password |
+| `privateKey` | SSH private key (PEM format) |
 | `agent` | Use the host's SSH agent (keys loaded via `ssh-add`) |
+
+Select the auth type when creating the `SSH_KEY` credential profile in the Vault.
 
 ## Setup Guide
 
-1. Ensure the target server has SSH/SFTP enabled
-2. Create a dedicated user for backups (recommended):
+1. Create an `SSH_KEY` credential profile in **Settings → Vault → Credentials** ([guide](/user-guide/security/credential-profiles))
+2. Ensure the target server has SSH/SFTP enabled
+3. Create a dedicated user for backups (recommended):
    ```bash
    sudo useradd -m -s /bin/bash dbackup
    sudo mkdir -p /home/dbackup/backups
    sudo chown dbackup: /home/dbackup/backups
    ```
-3. Go to **Destinations** → **Add Destination** → **SFTP**
-4. Enter Host, Username, and select your Auth Type
-5. Enter credentials (password or private key)
+4. Go to **Destinations** → **Add Destination** → **SFTP**
+5. Enter Host and select the credential profile in the **Primary Credential** picker
 6. (Optional) Set **Path Prefix** to the remote backup directory (e.g. `/home/dbackup/backups`)
 7. Click **Test** to verify the connection
 
 ::: tip Private Key Format
-Paste the entire PEM key content including the `-----BEGIN` and `-----END` lines. Supports RSA, ED25519, and ECDSA keys.
+Paste the entire PEM key content including the `-----BEGIN` and `-----END` lines when creating the credential profile. Supports RSA, ED25519, and ECDSA keys.
 :::
 
 ## How It Works

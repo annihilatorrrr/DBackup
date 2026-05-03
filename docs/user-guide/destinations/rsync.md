@@ -13,39 +13,39 @@ The default DBackup Docker image includes rsync. If you're running DBackup outsi
 
 ## Configuration
 
+::: info Credential Profile required
+Rsync requires a [Credential Profile](/user-guide/security/credential-profiles) of type `SSH_KEY`. Create one in **Settings → Vault → Credentials** before saving the destination.
+:::
+
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
 | **Name** | Friendly name for this destination | - | ✅ |
 | **Host** | Hostname or IP of the remote server | - | ✅ |
 | **Port** | SSH port | `22` | ❌ |
-| **Username** | SSH username | - | ✅ |
-| **Auth Type** | Authentication method | `password` | ❌ |
-| **Password** | User password (when Auth Type = `password`) | - | ❌ |
-| **Private Key** | PEM-encoded private key (when Auth Type = `privateKey`) | - | ❌ |
-| **Passphrase** | Passphrase for encrypted private keys | - | ❌ |
+| **Primary Credential** | `SSH_KEY` credential profile (username + key or password) | - | ✅ |
 | **Path Prefix** | Remote directory for backups | - | ✅ |
 | **Options** | Additional rsync flags (e.g. `--bwlimit=1000`) | - | ❌ |
 
-### Authentication Methods
+### Authentication Methods (via `SSH_KEY` profile)
 
 | Auth Type | Description |
 | :--- | :--- |
-| `password` | Username + password via sshpass (default) |
-| `privateKey` | SSH private key (paste PEM content directly) |
+| `password` | Username + password via sshpass |
+| `privateKey` | SSH private key (PEM format) |
 | `agent` | Use the host's SSH agent (keys loaded via `ssh-add`) |
 
 ## Setup Guide
 
-1. Ensure the target server has rsync and SSH installed
-2. Create a dedicated user with write access to the backup directory:
+1. Create an `SSH_KEY` credential profile in **Settings → Vault → Credentials** ([guide](/user-guide/security/credential-profiles))
+2. Ensure the target server has rsync and SSH installed
+3. Create a dedicated user with write access to the backup directory:
    ```bash
    sudo useradd -m dbackup
    sudo mkdir -p /backups/dbackup
    sudo chown dbackup: /backups/dbackup
    ```
-3. Go to **Destinations** → **Add Destination** → **Rsync**
-4. Enter Host, Username, and select your Auth Type
-5. Enter credentials (password or private key)
+4. Go to **Destinations** → **Add Destination** → **Rsync**
+5. Enter Host and select the credential profile in the **Primary Credential** picker
 6. Set **Path Prefix** to the remote directory (e.g. `/backups/dbackup`)
 7. (Optional) Add custom **Options** for bandwidth limiting or other flags
 8. Click **Test** to verify the connection

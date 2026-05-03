@@ -47,17 +47,17 @@ Now add the database you want to backup.
 
 ### Example: MySQL Database
 
-1. Go to **Sources** in the sidebar
-2. Click **Add Source**
-3. Select **MySQL**
-4. Configure:
+1. Create a `USERNAME_PASSWORD` credential profile in **Settings → Vault → Credentials** with your database user and password (see [Credential Profiles](/user-guide/security/credential-profiles))
+2. Go to **Sources** in the sidebar
+3. Click **Add Source**
+4. Select **MySQL**
+5. Configure:
    - **Name**: `Production MySQL`
    - **Host**: `mysql.example.com` (or `host.docker.internal` for host machine)
    - **Port**: `3306`
-   - **User**: `backup_user`
-   - **Password**: `your-password`
-5. Click **Test Connection**
-6. Click **Save**
+   - **Primary Credential**: select the profile you created
+6. Click **Test Connection**
+7. Click **Save**
 
 ::: warning Permissions
 Ensure your database user has `SELECT` and `LOCK TABLES` permissions for backup, and `CREATE` permission for restore operations.
@@ -79,11 +79,11 @@ Now connect source and destination in a job.
 
 ### Optional: Add Compression
 
-In the **Security** tab: select a compression algorithm (Gzip or Brotli) from the Compression dropdown.
+In the **Advanced** tab: select a compression algorithm (Gzip or Brotli) from the Compression dropdown.
 
 ### Optional: Add Encryption
 
-In the **Security** tab: select an Encryption Profile from the Encryption dropdown. Profiles are managed in the **Vault** (sidebar).
+In the **Advanced** tab: select an Encryption Profile from the Encryption dropdown. Profiles are managed in the **Vault** (sidebar).
 
 ### Optional: Set Schedule
 

@@ -26,14 +26,17 @@ DBackup uses `redis-cli --rdb` to download RDB snapshots.
 
 ## Configuration
 
+::: info Credential Profiles required
+Redis requires a [Credential Profile](/user-guide/security/credential-profiles). Create an `USERNAME_PASSWORD` profile in **Settings → Vault → Credentials** before saving the source (username is optional for password-only setups). SSH mode additionally requires an `SSH_KEY` profile.
+:::
+
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
 | **Connection Mode** | Direct (TCP) or SSH | `Direct` | ✅ |
 | **Host** | Redis server hostname or IP | `localhost` | ✅ |
 | **Port** | Redis server port | `6379` | ✅ |
-| **Password** | Optional authentication password | - | ❌ |
+| **Primary Credential** | `USERNAME_PASSWORD` credential profile (username optional, used for ACL auth; password for `requirepass`) | - | ❌ |
 | **Database** | Database index (0-15) for display purposes | `0` | ❌ |
-| **Username** | Redis 6+ ACL username | - | ❌ |
 | **TLS** | Enable TLS/SSL connection | `false` | ❌ |
 | **Mode** | Connection mode: `standalone` or `sentinel` | `standalone` | ❌ |
 | **Sentinel Master Name** | Master name for Sentinel mode | - | ❌ |
@@ -48,11 +51,7 @@ These fields appear when **Connection Mode** is set to **SSH**:
 | :--- | :--- | :--- | :--- |
 | **SSH Host** | SSH server hostname or IP | - | ✅ |
 | **SSH Port** | SSH server port | `22` | ❌ |
-| **SSH Username** | SSH login username | - | ✅ |
-| **SSH Auth Type** | Password, Private Key, or Agent | `Password` | ✅ |
-| **SSH Password** | SSH password | - | ❌ |
-| **SSH Private Key** | PEM-formatted private key | - | ❌ |
-| **SSH Passphrase** | Passphrase for encrypted key | - | ❌ |
+| **SSH Credential** | `SSH_KEY` credential profile (username + key or password) | - | ✅ |
 
 ## Example Configuration
 
@@ -61,7 +60,7 @@ These fields appear when **Connection Mode** is set to **SSH**:
 ```
 Host: redis.example.com
 Port: 6379
-Password: your-redis-password
+Primary Credential: my-redis-password  (USERNAME_PASSWORD profile, password field)
 ```
 
 ### Redis with ACL (6.0+)
@@ -69,8 +68,7 @@ Password: your-redis-password
 ```
 Host: redis.example.com
 Port: 6379
-Username: backup-user
-Password: user-password
+Primary Credential: my-redis-user  (USERNAME_PASSWORD profile, username + password)
 ```
 
 ### Redis with TLS
@@ -78,7 +76,7 @@ Password: user-password
 ```
 Host: redis.example.com
 Port: 6379
-Password: your-password
+Primary Credential: my-redis-password  (USERNAME_PASSWORD profile)
 TLS: Enabled
 ```
 
@@ -88,7 +86,7 @@ TLS: Enabled
 Mode: sentinel
 Sentinel Master Name: mymaster
 Sentinel Nodes: sentinel1:26379,sentinel2:26379,sentinel3:26379
-Password: your-password
+Primary Credential: my-redis-password  (USERNAME_PASSWORD profile)
 ```
 
 ## Backup File Format

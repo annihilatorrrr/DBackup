@@ -53,6 +53,23 @@ Automate backups with cron expressions. See [Scheduling](/user-guide/jobs/schedu
 
 Automatically clean up old backups. Retention is configured **per destination** - each destination can have its own retention policy. See [Retention Policies](/user-guide/jobs/retention).
 
+### Filename Pattern
+
+Customize the filename of backup files globally in **Settings → General → Backup Filename Pattern**. The pattern supports the following tokens:
+
+| Token | Description | Example |
+| :--- | :--- | :--- |
+| `{name}` | Job name | `Daily MySQL Backup` |
+| `{db_name}` | Database name | `mydb` |
+| `yyyy` | 4-digit year | `2026` |
+| `MM` | 2-digit month | `05` |
+| `dd` | 2-digit day | `03` |
+| `HH` | 2-digit hour (24h) | `14` |
+| `mm` | 2-digit minute | `30` |
+| `ss` | 2-digit second | `00` |
+
+A live preview and clickable token chips are shown in the settings form. The default pattern produces filenames like `JobName_2026-05-03T14-30-00.sql`.
+
 ### Notifications
 
 Get alerts when backups complete:

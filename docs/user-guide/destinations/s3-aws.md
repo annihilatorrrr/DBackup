@@ -4,13 +4,16 @@ Store backups in AWS S3 with support for storage classes, lifecycle policies, an
 
 ## Configuration
 
+::: info Credential Profile required
+Amazon S3 requires a [Credential Profile](/user-guide/security/credential-profiles) of type `ACCESS_KEY`. Create one in **Settings → Vault → Credentials** before saving the destination.
+:::
+
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
 | **Name** | Friendly name for this destination | - | ✅ |
 | **Region** | AWS region (e.g. `us-east-1`, `eu-central-1`) | `us-east-1` | ✅ |
 | **Bucket** | S3 bucket name | - | ✅ |
-| **Access Key ID** | AWS access key | - | ✅ |
-| **Secret Access Key** | AWS secret key | - | ✅ |
+| **Primary Credential** | `ACCESS_KEY` credential profile (Access Key ID + Secret Access Key) | - | ✅ |
 | **Path Prefix** | Folder path within the bucket | - | ❌ |
 | **Storage Class** | S3 storage class for uploaded objects | `STANDARD` | ❌ |
 
@@ -30,11 +33,12 @@ Store backups in AWS S3 with support for storage classes, lifecycle policies, an
    - Go to [IAM Console](https://console.aws.amazon.com/iam/) → **Users** → **Create user**
    - Attach the `AmazonS3FullAccess` policy (or a scoped policy - see below)
    - Create an **Access Key** (use case: "Application outside AWS") and copy both keys
-3. Go to **Destinations** → **Add Destination** → **Amazon S3**
-4. Enter your Region, Bucket, Access Key ID, and Secret Access Key
-5. (Optional) Set a **Path Prefix** to organize backups in a subfolder
-6. (Optional) Select a **Storage Class** for cost optimization
-7. Click **Test** to verify the connection
+3. **Create an `ACCESS_KEY` credential profile** in **Settings → Vault → Credentials** with the Access Key ID and Secret Access Key ([guide](/user-guide/security/credential-profiles))
+4. Go to **Destinations** → **Add Destination** → **Amazon S3**
+5. Enter your Region and Bucket, then select the credential profile in the **Primary Credential** picker
+6. (Optional) Set a **Path Prefix** to organize backups in a subfolder
+7. (Optional) Select a **Storage Class** for cost optimization
+8. Click **Test** to verify the connection
 
 <details>
 <summary>Minimal IAM Policy (recommended)</summary>

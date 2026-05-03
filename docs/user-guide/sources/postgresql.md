@@ -19,13 +19,16 @@ DBackup uses `pg_dump` from PostgreSQL 18 client, which is backward compatible w
 
 ## Configuration
 
+::: info Credential Profiles required
+PostgreSQL requires a [Credential Profile](/user-guide/security/credential-profiles). Create an `USERNAME_PASSWORD` profile in **Settings → Vault → Credentials** before saving the source. SSH mode additionally requires an `SSH_KEY` profile.
+:::
+
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
 | **Connection Mode** | Direct (TCP) or SSH | `Direct` | ✅ |
 | **Host** | Database server hostname | `localhost` | ✅ |
 | **Port** | PostgreSQL port | `5432` | ✅ |
-| **User** | Database username | - | ✅ |
-| **Password** | Database password | - | ❌ |
+| **Primary Credential** | `USERNAME_PASSWORD` credential profile (username + password) | - | ✅ |
 | **Database** | Database name(s) to backup | All databases | ❌ |
 | **Additional Options** | Extra `pg_dump` flags | - | ❌ |
 
@@ -37,11 +40,7 @@ These fields appear when **Connection Mode** is set to **SSH**:
 | :--- | :--- | :--- | :--- |
 | **SSH Host** | SSH server hostname or IP | - | ✅ |
 | **SSH Port** | SSH server port | `22` | ❌ |
-| **SSH Username** | SSH login username | - | ✅ |
-| **SSH Auth Type** | Password, Private Key, or Agent | `Password` | ✅ |
-| **SSH Password** | SSH password | - | ❌ |
-| **SSH Private Key** | PEM-formatted private key | - | ❌ |
-| **SSH Passphrase** | Passphrase for encrypted key | - | ❌ |
+| **SSH Credential** | `SSH_KEY` credential profile (username + key or password) | - | ✅ |
 
 ## Prerequisites
 

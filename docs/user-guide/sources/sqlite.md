@@ -13,6 +13,10 @@ SQLite is a file-based database. DBackup supports two modes:
 
 ## Configuration
 
+::: info SSH Credential Profile (SSH mode only)
+SQLite in SSH mode requires an `SSH_KEY` [Credential Profile](/user-guide/security/credential-profiles). Create one in **Settings → Vault → Credentials** before saving the source. Local mode does not require a credential profile.
+:::
+
 ### Local Mode
 
 | Field | Description |
@@ -28,11 +32,7 @@ SQLite is a file-based database. DBackup supports two modes:
 | **Mode** | Select "SSH" |
 | **Host** | SSH server hostname |
 | **Port** | SSH port (default: `22`) |
-| **Username** | SSH username |
-| **Auth Type** | `password`, `privateKey`, or `agent` |
-| **Password** | SSH password (if using password auth) |
-| **Private Key** | PEM-formatted private key |
-| **Passphrase** | Key passphrase (if encrypted) |
+| **SSH Credential** | `SSH_KEY` credential profile (username + key or password) |
 | **Path** | Remote path to SQLite file |
 | **SQLite Binary** | Remote path to `sqlite3` binary |
 
@@ -64,44 +64,15 @@ chmod 644 /path/to/database.db
 
 ## SSH Mode Setup
 
-### Password Authentication
+1. Create an `SSH_KEY` credential profile in **Settings → Vault → Credentials** ([guide](/user-guide/security/credential-profiles))
+2. Select "SSH" mode
+3. Enter host and port
+4. Select the credential profile in the **SSH Credential** picker
+5. Enter the remote path to the SQLite file
 
-1. Select "SSH" mode
-2. Enter host, port, username
-3. Select "Password" auth type
-4. Enter password
-5. Enter remote path to SQLite file
-
-### SSH Key Authentication
-
-1. Select "SSH" mode
-2. Enter host, port, username
-3. Select "Private Key" auth type
-4. Paste your private key (PEM format)
-5. Enter passphrase if the key is encrypted
-
-Example private key format:
-```
------BEGIN OPENSSH PRIVATE KEY-----
-b3BlbnNzaC1rZXktdjEAAAAACmFlczI1Ni1jdHI...
------END OPENSSH PRIVATE KEY-----
-```
-
-### SSH Agent
-
-For SSH agent forwarding:
-1. Select "SSH" mode
-2. Select "Agent" auth type
-3. Mount SSH agent socket in Docker:
-
-```yaml
-services:
-  dbackup:
-    volumes:
-      - ${SSH_AUTH_SOCK}:/ssh-agent
-    environment:
-      - SSH_AUTH_SOCK=/ssh-agent
-```
+::: tip Auth types in the credential profile
+The `SSH_KEY` profile supports Password, Private Key (PEM), and SSH Agent. Configure the auth type when creating the profile.
+:::
 
 ## Backup Process
 

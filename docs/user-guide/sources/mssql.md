@@ -23,14 +23,17 @@ This means the backup file is created **on the SQL Server** first, then transfer
 
 ## Configuration
 
+::: info Credential Profiles required
+Microsoft SQL Server requires a [Credential Profile](/user-guide/security/credential-profiles). Create an `USERNAME_PASSWORD` profile in **Settings → Vault → Credentials** before saving the source. SSH file transfer mode additionally requires an `SSH_KEY` profile.
+:::
+
 ### Connection Settings
 
 | Field | Description | Default |
 | :--- | :--- | :--- |
 | **Host** | SQL Server hostname | `localhost` |
 | **Port** | SQL Server port | `1433` |
-| **User** | SQL Server login | Required |
-| **Password** | Login password | Required |
+| **Primary Credential** | `USERNAME_PASSWORD` credential profile (SQL Server login + password) | Required |
 | **Database** | Database name(s) to backup | Required |
 
 ### Configuration Settings
@@ -51,11 +54,7 @@ This means the backup file is created **on the SQL Server** first, then transfer
 | **Local Backup Path** | Host-side mounted path (local mode) | `/tmp` |
 | **SSH Host** | SSH host (SSH mode, defaults to DB host) | - |
 | **SSH Port** | SSH port (SSH mode) | `22` |
-| **SSH Username** | SSH username (SSH mode) | - |
-| **SSH Auth Method** | password / privateKey / agent | `password` |
-| **SSH Password** | SSH password | - |
-| **SSH Private Key** | PEM private key | - |
-| **SSH Passphrase** | Key passphrase | - |
+| **SSH Credential** | `SSH_KEY` credential profile for file transfer (SSH mode) | - |
 
 ## File Transfer Modes
 
@@ -96,7 +95,7 @@ Use this when SQL Server runs on a remote host (bare-metal, VM, or remote Docker
 #### Setup
 
 1. Set **File Transfer Mode** to `SSH`
-2. Configure SSH credentials (host, username, password or key)
+2. Select an `SSH_KEY` credential profile in the **SSH Credential** picker
 3. Set **Backup Path (Server)** to the directory on the SQL Server host (e.g., `/var/opt/mssql/backup`)
 4. Ensure the SSH user has read/write access to the backup path
 

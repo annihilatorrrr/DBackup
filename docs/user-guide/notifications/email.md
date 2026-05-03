@@ -4,13 +4,16 @@ Send HTML notifications via any SMTP server. Supports multiple recipients and pe
 
 ## Configuration
 
+::: info Credential Profile required
+Email (SMTP) requires a [Credential Profile](/user-guide/security/credential-profiles) of type `SMTP`. Create one in **Settings → Vault → Credentials** before saving the notification.
+:::
+
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
 | **SMTP Host** | Mail server hostname | - | ✅ |
 | **Port** | SMTP port | `587` | ❌ |
 | **Security** | `none`, `ssl`, or `starttls` | `starttls` | ❌ |
-| **User** | SMTP username | - | ❌ |
-| **Password** | SMTP password | - | ❌ |
+| **Primary Credential** | `SMTP` credential profile (SMTP username + password) | - | ❌ |
 | **From** | Sender email address | - | ✅ |
 | **To** | Recipient email address(es) | - | ✅ |
 
@@ -18,10 +21,12 @@ Send HTML notifications via any SMTP server. Supports multiple recipients and pe
 
 ## Setup Guide
 
-1. In DBackup: **Notifications** → **Add Notification** → **Email (SMTP)**
-2. Enter your SMTP server details (host, port, credentials)
-3. Set the From and To addresses (multiple recipients supported)
-4. Click **Test** → check the recipient's inbox (and spam folder) → **Save**
+1. Create an `SMTP` credential profile in **Settings → Vault → Credentials** with your SMTP username and password ([guide](/user-guide/security/credential-profiles))
+2. In DBackup: **Notifications** → **Add Notification** → **Email (SMTP)**
+3. Enter your SMTP server details (host, port, security mode)
+4. Select the credential profile in the **Primary Credential** picker
+5. Set the From and To addresses (multiple recipients supported)
+6. Click **Test** → check the recipient's inbox (and spam folder) → **Save**
 
 <details>
 <summary>Common SMTP provider settings</summary>

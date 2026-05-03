@@ -4,14 +4,17 @@ Store backups in any S3-compatible storage provider - MinIO, Wasabi, DigitalOcea
 
 ## Configuration
 
+::: info Credential Profile required
+S3-Compatible Storage requires a [Credential Profile](/user-guide/security/credential-profiles) of type `ACCESS_KEY`. Create one in **Settings → Vault → Credentials** before saving the destination.
+:::
+
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
 | **Name** | Friendly name for this destination | - | ✅ |
 | **Endpoint** | S3-compatible API endpoint URL | - | ✅ |
 | **Region** | Storage region | `us-east-1` | ❌ |
 | **Bucket** | Bucket name | - | ✅ |
-| **Access Key ID** | S3 access key | - | ✅ |
-| **Secret Access Key** | S3 secret key | - | ✅ |
+| **Primary Credential** | `ACCESS_KEY` credential profile (Access Key ID + Secret Access Key) | - | ✅ |
 | **Force Path Style** | Use path-style URLs (`endpoint/bucket`) instead of virtual-hosted | `false` | ❌ |
 | **Path Prefix** | Folder path within the bucket | - | ❌ |
 
@@ -23,11 +26,12 @@ Enable this for providers that don't support virtual-hosted-style URLs (e.g. Min
 
 1. Create a bucket in your S3-compatible provider
 2. Generate access credentials (access key + secret key)
-3. Go to **Destinations** → **Add Destination** → **S3-Compatible**
-4. Enter the **Endpoint** URL, Bucket, Access Key ID, and Secret Access Key
-5. Enable **Force Path Style** if required by your provider
-6. (Optional) Set a **Path Prefix** for organizing backups
-7. Click **Test** to verify the connection
+3. **Create an `ACCESS_KEY` credential profile** in **Settings → Vault → Credentials** with those keys ([guide](/user-guide/security/credential-profiles))
+4. Go to **Destinations** → **Add Destination** → **S3-Compatible**
+5. Enter the **Endpoint** URL and Bucket, then select the credential profile in the **Primary Credential** picker
+6. Enable **Force Path Style** if required by your provider
+7. (Optional) Set a **Path Prefix** for organizing backups
+8. Click **Test** to verify the connection
 
 <details>
 <summary>MinIO Setup</summary>

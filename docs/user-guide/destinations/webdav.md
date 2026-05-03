@@ -4,21 +4,25 @@ Store backups on any WebDAV-compatible server - Nextcloud, ownCloud, Synology, A
 
 ## Configuration
 
+::: info Credential Profile required
+WebDAV requires a [Credential Profile](/user-guide/security/credential-profiles) of type `USERNAME_PASSWORD`. Create one in **Settings → Vault → Credentials** before saving the destination.
+:::
+
 | Field | Description | Default | Required |
 | :--- | :--- | :--- | :--- |
 | **Name** | Friendly name for this destination | - | ✅ |
 | **URL** | WebDAV endpoint URL | - | ✅ |
-| **Username** | WebDAV username | - | ✅ |
-| **Password** | WebDAV password or app password | - | ❌ |
+| **Primary Credential** | `USERNAME_PASSWORD` credential profile (username + password or app password) | - | ✅ |
 | **Path Prefix** | Subfolder path on the server | - | ❌ |
 
 ## Setup Guide
 
-1. Obtain the WebDAV URL from your provider (see examples below)
-2. Go to **Destinations** → **Add Destination** → **WebDAV**
-3. Enter the **URL**, **Username**, and **Password**
-4. (Optional) Set a **Path Prefix** to organize backups in a subfolder
-5. Click **Test** to verify the connection
+1. Create a `USERNAME_PASSWORD` credential profile in **Settings → Vault → Credentials** ([guide](/user-guide/security/credential-profiles))
+2. Obtain the WebDAV URL from your provider (see examples below)
+3. Go to **Destinations** → **Add Destination** → **WebDAV**
+4. Enter the **URL** and select the credential profile in the **Primary Credential** picker
+5. (Optional) Set a **Path Prefix** to organize backups in a subfolder
+6. Click **Test** to verify the connection
 
 <details>
 <summary>Nextcloud / ownCloud Setup</summary>

@@ -52,7 +52,7 @@ Preference toggles are saved immediately when changed-no save button required.
 Manage your account security:
 
 - **Change Password**: Update your account password (if using local authentication)
-- **Two-Factor Authentication (2FA)**: Enable TOTP-based 2FA using an authenticator app
+- **Two-Factor Authentication (2FA)**: Enable TOTP-based 2FA using an authenticator app. During setup, the QR code dialog includes a **"Can't scan? Copy the secret key"** button - click it to copy the raw TOTP secret and enter it manually in your authenticator app if the camera scanner is not available.
 - **Passkeys/WebAuthn**: Register hardware security keys or platform authenticators
 
 ### Sessions Tab
