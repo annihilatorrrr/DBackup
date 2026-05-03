@@ -134,7 +134,7 @@ export function AdapterForm({ type, adapters, onSuccess, initialData, onBack }: 
             }
         }
         return z.object(patchedShape);
-    }, [selectedAdapter, primaryCredentialId, sshCredentialId]);
+    }, [selectedAdapter]);
 
     const schema = z.object({
         name: z.string().min(1, "Name is required"),

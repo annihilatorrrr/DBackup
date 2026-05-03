@@ -36,6 +36,8 @@ vi.mock('fs', async (importOriginal) => {
 
 function makeEncryptionMeta(overrides = {}) {
     return {
+        enabled: true as const,
+        algorithm: "aes-256-gcm" as const,
         profileId: 'profile-abc',
         iv: Buffer.alloc(12).toString('hex'),
         authTag: Buffer.alloc(16).toString('hex'),

@@ -130,7 +130,7 @@ describe("Telegram Adapter", () => {
         it("should default parse mode and disable notification when unset", async () => {
             mockFetch.mockResolvedValue({ ok: true });
 
-            const { parseMode, disableNotification, ...configWithoutOptionalSettings } = baseConfig;
+            const { parseMode: _parseMode, disableNotification: _disableNotification, ...configWithoutOptionalSettings } = baseConfig;
             await TelegramAdapter.send(configWithoutOptionalSettings, "Simple message");
 
             const body = JSON.parse(mockFetch.mock.calls[0][1].body);

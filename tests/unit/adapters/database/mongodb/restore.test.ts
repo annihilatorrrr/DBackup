@@ -136,6 +136,7 @@ import { prepareRestore, restore } from "@/lib/adapters/database/mongodb/restore
 
 function buildConfig(overrides: Record<string, any> = {}): MongoDBConfig & Record<string, any> {
     return {
+        connectionMode: "direct",
         host: "localhost",
         port: 27017,
         database: "testdb",

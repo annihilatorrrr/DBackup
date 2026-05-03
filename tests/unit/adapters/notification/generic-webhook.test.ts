@@ -39,7 +39,7 @@ describe("Generic Webhook Adapter", () => {
         it("should default to POST when method is not configured", async () => {
             mockFetch.mockResolvedValue({ ok: true, status: 200 });
 
-            const { method, ...configWithoutMethod } = baseConfig;
+            const { method: _method, ...configWithoutMethod } = baseConfig;
             await GenericWebhookAdapter.test!(configWithoutMethod);
 
             expect(mockFetch.mock.calls[0][1].method).toBe("POST");
@@ -162,7 +162,7 @@ describe("Generic Webhook Adapter", () => {
         it("should default to POST in send() when method is not configured", async () => {
             mockFetch.mockResolvedValue({ ok: true });
 
-            const { method, ...configWithoutMethod } = baseConfig;
+            const { method: _method, ...configWithoutMethod } = baseConfig;
             await GenericWebhookAdapter.send(configWithoutMethod, "Test");
 
             expect(mockFetch.mock.calls[0][1].method).toBe("POST");
@@ -182,7 +182,7 @@ describe("Generic Webhook Adapter", () => {
         it("should default content type to application/json", async () => {
             mockFetch.mockResolvedValue({ ok: true });
 
-            const { contentType, ...configWithoutContentType } = baseConfig;
+            const { contentType: _contentType, ...configWithoutContentType } = baseConfig;
             await GenericWebhookAdapter.send(configWithoutContentType, "Test");
 
             expect(mockFetch.mock.calls[0][1].headers["Content-Type"]).toBe("application/json");

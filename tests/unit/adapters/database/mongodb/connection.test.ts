@@ -61,6 +61,7 @@ import { test, getDatabases, getDatabasesWithStats } from "@/lib/adapters/databa
 
 function buildConfig(overrides: Partial<MongoDBConfig> = {}): MongoDBConfig {
     return {
+        connectionMode: "direct",
         host: "localhost",
         port: 27017,
         database: "testdb",

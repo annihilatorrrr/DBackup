@@ -51,7 +51,7 @@ export async function stepExecuteDump(ctx: RunnerContext) {
 
     const sanitizedName = job.name.replace(/[^a-z0-9]/gi, '_');
     const escapeName = (text: string) => text.replace(/'/g, "''");
-    let datePattern = pattern
+    const datePattern = pattern
         .replace('{name}', `'${escapeName(sanitizedName)}'`)
         .replace('{db_name}', `'${escapeName(dbNameRaw)}'`);
 

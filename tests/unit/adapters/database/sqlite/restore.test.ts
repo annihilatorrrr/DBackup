@@ -72,8 +72,8 @@ vi.mock("@/lib/ssh", () => ({
 }));
 
 vi.mock("crypto", () => ({
-    randomUUID: (...args: any[]) => mockRandomUUID(...args),
-    default: { randomUUID: (...args: any[]) => mockRandomUUID(...args) },
+    randomUUID: (...args: any[]) => (mockRandomUUID as (...a: any[]) => any)(...args),
+    default: { randomUUID: (...args: any[]) => (mockRandomUUID as (...a: any[]) => any)(...args) },
 }));
 
 import { prepareRestore, restore } from "@/lib/adapters/database/sqlite/restore";

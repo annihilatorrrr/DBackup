@@ -5,7 +5,7 @@ import { SshClient, shellEscape, extractSqliteSshConfig } from "@/lib/ssh";
 import { SQLiteConfig } from "@/lib/adapters/definitions";
 import { randomUUID } from "crypto";
 
-export const prepareRestore: DatabaseAdapter["prepareRestore"] = async (_config, _databases) => {
+export const prepareRestore: NonNullable<DatabaseAdapter["prepareRestore"]> = async (_config, _databases) => {
      // No major prep needed for SQLite mostly, but could check write permissions here
 };
 

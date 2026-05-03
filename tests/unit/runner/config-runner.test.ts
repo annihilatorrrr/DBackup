@@ -57,6 +57,7 @@ vi.mock("@/lib/temp-dir", () => ({
 
 vi.mock("@/lib/crypto/stream", () => ({
     createEncryptionStream: vi.fn().mockImplementation(() => ({
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         stream: new (require("stream").PassThrough)(),
         getAuthTag: vi.fn().mockReturnValue(Buffer.alloc(16)),
         iv: Buffer.alloc(12),
@@ -79,6 +80,7 @@ vi.mock("@/lib/runner/config-runner", async (importOriginal) => {
 
 vi.mock("fs", async (importOriginal) => {
     const actual = await importOriginal<typeof import("fs")>();
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { PassThrough } = require("stream");
     return {
         ...actual,
@@ -109,7 +111,7 @@ import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function mockSetting(key: string, value: string | null) {
+function _mockSetting(key: string, value: string | null) {
     mockPrisma.systemSetting.findUnique.mockImplementation(
         ({ where }: { where: { key: string } }) => {
             if (where.key === key) return Promise.resolve(value ? { key, value } : null);

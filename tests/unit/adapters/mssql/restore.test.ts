@@ -507,7 +507,7 @@ describe("MSSQL Restore", () => {
             const config = buildConfig({ fileTransferMode: "local", database: "testdb" });
 
             // TAR extract yields no files - restore continues but has no bakFiles to process
-            const result = await restore(config, "/backups/testdb.tar", (msg) => logs.push(msg));
+            await restore(config, "/backups/testdb.tar", (msg) => logs.push(msg));
 
             // TAR was detected: the log must contain the detection message
             expect(logs.some((l) => l.includes("TAR archive"))).toBe(true);

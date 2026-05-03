@@ -7,6 +7,7 @@ import { Postgres17Dialect } from "@/lib/adapters/database/postgres/dialects/pos
 import type { PostgresConfig } from "@/lib/adapters/definitions";
 
 const baseConfig: PostgresConfig = {
+    connectionMode: "direct",
     host: "localhost",
     port: 5432,
     user: "postgres",

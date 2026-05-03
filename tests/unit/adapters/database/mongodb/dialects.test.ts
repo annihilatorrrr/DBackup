@@ -5,6 +5,7 @@ import { MongoDBConfig } from "@/lib/adapters/definitions";
 
 function buildConfig(overrides: Partial<MongoDBConfig> = {}): MongoDBConfig {
     return {
+        connectionMode: "direct",
         host: "localhost",
         port: 27017,
         database: "testdb",

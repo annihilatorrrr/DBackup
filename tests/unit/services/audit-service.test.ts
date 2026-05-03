@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { prismaMock } from '@/lib/testing/prisma-mock';
 import { AuditService } from '@/services/audit-service';
 
@@ -125,7 +125,7 @@ describe('AuditService', () => {
 
     describe('getFilterStats()', () => {
         it('returns actions and resources', async () => {
-            prismaMock.auditLog.groupBy.mockResolvedValue([
+            (prismaMock.auditLog.groupBy as any).mockResolvedValue([
                 { action: 'CREATE', _count: { action: 3 } } as any,
             ]);
 
@@ -135,7 +135,7 @@ describe('AuditService', () => {
         });
 
         it('applies search filter to the base where clause', async () => {
-            prismaMock.auditLog.groupBy.mockResolvedValue([]);
+            (prismaMock.auditLog.groupBy as any).mockResolvedValue([]);
 
             await service.getFilterStats({ search: 'admin' });
 
@@ -147,7 +147,7 @@ describe('AuditService', () => {
         });
 
         it('applies startDate and endDate to the base where clause', async () => {
-            prismaMock.auditLog.groupBy.mockResolvedValue([]);
+            (prismaMock.auditLog.groupBy as any).mockResolvedValue([]);
 
             const start = new Date('2026-01-01');
             const end = new Date('2026-06-30');
@@ -163,7 +163,7 @@ describe('AuditService', () => {
         });
 
         it('applies only startDate when endDate is omitted', async () => {
-            prismaMock.auditLog.groupBy.mockResolvedValue([]);
+            (prismaMock.auditLog.groupBy as any).mockResolvedValue([]);
 
             const start = new Date('2026-03-01');
             await service.getFilterStats({ startDate: start });
@@ -178,7 +178,7 @@ describe('AuditService', () => {
         });
 
         it('applies only endDate when startDate is omitted', async () => {
-            prismaMock.auditLog.groupBy.mockResolvedValue([]);
+            (prismaMock.auditLog.groupBy as any).mockResolvedValue([]);
 
             const end = new Date('2026-12-31');
             await service.getFilterStats({ endDate: end });

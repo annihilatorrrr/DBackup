@@ -802,7 +802,6 @@ describe("OneDriveAdapter", () => {
     // ====================================================================
     describe("download() tracker transform body", () => {
         it("invokes onProgress via tracker transform when onProgress and size > 0", async () => {
-            const { pipeline } = await import("stream/promises");
             mockTokenRefresh();
             mockFs.mkdir.mockResolvedValue(undefined);
 

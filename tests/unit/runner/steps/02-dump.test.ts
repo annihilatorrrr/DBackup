@@ -170,7 +170,7 @@ describe('stepExecuteDump', () => {
     });
 
     it('injects pgCompression into sourceConfig when set on job', async () => {
-        const { resolveAdapterConfig } = await import('@/lib/adapters/config-resolver');
+        await import('@/lib/adapters/config-resolver');
         const ctx = makeCtx();
         (ctx.job as any).pgCompression = 'zstd';
         (ctx.job as any).databases = JSON.stringify(['pgdb']);

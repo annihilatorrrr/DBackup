@@ -36,8 +36,8 @@ vi.mock("@/lib/ssh", () => ({
 }));
 
 vi.mock("@/lib/adapters/database/mysql/tools", () => ({
-    getMysqlCommand: (...args: any[]) => mockGetMysqlCommand(...args),
-    getMysqladminCommand: (...args: any[]) => mockGetMysqladminCommand(...args),
+    getMysqlCommand: (...args: any[]) => (mockGetMysqlCommand as (...a: any[]) => any)(...args),
+    getMysqladminCommand: (...args: any[]) => (mockGetMysqladminCommand as (...a: any[]) => any)(...args),
     getMysqldumpCommand: vi.fn(() => "mysqldump"),
     initMysqlTools: vi.fn(),
 }));

@@ -117,13 +117,11 @@ export async function performExecution(executionId: string, jobId: string) {
             if (s) currentStage = s;
             currentProgress = p;
         },
+        /* v8 ignore next 3 */
         setStage: (_stage: PipelineStage) => {},
         updateDetail: (_detail: string) => {},
         updateStageProgress: (_percent: number) => {},
         /* v8 ignore end */
-        setStage: (_stage: PipelineStage) => {},
-        updateDetail: (_detail: string) => {},
-        updateStageProgress: (_percent: number) => {},
     } as unknown as RunnerContext;
 
     // Parse logs and normalize to LogEntry[]

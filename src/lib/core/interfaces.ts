@@ -186,7 +186,7 @@ export interface StorageAdapter extends BaseAdapter {
  * of the backup-specific ones.
  */
 export interface NotificationContext {
-    success: boolean;
+    success?: boolean;
     adapterName?: string;
     duration?: number;
     size?: number;

@@ -103,9 +103,7 @@ describe("GenericAdapter", () => {
 
   describe("getEndpoints", () => {
     it("should map config fields directly to endpoints", () => {
-      const endpoints = GenericAdapter.getEndpoints(VALID_CONFIG) as ReturnType<
-        typeof GenericAdapter.getEndpoints
-      >;
+      const endpoints = GenericAdapter.getEndpoints(VALID_CONFIG) as any;
 
       expect(endpoints.issuer).toBe(VALID_CONFIG.issuer);
       expect(endpoints.authorizationEndpoint).toBe(VALID_CONFIG.authorizationEndpoint);
@@ -115,9 +113,7 @@ describe("GenericAdapter", () => {
     });
 
     it("should derive discoveryEndpoint from issuer", () => {
-      const endpoints = GenericAdapter.getEndpoints(VALID_CONFIG) as ReturnType<
-        typeof GenericAdapter.getEndpoints
-      >;
+      const endpoints = GenericAdapter.getEndpoints(VALID_CONFIG) as any;
 
       expect(endpoints.discoveryEndpoint).toBe(
         "https://auth.example.com/.well-known/openid-configuration"
@@ -128,7 +124,7 @@ describe("GenericAdapter", () => {
       const endpoints = GenericAdapter.getEndpoints({
         ...VALID_CONFIG,
         issuer: "https://auth.example.com/"
-      }) as ReturnType<typeof GenericAdapter.getEndpoints>;
+      }) as any;
 
       expect(endpoints.discoveryEndpoint).toBe(
         "https://auth.example.com/.well-known/openid-configuration"
@@ -139,16 +135,14 @@ describe("GenericAdapter", () => {
       const endpoints = GenericAdapter.getEndpoints({
         ...VALID_CONFIG,
         jwksEndpoint: ""
-      }) as ReturnType<typeof GenericAdapter.getEndpoints>;
+      }) as any;
 
       expect(endpoints.jwksEndpoint).toBeUndefined();
     });
 
     it("should return undefined for discoveryEndpoint when issuer is missing", () => {
       const { issuer: _, ...rest } = VALID_CONFIG;
-      const endpoints = GenericAdapter.getEndpoints(rest) as ReturnType<
-        typeof GenericAdapter.getEndpoints
-      >;
+      const endpoints = GenericAdapter.getEndpoints(rest) as any;
 
       expect(endpoints.discoveryEndpoint).toBeUndefined();
     });

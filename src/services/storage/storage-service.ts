@@ -27,6 +27,7 @@ export type RichFileInfo = FileInfo & {
     dbInfo?: { count: string | number; label: string };
     isEncrypted?: boolean;
     encryptionProfileId?: string;
+    compression?: string;
     locked?: boolean;
 };
 

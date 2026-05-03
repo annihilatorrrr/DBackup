@@ -173,7 +173,7 @@ describe("S3 Adapters - shared logic via S3GenericAdapter", () => {
             const configWithPrefix = { ...genericConfig, pathPrefix: "backups/prod" };
             await S3GenericAdapter.upload(configWithPrefix, "/tmp/backup.sql", "Job/backup.sql");
 
-            const uploadCtor = (Upload as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0];
+            const uploadCtor = (Upload as unknown as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0];
             expect(uploadCtor.params.Key).toBe("backups/prod/Job/backup.sql");
         });
 
@@ -357,7 +357,7 @@ describe("S3 Adapter variants - configuration wiring", () => {
 
         await S3AWSAdapter.upload(awsConfig, "/tmp/file.sql", "Job/file.sql");
 
-        const uploadParams = (Upload as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0].params;
+        const uploadParams = (Upload as unknown as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0].params;
         expect(uploadParams.StorageClass).toBe("STANDARD");
     });
 
@@ -404,7 +404,7 @@ describe("S3 Adapter variants - configuration wiring", () => {
     });
 
     it("S3HetznerAdapter - download delegates correctly", async () => {
-        const bodyStream = require("stream").Readable.from(["data"]);
+        const bodyStream = Readable.from(["data"]);
         mockSend.mockResolvedValue({ Body: bodyStream, ContentLength: 4 });
         const result = await S3HetznerAdapter.download(hetznerConfig, "Job/file.sql", "/tmp/out.sql");
         expect(result).toBe(true);

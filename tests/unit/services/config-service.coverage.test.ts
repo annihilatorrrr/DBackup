@@ -108,8 +108,8 @@ describe('export.ts - uncovered branches', () => {
       .mockReset()
       .mockResolvedValueOnce([]) // regular jobs
       .mockResolvedValueOnce([
-        { id: 'job-1', notifications: [{ id: 'notif-A' }, { id: 'notif-B' }] },
-        { id: 'job-2', notifications: [] }, // no notifications - else branch
+        { id: 'job-1', notifications: [{ id: 'notif-A' }, { id: 'notif-B' }] } as any,
+        { id: 'job-2', notifications: [] } as any,
       ]);
 
     const result = await exportConfiguration(false);

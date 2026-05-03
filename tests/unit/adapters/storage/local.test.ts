@@ -142,7 +142,7 @@ describe("LocalFileSystemAdapter", () => {
             await LocalFileSystemAdapter.upload(config, "/tmp/source.sql", "Job/backup.sql", undefined, onLog);
 
             // onLog is only called on errors in local adapter; no error means no log
-            expect(result => result).toBeTruthy();
+            expect((_result: unknown) => _result).toBeTruthy();
         });
 
         it("calls onLog on pipeline error", async () => {
@@ -282,7 +282,7 @@ describe("LocalFileSystemAdapter", () => {
         it("uses default empty string for remotePath when not provided", async () => {
             mockFsReaddir.mockResolvedValue([]);
 
-            const result = await LocalFileSystemAdapter.list!(config);
+            const result = await LocalFileSystemAdapter.list!(config, "");
 
             expect(result).toEqual([]);
         });

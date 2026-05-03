@@ -101,6 +101,7 @@ import { dump } from "@/lib/adapters/database/mongodb/dump";
 
 function buildConfig(overrides: Partial<MongoDBConfig> = {}): MongoDBConfig {
     return {
+        connectionMode: "direct",
         host: "localhost",
         port: 27017,
         database: "testdb",

@@ -167,8 +167,7 @@ describe('BackupScheduler', () => {
 
     it('queues a concurrent refresh call and runs it after the current refresh completes', async () => {
         let resolveFirst!: (jobs: any[]) => void;
-        // @ts-expect-error -- Mock setup
-        prisma.job.findMany
+        (prisma.job.findMany as ReturnType<typeof vi.fn>)
             .mockReturnValueOnce(new Promise(resolve => { resolveFirst = resolve; }))
             .mockResolvedValue([]);
 
@@ -221,7 +220,6 @@ describe('BackupScheduler', () => {
         const jobs = [{ id: 'job1', name: 'Job 1', schedule: '0 0 * * *', enabled: true }];
         // @ts-expect-error -- Mock setup
         prisma.job.findMany.mockResolvedValue(jobs);
-        // @ts-expect-error -- Mock setup
         (runJob as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('backup failed'));
         const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
