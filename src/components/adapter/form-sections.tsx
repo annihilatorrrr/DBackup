@@ -383,7 +383,7 @@ export function DatabaseFormContent({
                                 sshCredentialId={sshCredentialId}
                                 onSshChange={onSshChange}
                             />
-                            <SshConfigSection adapter={adapter} sshAuthType={sshAuthType} />
+                            <SshConfigSection adapter={adapter} sshAuthType={sshAuthType} sshCredentialId={sshCredentialId} />
                         </>
                     )}
                     {fileTransferMode === "local" && (
@@ -450,7 +450,7 @@ function SshAwareTabLayout({
                             sshCredentialId={sshCredentialId}
                             onSshChange={onSshChange}
                         />
-                        <SshConfigSection adapter={adapter} sshAuthType={sshAuthType} description="SSH credentials to execute database commands on the remote server." />
+                        <SshConfigSection adapter={adapter} sshAuthType={sshAuthType} sshCredentialId={sshCredentialId} description="SSH credentials to execute database commands on the remote server." />
                     </TabsContent>
 
                     <TabsContent value="connection" className="space-y-4 pt-4">
@@ -532,7 +532,7 @@ function SshAwareTabLayout({
  * SSH configuration section with integrated test button.
  * Used by MSSQL (file transfer) and other database adapters (SSH exec).
  */
-function SshConfigSection({ adapter, sshAuthType, description }: { adapter: AdapterDefinition; sshAuthType: string; description?: string }) {
+function SshConfigSection({ adapter, sshAuthType, sshCredentialId, description }: { adapter: AdapterDefinition; sshAuthType: string; sshCredentialId?: string | null; description?: string }) {
     const { getValues } = useFormContext();
     const [isTestingSsh, setIsTestingSsh] = useState(false);
 
@@ -544,7 +544,7 @@ function SshConfigSection({ adapter, sshAuthType, description }: { adapter: Adap
             const res = await fetch("/api/adapters/test-ssh", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ config }),
+                body: JSON.stringify({ config, adapterId: adapter.id, sshCredentialId: sshCredentialId ?? null }),
             });
             const result = await res.json();
             toast.dismiss(toastId);

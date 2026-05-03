@@ -2,6 +2,7 @@
 
 All notable changes to DBackup are documented here.
 
+
 ## v2.0.0 - Credential Profiles, Naming Template, Cloning, and Major Refactor
 *Released: May 3, 2026*
 

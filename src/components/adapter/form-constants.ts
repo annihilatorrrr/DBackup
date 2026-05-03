@@ -41,6 +41,12 @@ export const PLACEHOLDERS: Record<string, string> = {
     "email.port": "587",
     "mongodb.uri": "mongodb://user:password@localhost:27017/db?authSource=admin",
 
+    // Generic SSH fields (shared across all SSH-capable adapters)
+    "sshHost": "192.168.1.10",
+    "sshPort": "22",
+    "sshUsername": "root",
+    "sshPrivateKey": "-----BEGIN RSA PRIVATE KEY-----\n\n\n-----END RSA PRIVATE KEY-----",
+
     // MSSQL Paths, SSH & Timeout
     "mssql.backupPath": "/var/opt/mssql/backup",
     "mssql.localBackupPath": "/tmp",

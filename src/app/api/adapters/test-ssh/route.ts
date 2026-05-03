@@ -6,8 +6,12 @@ import { MssqlSshTransfer } from "@/lib/adapters/database/mssql/ssh-transfer";
 import { MSSQLConfig } from "@/lib/adapters/definitions";
 import { SshClient } from "@/lib/ssh";
 import { extractSshConfig } from "@/lib/ssh";
+import { overlayCredentialsOnConfig } from "@/lib/adapters/config-resolver";
+import { registerAdapters } from "@/lib/adapters";
 import { logger } from "@/lib/logging/logger";
 import { wrapError } from "@/lib/logging/errors";
+
+registerAdapters();
 
 const log = logger.child({ route: "adapters/test-ssh" });
 
@@ -22,7 +26,7 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const { config } = body as { config: Record<string, any> };
+        const { config, adapterId, sshCredentialId } = body as { config: Record<string, any>; adapterId?: string; sshCredentialId?: string | null };
 
         if (!config) {
             return NextResponse.json(
@@ -31,23 +35,45 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        if (!config.sshUsername) {
+        // Resolve SSH credential profile if provided. This overlays sshUsername,
+        // sshAuthType, sshPassword, sshPrivateKey, and sshPassphrase from the
+        // stored credential record onto the config, so callers using a credential
+        // profile do not need to include these fields inline.
+        let resolvedConfig = { ...config };
+        if (adapterId && sshCredentialId) {
+            try {
+                resolvedConfig = await overlayCredentialsOnConfig(
+                    adapterId,
+                    resolvedConfig,
+                    null,
+                    sshCredentialId
+                ) as Record<string, any>;
+            } catch (overlayError: unknown) {
+                log.warn("Failed to overlay SSH credential", { adapterId, sshCredentialId }, wrapError(overlayError));
+                return NextResponse.json(
+                    { success: false, message: "Failed to resolve SSH credential profile" },
+                    { status: 400 }
+                );
+            }
+        }
+
+        if (!resolvedConfig.sshUsername) {
             return NextResponse.json(
                 { success: false, message: "SSH username is required" },
                 { status: 400 }
             );
         }
 
-        const sshHost = config.sshHost || config.host;
-        const sshPort = config.sshPort || 22;
+        const sshHost = resolvedConfig.sshHost || resolvedConfig.host;
+        const sshPort = resolvedConfig.sshPort || 22;
 
         // MSSQL uses SFTP-based SSH test (backup path check)
-        if (config.fileTransferMode === "ssh") {
-            return testMssqlSsh(config as MSSQLConfig, sshHost, sshPort);
+        if (resolvedConfig.fileTransferMode === "ssh") {
+            return testMssqlSsh(resolvedConfig as MSSQLConfig, sshHost, sshPort);
         }
 
         // Generic SSH connection test for all other adapters
-        return testGenericSsh(config, sshHost, sshPort);
+        return testGenericSsh(resolvedConfig, sshHost, sshPort);
     } catch (error: unknown) {
         log.error("SSH test route error", {}, wrapError(error));
         const message =
