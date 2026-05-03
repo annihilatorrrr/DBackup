@@ -48,6 +48,7 @@ All notable changes to DBackup are documented here.
 - **SSO**: Fixed incorrect SSO callback URL in all provider setup guides - the correct path is `/api/auth/sso/callback/{provider-id}`, not `/api/auth/callback/{provider-id}`.
 - **credentials**: Added a new user-guide page `security/credential-profiles.md` documenting types, slots, inline creation flow, reference tracking, REVEAL semantics, and the REST surface, added a top-of-page note to `security/encryption.md` clarifying that the Vault now hosts both an Encryption tab and a Credentials tab, added the page to the security sidebar in `.vitepress/config.mts`
 - **api**: Documented the full `/api/credentials` REST surface in `public/openapi.yaml` under the `Vault` tag, including a `CredentialType` enum and per-type `data` schemas (`UsernamePasswordData`, `SshKeyData`, `AccessKeyData`, `TokenData`, `SmtpData`), plus a new `BadRequest` shared response
+- **api**: Added missing `POST /jobs/{id}/clone`, `POST /adapters/{id}/clone`, and `POST /executions/{id}/cancel` endpoints to both `public/openapi.yaml` and `api-docs/openapi.yaml`. Fixed `ExecutionStatus` schema to include the `Cancelled` value. Extended `/adapters/test-connection` request body with optional `primaryCredentialId` and `sshCredentialId` fields. Synced Vault tag description between both files.
 
 ### 🗑️ Removed
 
