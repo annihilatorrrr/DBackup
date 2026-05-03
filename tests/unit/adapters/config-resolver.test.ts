@@ -311,4 +311,95 @@ describe("overlayCredentialsOnConfig", () => {
         const result = await overlayCredentialsOnConfig("mysql", config, "cred-1", null);
         expect(result).toBe(config);
     });
+
+    // ── SSH Credential Profile overlay (test-ssh route scenario) ─────────────
+    // These tests mirror the exact call made by /api/adapters/test-ssh:
+    //   overlayCredentialsOnConfig(adapterId, config, null, sshCredentialId)
+    // i.e. only the SSH slot is resolved - no primary credential.
+
+    it("SSH privateKey profile: overlays sshUsername, sshAuthType, sshPrivateKey, sshPassphrase onto DB adapter config", async () => {
+        (getDecryptedCredentialData as any).mockResolvedValue({
+            username: "root",
+            authType: "privateKey",
+            privateKey: "-----BEGIN OPENSSH PRIVATE KEY-----\nKEY\n-----END OPENSSH PRIVATE KEY-----",
+            passphrase: "hunter2",
+        });
+
+        const config: Record<string, unknown> = { host: "192.168.1.10", port: 5432 };
+        const result = await overlayCredentialsOnConfig("postgres", config, null, "ssh-cred-1");
+
+        // ssh* prefix because postgres declares a primary slot
+        expect(result.sshUsername).toBe("root");
+        expect(result.sshAuthType).toBe("privateKey");
+        expect(result.sshPrivateKey).toBe("-----BEGIN OPENSSH PRIVATE KEY-----\nKEY\n-----END OPENSSH PRIVATE KEY-----");
+        expect(result.sshPassphrase).toBe("hunter2");
+        // Must not write unprefixed fields
+        expect(result.username).toBeUndefined();
+        expect(result.authType).toBeUndefined();
+        // Original fields untouched
+        expect(result.host).toBe("192.168.1.10");
+        expect(result.port).toBe(5432);
+    });
+
+    it("SSH password profile: overlays sshUsername, sshAuthType, sshPassword onto DB adapter config", async () => {
+        (getDecryptedCredentialData as any).mockResolvedValue({
+            username: "deploy",
+            authType: "password",
+            password: "s3cr3t",
+        });
+
+        const config: Record<string, unknown> = { host: "10.0.0.5", port: 3306 };
+        const result = await overlayCredentialsOnConfig("mysql", config, null, "ssh-cred-pw");
+
+        expect(result.sshUsername).toBe("deploy");
+        expect(result.sshAuthType).toBe("password");
+        expect(result.sshPassword).toBe("s3cr3t");
+        // privateKey/passphrase must not be written when absent in profile
+        expect(result.sshPrivateKey).toBeUndefined();
+        expect(result.sshPassphrase).toBeUndefined();
+        // Primary DB credentials must not be touched
+        expect(result.user).toBeUndefined();
+        expect(result.password).toBeUndefined();
+    });
+
+    it("SSH profile without passphrase: does not write sshPassphrase to config", async () => {
+        (getDecryptedCredentialData as any).mockResolvedValue({
+            username: "ci",
+            authType: "privateKey",
+            privateKey: "KEY",
+            // passphrase intentionally absent
+        });
+
+        const config: Record<string, unknown> = { host: "db.local" };
+        const result = await overlayCredentialsOnConfig("mongodb", config, null, "ssh-cred-nopass");
+
+        expect(result.sshUsername).toBe("ci");
+        expect(result.sshPrivateKey).toBe("KEY");
+        expect(result.sshPassphrase).toBeUndefined();
+    });
+
+    it("SSH profile on SQLite (no primary slot): overlays unprefixed username/authType/privateKey", async () => {
+        (getDecryptedCredentialData as any).mockResolvedValue({
+            username: "admin",
+            authType: "privateKey",
+            privateKey: "KEY",
+        });
+
+        const config: Record<string, unknown> = { mode: "ssh", host: "server.local", path: "/db.sqlite" };
+        const result = await overlayCredentialsOnConfig("sqlite", config, null, "ssh-cred-sqlite");
+
+        // sqlite has no primary slot -> no ssh* prefix
+        expect(result.username).toBe("admin");
+        expect(result.authType).toBe("privateKey");
+        expect(result.privateKey).toBe("KEY");
+        expect(result.sshUsername).toBeUndefined();
+    });
+
+    it("SSH profile is skipped when sshCredentialId is null", async () => {
+        const config: Record<string, unknown> = { host: "db.local" };
+        await overlayCredentialsOnConfig("postgres", config, null, null);
+
+        expect(getDecryptedCredentialData).not.toHaveBeenCalled();
+        expect(config.sshUsername).toBeUndefined();
+    });
 });
