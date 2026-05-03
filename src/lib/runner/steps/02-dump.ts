@@ -8,6 +8,8 @@ import { logger } from "@/lib/logger";
 import { wrapError } from "@/lib/errors";
 import { getBackupFileExtension } from "@/lib/backup-extensions";
 import { formatBytes } from "@/lib/utils";
+import prisma from "@/lib/prisma";
+import { formatInTimeZone } from "date-fns-tz";
 
 const log = logger.child({ step: "02-dump" });
 
@@ -19,15 +21,13 @@ export async function stepExecuteDump(ctx: RunnerContext) {
 
     ctx.log(`Starting Dump from ${job.source.name} (${job.source.type})...`);
 
-    // 1. Prepare Paths
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const ext = getBackupFileExtension(job.source.adapterId);
-    const fileName = `${job.name.replace(/[^a-z0-9]/gi, '_')}_${timestamp}.${ext}`;
-    const tempDir = getTempDir();
-    const tempFile = path.join(tempDir, fileName);
-
-    ctx.tempFile = tempFile;
-    ctx.log(`Prepared temporary path: ${tempFile}`);
+    // 1. Prepare Settings (timezone and filename pattern)
+    const [tzSetting, patternSetting] = await Promise.all([
+        prisma.systemSetting.findUnique({ where: { key: "system.timezone" } }),
+        prisma.systemSetting.findUnique({ where: { key: "system.filenamePattern" } }),
+    ]);
+    const timezone = tzSetting?.value || "UTC";
+    const pattern = patternSetting?.value || "{name}_yyyy-MM-dd_HH-mm-ss";
 
     // 2. Prepare Config & Metadata
     const sourceConfig = decryptConfig(JSON.parse(job.source.config));
@@ -43,6 +43,25 @@ export async function stepExecuteDump(ctx: RunnerContext) {
             return Array.isArray(parsed) ? parsed : [];
         } catch { return []; }
     })();
+
+    // 3. Generate filename with timezone and custom pattern
+    const dbNameRaw = jobDatabases.length === 0
+        ? 'all'
+        : jobDatabases.map(db => db.replace(/[^a-z0-9]/gi, '_')).join('_');
+
+    const sanitizedName = job.name.replace(/[^a-z0-9]/gi, '_');
+    const escapeName = (text: string) => text.replace(/'/g, "''");
+    let datePattern = pattern
+        .replace('{name}', `'${escapeName(sanitizedName)}'`)
+        .replace('{db_name}', `'${escapeName(dbNameRaw)}'`);
+
+    const ext = getBackupFileExtension(job.source.adapterId);
+    const fileName = formatInTimeZone(new Date(), timezone, datePattern) + `.${ext}`;
+    const tempDir = getTempDir();
+    const tempFile = path.join(tempDir, fileName);
+
+    ctx.tempFile = tempFile;
+    ctx.log(`Prepared temporary path: ${tempFile}`);
     if (jobDatabases.length > 0) {
         sourceConfig.database = jobDatabases;
         ctx.log(`Using ${jobDatabases.length} database(s) from job config: ${jobDatabases.join(', ')}`);

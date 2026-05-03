@@ -7,6 +7,7 @@ import { checkPermission } from "@/lib/access-control";
 import { PERMISSIONS } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { wrapError } from "@/lib/errors";
+import { scheduler } from "@/lib/scheduler";
 
 const log = logger.child({ action: "settings" });
 
@@ -19,6 +20,13 @@ const settingsSchema = z.object({
     notificationLogRetentionDays: z.coerce.number().min(7).max(1825).optional(),
     checkForUpdates: z.boolean().optional(),
     showQuickSetup: z.boolean().optional(),
+    systemTimezone: z.string()
+        .refine((tz) => {
+            try { return Intl.supportedValuesOf('timeZone').includes(tz) || tz === 'UTC'; }
+            catch { return false; }
+        }, { message: "Invalid IANA timezone" })
+        .optional(),
+    filenamePattern: z.string().min(1).optional(),
 });
 
 export async function updateSystemSettings(data: z.infer<typeof settingsSchema>) {
@@ -98,6 +106,27 @@ export async function updateSystemSettings(data: z.infer<typeof settingsSchema>)
                create: { key: "general.showQuickSetup", value: String(result.data.showQuickSetup) },
            });
        }
+
+        // System Timezone Setting (default UTC)
+        if (result.data.systemTimezone !== undefined) {
+            await prisma.systemSetting.upsert({
+                where: { key: "system.timezone" },
+                update: { value: result.data.systemTimezone },
+                create: { key: "system.timezone", value: result.data.systemTimezone, description: "System-wide timezone for scheduler" },
+            });
+
+            // Refresh scheduler to apply new timezone to all cron tasks
+            scheduler.refresh().catch((e) => log.error("Scheduler refresh failed after timezone update", {}, wrapError(e)));
+        }
+
+        // Backup Filename Pattern Setting
+        if (result.data.filenamePattern !== undefined) {
+            await prisma.systemSetting.upsert({
+                where: { key: "system.filenamePattern" },
+                update: { value: result.data.filenamePattern },
+                create: { key: "system.filenamePattern", value: result.data.filenamePattern, description: "Template pattern for backup file names" },
+            });
+        }
 
         revalidatePath("/dashboard/settings");
         return { success: true };
