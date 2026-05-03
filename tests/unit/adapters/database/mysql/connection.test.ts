@@ -40,10 +40,10 @@ vi.mock("@/lib/ssh", () => ({
         end = (...args: any[]) => mockSshEnd(...args);
     },
     isSSHMode: (...args: any[]) => mockIsSSHMode(...args),
-    extractSshConfig: (...args: any[]) => mockExtractSshConfig(...args),
-    buildMysqlArgs: (...args: any[]) => mockBuildMysqlArgs(...args),
+    extractSshConfig: (...args: any[]) => (mockExtractSshConfig as any)(...args),
+    buildMysqlArgs: (...args: any[]) => (mockBuildMysqlArgs as any)(...args),
     remoteEnv: vi.fn((_env: any, cmd: string) => cmd),
-    remoteBinaryCheck: (...args: any[]) => mockRemoteBinaryCheck(...args),
+    remoteBinaryCheck: (...args: any[]) => (mockRemoteBinaryCheck as any)(...args),
     shellEscape: vi.fn((s: string) => s),
 }));
 
