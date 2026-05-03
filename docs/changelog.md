@@ -14,6 +14,7 @@ All notable changes to DBackup are documented here.
 - **website**: Added a new Website https://dbackup.app
 - **scheduler**: Added a UI setting in Settings > General to configure the scheduler timezone without changing the `TZ` environment variable. When set, the DB value takes explicit priority over `TZ` for all cron jobs. Thanks @iberlob ([#41](https://github.com/Skyfay/DBackup/pull/41))
 - **backup**: Added a configurable filename pattern for backup files. Patterns support tokens (`{name}`, `{db_name}`, `yyyy`, `MM`, `dd`, `HH`, `mm`, `ss`) with a live preview and clickable token chips in Settings > General. Thanks @iberlob ([#41](https://github.com/Skyfay/DBackup/pull/41))
+- **2fa**: Added a "Can't scan? Copy the secret key" button to the 2FA setup dialog so users who cannot scan the QR code can manually enter the TOTP secret into their authenticator app. ([#39](https://github.com/Skyfay/DBackup/issues/39))
 
 ### 🐛 Bug Fixes
 
