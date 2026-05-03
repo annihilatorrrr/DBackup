@@ -33,6 +33,14 @@ vi.mock('@/lib/logging/errors', () => ({
     wrapError: vi.fn((e) => e),
 }));
 
+vi.mock('@/lib/prisma', () => ({
+    default: {
+        systemSetting: {
+            findUnique: vi.fn().mockResolvedValue(null),
+        },
+    },
+}));
+
 // Mock fs/promises - used for watcher and rename
 vi.mock('fs/promises', () => ({
     default: {
