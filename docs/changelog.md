@@ -2,6 +2,20 @@
 
 All notable changes to DBackup are documented here.
 
+## v2.0.1 - SSH Connection Fix with new Credential Profiles
+*Released: May 3, 2026*
+
+### 🐛 Bug Fixes
+
+- **sources**: Fixed "SSH username is required" error when testing an SSH database source connection that uses an SSH Credential Profile. The test-ssh route now resolves the credential profile before validating the username, matching the behavior of the main test-connection route.
+- **sources**: Fixed missing placeholder text for SSH Host and SSH Port fields in the SSH Connection tab - added generic `sshHost`, `sshPort`, `sshUsername`, and `sshPrivateKey` entries to `PLACEHOLDERS` in `form-constants.ts`.
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v2.0.1`
+- **Also tagged as**: `latest`, `v2`
+- **Platforms**: linux/amd64, linux/arm64
+
 
 ## v2.0.0 - Credential Profiles, Naming Template, Cloning, and Major Refactor
 *Released: May 3, 2026*
