@@ -284,6 +284,28 @@ describe("CertificateService", () => {
       // Should attempt to clean up temp files
       expect(mockUnlinkSync).toHaveBeenCalled();
     });
+
+    it("should accept EC key when RSA check fails with unrelated error", () => {
+      mockExistsSync.mockReturnValue(true);
+      mockExecSync.mockImplementation((cmd: string) => {
+        if (cmd.includes("openssl rsa") && cmd.includes("-check")) {
+          throw new Error("not an RSA key");
+        }
+        if (cmd.includes("openssl ec") && cmd.includes("-check")) {
+          return "";
+        }
+        if (cmd.includes("openssl x509") && cmd.includes("-modulus")) {
+          return "Modulus=some_ec_value";
+        }
+        if (cmd.includes("openssl rsa") && cmd.includes("-modulus")) {
+          throw new Error("unable to load RSA key");
+        }
+        return "";
+      });
+
+      expect(() => uploadCertificate(validCert, validKey)).not.toThrow();
+      expect(mockRenameSync).toHaveBeenCalledTimes(2);
+    });
   });
 
   // ── regenerateSelfSignedCert ───────────────────────────────
@@ -359,6 +381,80 @@ describe("CertificateService", () => {
       expect(() => regenerateSelfSignedCert()).toThrow(
         "Failed to generate TLS certificate"
       );
+    });
+
+    it("should add a DNS SAN when BETTER_AUTH_URL has a custom hostname", () => {
+      process.env.BETTER_AUTH_URL = "https://myapp.example.com";
+      mockExistsSync.mockReturnValue(true);
+      mockExecSync.mockReturnValue("");
+
+      regenerateSelfSignedCert();
+
+      const opensslCall = mockExecSync.mock.calls.find(
+        (args: unknown[]) =>
+          typeof args[0] === "string" && args[0].includes("openssl req -x509")
+      );
+      expect(opensslCall?.[0]).toContain(",DNS:myapp.example.com");
+    });
+
+    it("should add an IP SAN when BETTER_AUTH_URL has an IP address", () => {
+      process.env.BETTER_AUTH_URL = "https://192.168.1.100";
+      mockExistsSync.mockReturnValue(true);
+      mockExecSync.mockReturnValue("");
+
+      regenerateSelfSignedCert();
+
+      const opensslCall = mockExecSync.mock.calls.find(
+        (args: unknown[]) =>
+          typeof args[0] === "string" && args[0].includes("openssl req -x509")
+      );
+      expect(opensslCall?.[0]).toContain(",IP:192.168.1.100");
+    });
+
+    it("should not add extra SAN when BETTER_AUTH_URL is localhost", () => {
+      process.env.BETTER_AUTH_URL = "https://localhost";
+      mockExistsSync.mockReturnValue(true);
+      mockExecSync.mockReturnValue("");
+
+      regenerateSelfSignedCert();
+
+      const opensslCall = mockExecSync.mock.calls.find(
+        (args: unknown[]) =>
+          typeof args[0] === "string" && args[0].includes("openssl req -x509")
+      );
+      expect(opensslCall).toBeDefined();
+      // Only the base SANs - the extension closes immediately after the default IP
+      expect(opensslCall?.[0]).toContain('subjectAltName=DNS:localhost,IP:127.0.0.1"');
+    });
+
+    it("should not add extra SAN when BETTER_AUTH_URL is 127.0.0.1", () => {
+      process.env.BETTER_AUTH_URL = "https://127.0.0.1";
+      mockExistsSync.mockReturnValue(true);
+      mockExecSync.mockReturnValue("");
+
+      regenerateSelfSignedCert();
+
+      const opensslCall = mockExecSync.mock.calls.find(
+        (args: unknown[]) =>
+          typeof args[0] === "string" && args[0].includes("openssl req -x509")
+      );
+      expect(opensslCall).toBeDefined();
+      expect(opensslCall?.[0]).toContain('subjectAltName=DNS:localhost,IP:127.0.0.1"');
+    });
+
+    it("should not add extra SAN when BETTER_AUTH_URL is an invalid URL", () => {
+      process.env.BETTER_AUTH_URL = "not-a-valid-url";
+      mockExistsSync.mockReturnValue(true);
+      mockExecSync.mockReturnValue("");
+
+      regenerateSelfSignedCert();
+
+      const opensslCall = mockExecSync.mock.calls.find(
+        (args: unknown[]) =>
+          typeof args[0] === "string" && args[0].includes("openssl req -x509")
+      );
+      expect(opensslCall).toBeDefined();
+      expect(opensslCall?.[0]).toContain('subjectAltName=DNS:localhost,IP:127.0.0.1"');
     });
   });
 });

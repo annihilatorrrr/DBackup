@@ -16,11 +16,10 @@ vi.mock('@/lib/prisma', () => ({
     twoFactor: {
       deleteMany: vi.fn(),
     },
-    $transaction: vi.fn((callback) => callback), // Simple pass through usually, or array handling
+    $transaction: vi.fn((callback) => callback),
   },
 }));
 
-// Mock transaction implementation for array inputs
 // prisma.$transaction([p1, p2]) returns Promise<[r1, r2]>
 (prisma.$transaction as any).mockImplementation(async (promises: Promise<any>[]) => {
     return Promise.all(promises);
@@ -29,6 +28,34 @@ vi.mock('@/lib/prisma', () => ({
 describe('User Service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (prisma.$transaction as any).mockImplementation(async (promises: Promise<any>[]) => {
+      return Promise.all(promises);
+    });
+  });
+
+  describe('getUsers', () => {
+    it('should return users with lastLogin when auditLog exists', async () => {
+      const loginDate = new Date('2026-01-01T00:00:00Z');
+      (prisma.user.findMany as any).mockResolvedValue([
+        { id: '1', name: 'Alice', auditLogs: [{ createdAt: loginDate }] },
+      ]);
+
+      const result = await userService.getUsers();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].lastLogin).toBe(loginDate);
+      expect(result[0]).not.toHaveProperty('auditLogs');
+    });
+
+    it('should return null lastLogin when no auditLog exists', async () => {
+      (prisma.user.findMany as any).mockResolvedValue([
+        { id: '2', name: 'Bob', auditLogs: [] },
+      ]);
+
+      const result = await userService.getUsers();
+
+      expect(result[0].lastLogin).toBeNull();
+    });
   });
 
   describe('resetTwoFactor', () => {
@@ -59,88 +86,145 @@ describe('User Service', () => {
 
   describe('togglePasskeyTwoFactor', () => {
     it('should enable passkey and generic 2FA when enabled is true', async () => {
-        const userId = 'user-123';
-        await userService.togglePasskeyTwoFactor(userId, true);
+      const userId = 'user-123';
+      await userService.togglePasskeyTwoFactor(userId, true);
 
-        expect(prisma.user.update).toHaveBeenCalledWith({
-            where: { id: userId },
-            data: {
-                passkeyTwoFactor: true,
-                twoFactorEnabled: true,
-            }
-        });
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: {
+          passkeyTwoFactor: true,
+          twoFactorEnabled: true,
+        },
+      });
     });
 
     it('should disable passkey and generic 2FA when enabled is false', async () => {
-        const userId = 'user-123';
-        await userService.togglePasskeyTwoFactor(userId, false);
+      const userId = 'user-123';
+      await userService.togglePasskeyTwoFactor(userId, false);
 
-        expect(prisma.user.update).toHaveBeenCalledWith({
-            where: { id: userId },
-            data: {
-                passkeyTwoFactor: false,
-                twoFactorEnabled: false,
-            }
-        });
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: {
+          passkeyTwoFactor: false,
+          twoFactorEnabled: false,
+        },
+      });
     });
   });
 
   describe('updateUserGroup', () => {
-      it('should update user group', async () => {
-          (prisma.user.findUnique as any).mockResolvedValue({ id: '1', group: { name: 'User' } });
-          (prisma.user.update as any).mockResolvedValue({ id: '1', groupId: 'new-group' });
+    it('should update user group', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue({ id: '1', group: { name: 'User' } });
+      (prisma.user.update as any).mockResolvedValue({ id: '1', groupId: 'new-group' });
 
-          await userService.updateUserGroup('1', 'new-group');
+      await userService.updateUserGroup('1', 'new-group');
 
-          expect(prisma.user.update).toHaveBeenCalledWith({
-              where: { id: '1' },
-              data: { groupId: 'new-group' }
-          });
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: '1' },
+        data: { groupId: 'new-group' },
       });
+    });
 
-      it('should prevent removing last SuperAdmin', async () => {
-          (prisma.user.findUnique as any).mockResolvedValue({ id: '1', groupId: 'admin', group: { name: 'SuperAdmin' } });
-          (prisma.user.count as any).mockResolvedValue(1);
+    it('should map "none" groupId to null', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue({ id: '1', group: { name: 'User' } });
+      (prisma.user.update as any).mockResolvedValue({ id: '1', groupId: null });
 
-          await expect(userService.updateUserGroup('1', 'other')).rejects.toThrow('Cannot remove the last user from the SuperAdmin group');
+      await userService.updateUserGroup('1', 'none');
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: '1' },
+        data: { groupId: null },
       });
+    });
 
-      it('should allow removing SuperAdmin if others exist', async () => {
-        (prisma.user.findUnique as any).mockResolvedValue({ id: '1', groupId: 'admin', group: { name: 'SuperAdmin' } });
-        (prisma.user.count as any).mockResolvedValue(2);
-        (prisma.user.update as any).mockResolvedValue({});
+    it('should throw when user is not found', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue(null);
 
-        await userService.updateUserGroup('1', 'other');
-        expect(prisma.user.update).toHaveBeenCalled();
+      await expect(userService.updateUserGroup('nonexistent', 'group-1')).rejects.toThrow('User not found');
+    });
+
+    it('should prevent removing last SuperAdmin', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue({ id: '1', groupId: 'admin', group: { name: 'SuperAdmin' } });
+      (prisma.user.count as any).mockResolvedValue(1);
+
+      await expect(userService.updateUserGroup('1', 'other')).rejects.toThrow('Cannot remove the last user from the SuperAdmin group');
+    });
+
+    it('should allow removing SuperAdmin if others exist', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue({ id: '1', groupId: 'admin', group: { name: 'SuperAdmin' } });
+      (prisma.user.count as any).mockResolvedValue(2);
+      (prisma.user.update as any).mockResolvedValue({});
+
+      await userService.updateUserGroup('1', 'other');
+
+      expect(prisma.user.update).toHaveBeenCalled();
     });
   });
 
   describe('deleteUser', () => {
-      it('should delete user if safe', async () => {
-           (prisma.user.findUnique as any).mockResolvedValue({ id: '1', group: { name: 'User' } });
-           (prisma.user.count as any).mockResolvedValue(5); // plenty of users
+    it('should delete user if safe', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue({ id: '1', group: { name: 'User' } });
+      (prisma.user.count as any).mockResolvedValue(5);
 
-           await userService.deleteUser('1');
+      await userService.deleteUser('1');
 
-           expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: '1' } });
+      expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: '1' } });
+    });
+
+    it('should throw when user is not found', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue(null);
+
+      await expect(userService.deleteUser('nonexistent')).rejects.toThrow('User not found');
+    });
+
+    it('should prevent deleting last SuperAdmin', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue({ id: '1', group: { name: 'SuperAdmin' } });
+      (prisma.user.count as any).mockResolvedValue(1);
+
+      await expect(userService.deleteUser('1')).rejects.toThrow('Cannot delete the last SuperAdmin user');
+    });
+
+    it('should prevent deleting last user in system', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue({ id: '1', group: { name: 'User' } });
+      (prisma.user.count as any).mockResolvedValue(1);
+
+      await expect(userService.deleteUser('1')).rejects.toThrow('Cannot delete the last user');
+    });
+
+    it('should delete SuperAdmin user when other SuperAdmins exist', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue({ id: '1', group: { name: 'SuperAdmin' } });
+      (prisma.user.count as any)
+        .mockResolvedValueOnce(2) // superAdminCount > 1
+        .mockResolvedValueOnce(5); // total userCount > 1
+      (prisma.user.delete as any).mockResolvedValue({ id: '1' });
+
+      await userService.deleteUser('1');
+
+      expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: '1' } });
+    });
+  });
+
+  describe('updateUser', () => {
+    it('should update user profile fields', async () => {
+      const updatedUser = { id: '1', name: 'New Name', email: 'new@example.com' };
+      (prisma.user.update as any).mockResolvedValue(updatedUser);
+
+      const result = await userService.updateUser('1', {
+        name: 'New Name',
+        email: 'new@example.com',
       });
 
-      it('should prevent deleting last SuperAdmin', async () => {
-        (prisma.user.findUnique as any).mockResolvedValue({ id: '1', group: { name: 'SuperAdmin' } });
-        (prisma.user.count as any).mockResolvedValue(1); // will count superadmins
-
-        await expect(userService.deleteUser('1')).rejects.toThrow('Cannot delete the last SuperAdmin user');
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: '1' },
+        data: {
+          name: 'New Name',
+          email: 'new@example.com',
+          timezone: undefined,
+          dateFormat: undefined,
+          timeFormat: undefined,
+        },
       });
-
-      it('should prevent deleting last user in system', async () => {
-        (prisma.user.findUnique as any).mockResolvedValue({ id: '1', group: { name: 'User' } });
-        // The first count in the function is for SuperAdmin check - we need to handle that mock sequence or logic
-        // If it's NOT superadmin, it skips the first count.
-
-        // Logic: if not superadmin, checks total count.
-        (prisma.user.count as any).mockResolvedValue(1); // total users
-
-        await expect(userService.deleteUser('1')).rejects.toThrow('Cannot delete the last user');
-      });
+      expect(result).toEqual(updatedUser);
+    });
   });
 });

@@ -16,6 +16,14 @@ const {
     mockFsStat,
     mockCreateReadStream,
     mockIsSSHMode,
+    mockSshConnect,
+    mockSshExec,
+    mockSshExecStream,
+    mockSshUploadFile,
+    mockSshEnd,
+    mockExtractSshConfig,
+    mockRemoteBinaryCheck,
+    mockBuildMysqlArgs,
     PassThrough,
 } = vi.hoisted(() => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -33,6 +41,14 @@ const {
         mockFsStat: vi.fn(),
         mockCreateReadStream: vi.fn(),
         mockIsSSHMode: vi.fn(),
+        mockSshConnect: vi.fn(),
+        mockSshExec: vi.fn(),
+        mockSshExecStream: vi.fn(),
+        mockSshUploadFile: vi.fn(),
+        mockSshEnd: vi.fn(),
+        mockExtractSshConfig: vi.fn(() => ({ host: "jump.example.com", port: 22 })),
+        mockRemoteBinaryCheck: vi.fn(() => Promise.resolve("mysql")),
+        mockBuildMysqlArgs: vi.fn(() => ["-h", "db.internal", "-u", "root"]),
         PassThrough,
     };
 });
@@ -76,17 +92,17 @@ vi.mock("@/lib/adapters/process", () => ({
 
 vi.mock("@/lib/ssh", () => ({
     SshClient: class {
-        connect = vi.fn();
-        exec = vi.fn();
-        execStream = vi.fn();
-        uploadFile = vi.fn();
-        end = vi.fn();
+        connect = (...args: any[]) => mockSshConnect(...args);
+        exec = (...args: any[]) => mockSshExec(...args);
+        execStream = (...args: any[]) => mockSshExecStream(...args);
+        uploadFile = (...args: any[]) => mockSshUploadFile(...args);
+        end = (...args: any[]) => mockSshEnd(...args);
     },
     isSSHMode: (...args: any[]) => mockIsSSHMode(...args),
-    extractSshConfig: vi.fn(),
-    buildMysqlArgs: vi.fn(() => []),
-    remoteEnv: vi.fn((env: any, cmd: string) => cmd),
-    remoteBinaryCheck: vi.fn(),
+    extractSshConfig: (...args: any[]) => mockExtractSshConfig(...args),
+    buildMysqlArgs: (...args: any[]) => mockBuildMysqlArgs(...args),
+    remoteEnv: vi.fn((_env: any, cmd: string) => cmd),
+    remoteBinaryCheck: (...args: any[]) => mockRemoteBinaryCheck(...args),
     shellEscape: vi.fn((s: string) => s),
 }));
 
@@ -456,5 +472,362 @@ describe("restore() - Multi-DB TAR archive", () => {
 
         expect(result.success).toBe(false);
         expect(result.error).toMatch(/not found in archive/i);
+    });
+
+    it("logs selective extraction when databaseMapping filters by selected databases", async () => {
+        const tempDir = "/tmp/mysql-restore-selective";
+        mockCreateTempDir.mockResolvedValue(tempDir);
+        mockExtractSelectedDatabases.mockResolvedValue({
+            manifest: {
+                databases: [
+                    { name: "shop", filename: "shop.sql" },
+                    { name: "analytics", filename: "analytics.sql" },
+                ],
+            },
+            files: [`${tempDir}/shop.sql`],
+        });
+        mockShouldRestoreDatabase.mockImplementation((name: string) => name === "shop");
+        mockGetTargetDatabaseName.mockImplementation((name: string) => name);
+
+        const config = buildConfig({
+            databaseMapping: [
+                { originalName: "shop", targetName: "shop", selected: true },
+                { originalName: "analytics", targetName: "analytics", selected: false },
+            ],
+        });
+
+        const result = await restore(config, "/backups/multi.tar");
+
+        expect(result.success).toBe(true);
+        expect(result.logs.some((l) => l.includes("Selectively extracted"))).toBe(true);
+    });
+});
+
+// -------------------------------------------------------------------------
+// restore() - progress tracking (non-SSH)
+// -------------------------------------------------------------------------
+
+describe("restore() - progress tracking", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockIsSSHMode.mockReturnValue(false);
+        mockIsMultiDbTar.mockResolvedValue(false);
+        mockEnsureDatabase.mockResolvedValue(undefined);
+        mockFsStat.mockResolvedValue({ size: 1024 });
+        mockWaitForProcess.mockResolvedValue(undefined);
+        // Use Promise.resolve().then() so data arrives as a microtask queued
+        // before the waitForProcess continuation (jsdom runs nextTick after microtasks).
+        mockCreateReadStream.mockImplementation(() => {
+            const stream = new PassThrough();
+            Promise.resolve().then(() => {
+                stream.push(Buffer.from("sql-content"));
+                stream.push(null);
+            });
+            return stream;
+        });
+        mockSpawnProcess.mockImplementation(() => {
+            const proc = new PassThrough() as any;
+            proc.stderr = new PassThrough();
+            proc.stdin = new PassThrough();
+            proc.stdout = new PassThrough();
+            proc.kill = vi.fn();
+            return proc;
+        });
+    });
+
+    it("calls onProgress with increasing percentages as data is read", async () => {
+        const progressValues: number[] = [];
+
+        const result = await restore(
+            buildConfig({ database: "testdb" }),
+            "/backups/dump.sql",
+            undefined,
+            (p) => progressValues.push(p)
+        );
+
+        expect(result.success).toBe(true);
+        expect(progressValues.some((p) => p > 0)).toBe(true);
+    });
+});
+
+// -------------------------------------------------------------------------
+// createStderrHandler - edge cases via waitForProcess mock
+// -------------------------------------------------------------------------
+
+describe("createStderrHandler - edge cases", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockIsSSHMode.mockReturnValue(false);
+        mockIsMultiDbTar.mockResolvedValue(false);
+        mockEnsureDatabase.mockResolvedValue(undefined);
+        mockFsStat.mockResolvedValue({ size: 1024 });
+        mockCreateReadStream.mockImplementation(() => {
+            const stream = new PassThrough();
+            process.nextTick(() => stream.end(Buffer.from("sql-content")));
+            return stream;
+        });
+        mockSpawnProcess.mockImplementation(() => {
+            const proc = new PassThrough() as any;
+            proc.stderr = new PassThrough();
+            proc.stdin = new PassThrough();
+            proc.stdout = new PassThrough();
+            proc.kill = vi.fn();
+            return proc;
+        });
+    });
+
+    it("flushes ERROR lines in buffer at error level", async () => {
+        // No trailing newline - goes into buffer until flush()
+        mockWaitForProcess.mockImplementation((_proc, _name, onData) => {
+            if (onData) onData("ERROR 1005 (23000): Cannot create table");
+            return Promise.resolve();
+        });
+
+        const logCalls: { msg: string; level?: string }[] = [];
+        await restore(buildConfig({ database: "testdb" }), "/backups/dump.sql", (msg, level) => {
+            logCalls.push({ msg, level });
+        });
+
+        const errorEntry = logCalls.find((l) => l.msg.includes("ERROR 1005") && l.level === "error");
+        expect(errorEntry).toBeDefined();
+    });
+
+    it("suppresses buffered content in flush when already over the stderr line limit", async () => {
+        mockWaitForProcess.mockImplementation((_proc, _name, onData) => {
+            if (onData) {
+                // 51 lines fills the buffer past MAX_STDERR_LOG_LINES (50)
+                for (let i = 0; i < 51; i++) {
+                    onData(`Normal line ${i}\n`);
+                }
+                // Partial line without newline stays in buffer until flush()
+                onData("overflow-partial");
+            }
+            return Promise.resolve();
+        });
+
+        const result = await restore(buildConfig({ database: "testdb" }), "/backups/dump.sql");
+
+        const suppressEntry = result.logs.find((l) => l.includes("suppressed"));
+        expect(suppressEntry).toBeDefined();
+    });
+});
+
+// -------------------------------------------------------------------------
+// restore() - SSH path
+// -------------------------------------------------------------------------
+
+/** Creates a mock SSH restore stream that emits exit with the given code. */
+function makeSshRestoreStream(exitCode = 0, stderrData?: string) {
+    const stream = new PassThrough() as any;
+    stream.stderr = new PassThrough();
+    process.nextTick(() => {
+        if (stderrData) stream.stderr.emit("data", Buffer.from(stderrData));
+        stream.emit("exit", exitCode, null);
+    });
+    return stream;
+}
+
+describe("restore() - SSH path", () => {
+    const TOTAL_SIZE = 1024 * 100;
+
+    // Standard exec sequence for a successful SSH restore
+    function setupSuccessExec() {
+        mockSshExec
+            .mockResolvedValueOnce({ code: 0, stdout: "max_allowed_packet=67108864", stderr: "" })
+            .mockResolvedValueOnce({ code: 0, stdout: String(TOTAL_SIZE), stderr: "" })
+            .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockSshExec.mockReset();
+        mockIsSSHMode.mockReturnValue(true);
+        mockIsMultiDbTar.mockResolvedValue(false);
+        mockEnsureDatabase.mockResolvedValue(undefined);
+        mockFsStat.mockResolvedValue({ size: TOTAL_SIZE });
+        mockSshConnect.mockResolvedValue(undefined);
+        mockSshEnd.mockReturnValue(undefined);
+        mockRemoteBinaryCheck.mockResolvedValue("mysql");
+        mockBuildMysqlArgs.mockReturnValue(["-h", "db.internal", "-u", "root"]);
+        mockExtractSshConfig.mockReturnValue({ host: "jump.example.com", port: 22 });
+        mockSshUploadFile.mockImplementation((_src: any, _dest: any, progress?: any) => {
+            if (progress) progress(TOTAL_SIZE / 2, TOTAL_SIZE);
+            return Promise.resolve();
+        });
+        mockSshExecStream.mockImplementation((_cmd: any, callback: any) => {
+            callback(null, makeSshRestoreStream(0));
+        });
+    });
+
+    it("restores a single database via SSH successfully", async () => {
+        setupSuccessExec();
+
+        const result = await restore(buildConfig({ database: "testdb" }), "/backups/dump.sql");
+
+        expect(result.success).toBe(true);
+        expect(mockSshUploadFile).toHaveBeenCalled();
+        expect(mockSshExecStream).toHaveBeenCalled();
+        expect(mockSshEnd).toHaveBeenCalled();
+    });
+
+    it("calls onProgress during SSH upload and restore phases", async () => {
+        setupSuccessExec();
+        const progressValues: number[] = [];
+
+        const result = await restore(
+            buildConfig({ database: "testdb" }),
+            "/backups/dump.sql",
+            undefined,
+            (p) => progressValues.push(p)
+        );
+
+        expect(result.success).toBe(true);
+        expect(progressValues.some((p) => p > 0 && p <= 100)).toBe(true);
+    });
+
+    it("continues when diagnostics query throws", async () => {
+        mockSshExec
+            .mockRejectedValueOnce(new Error("diagnostics failed"))
+            .mockResolvedValueOnce({ code: 0, stdout: String(TOTAL_SIZE), stderr: "" })
+            .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+
+        const result = await restore(buildConfig({ database: "testdb" }), "/backups/dump.sql");
+
+        expect(result.success).toBe(true);
+    });
+
+    it("logs server settings when diagnostics succeed", async () => {
+        setupSuccessExec();
+
+        const result = await restore(buildConfig({ database: "testdb" }), "/backups/dump.sql");
+
+        expect(result.success).toBe(true);
+        expect(result.logs.some((l) => l.includes("Server settings"))).toBe(true);
+    });
+
+    it("returns failure on upload size mismatch", async () => {
+        mockSshExec
+            .mockResolvedValueOnce({ code: 0, stdout: "max_allowed_packet=67108864", stderr: "" })
+            .mockResolvedValueOnce({ code: 0, stdout: "999", stderr: "" }) // wrong size
+            .mockResolvedValueOnce({ code: 0, stdout: "alive", stderr: "" }) // post-failure alive check
+            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // OOM check (empty)
+            .mockResolvedValue({ code: 0, stdout: "", stderr: "" }); // cleanup
+
+        const result = await restore(buildConfig({ database: "testdb" }), "/backups/dump.sql");
+
+        expect(result.success).toBe(false);
+        expect(result.error).toMatch(/mismatch/i);
+    });
+
+    it("returns failure when remote mysql exits with non-zero code", async () => {
+        mockSshExecStream.mockImplementation((_cmd: any, callback: any) => {
+            callback(null, makeSshRestoreStream(1));
+        });
+        mockSshExec
+            .mockResolvedValueOnce({ code: 0, stdout: "max_allowed_packet=67108864", stderr: "" })
+            .mockResolvedValueOnce({ code: 0, stdout: String(TOTAL_SIZE), stderr: "" })
+            .mockResolvedValueOnce({ code: 0, stdout: "alive", stderr: "" }) // post-failure alive check
+            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // OOM check
+            .mockResolvedValue({ code: 0, stdout: "", stderr: "" }); // cleanup
+
+        const result = await restore(buildConfig({ database: "testdb" }), "/backups/dump.sql");
+
+        expect(result.success).toBe(false);
+    });
+
+    it("logs post-failure status when mysql server is still alive", async () => {
+        mockSshExecStream.mockImplementation((_cmd: any, callback: any) => {
+            callback(null, makeSshRestoreStream(1));
+        });
+        mockSshExec
+            .mockResolvedValueOnce({ code: 0, stdout: "max_allowed_packet=67108864", stderr: "" })
+            .mockResolvedValueOnce({ code: 0, stdout: String(TOTAL_SIZE), stderr: "" })
+            .mockResolvedValueOnce({ code: 0, stdout: "alive", stderr: "" }) // alive check passes
+            .mockResolvedValueOnce({ code: 0, stdout: "oom killed process mysqld", stderr: "" }) // dmesg with OOM
+            .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+
+        const result = await restore(buildConfig({ database: "testdb" }), "/backups/dump.sql");
+
+        expect(result.success).toBe(false);
+        expect(result.logs.some((l) => l.includes("still running"))).toBe(true);
+        expect(result.logs.some((l) => l.includes("OOM killer"))).toBe(true);
+    });
+
+    it("logs post-failure status when mysql server is not responding", async () => {
+        mockSshExecStream.mockImplementation((_cmd: any, callback: any) => {
+            callback(null, makeSshRestoreStream(1));
+        });
+        mockSshExec
+            .mockResolvedValueOnce({ code: 0, stdout: "max_allowed_packet=67108864", stderr: "" })
+            .mockResolvedValueOnce({ code: 0, stdout: String(TOTAL_SIZE), stderr: "" })
+            .mockResolvedValueOnce({ code: 0, stdout: "no output here", stderr: "" }) // not "alive"
+            .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+
+        const result = await restore(buildConfig({ database: "testdb" }), "/backups/dump.sql");
+
+        expect(result.success).toBe(false);
+        expect(result.logs.some((l) => l.includes("NOT responding"))).toBe(true);
+    });
+
+    it("logs when alive check itself throws", async () => {
+        mockSshExecStream.mockImplementation((_cmd: any, callback: any) => {
+            callback(null, makeSshRestoreStream(1));
+        });
+        mockSshExec
+            .mockResolvedValueOnce({ code: 0, stdout: "max_allowed_packet=67108864", stderr: "" })
+            .mockResolvedValueOnce({ code: 0, stdout: String(TOTAL_SIZE), stderr: "" })
+            .mockRejectedValueOnce(new Error("ssh timeout")) // alive check throws
+            .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+
+        const result = await restore(buildConfig({ database: "testdb" }), "/backups/dump.sql");
+
+        expect(result.success).toBe(false);
+        expect(result.logs.some((l) => l.includes("Could not reach MySQL server"))).toBe(true);
+    });
+
+    it("redacts password from SSH stderr output", async () => {
+        setupSuccessExec();
+        const logs: string[] = [];
+        mockSshExecStream.mockImplementation((_cmd: any, callback: any) => {
+            callback(null, makeSshRestoreStream(0, "mysql password secret\n"));
+        });
+
+        await restore(
+            buildConfig({ database: "testdb", password: "secret" }),
+            "/backups/dump.sql",
+            (msg) => logs.push(msg)
+        );
+
+        expect(logs.every((l) => !l.includes("secret"))).toBe(true);
+    });
+
+    it("continues when stat check throws a non-mismatch error", async () => {
+        mockSshExec
+            .mockResolvedValueOnce({ code: 0, stdout: "max_allowed_packet=67108864", stderr: "" })
+            .mockRejectedValueOnce(new Error("stat command not found")) // stat throws - non-critical
+            .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+
+        const result = await restore(buildConfig({ database: "testdb" }), "/backups/dump.sql");
+
+        expect(result.success).toBe(true);
+    });
+
+    it("falls back to 'mysql' binary when remoteBinaryCheck throws in post-failure diagnostics", async () => {
+        mockSshExecStream.mockImplementation((_cmd: any, callback: any) => {
+            callback(null, makeSshRestoreStream(1));
+        });
+        // remoteBinaryCheck: first call (setup) succeeds, second call (post-failure) throws
+        mockRemoteBinaryCheck
+            .mockResolvedValueOnce("mysql") // initial setup
+            .mockRejectedValueOnce(new Error("binary not found")); // post-failure alive check
+        mockSshExec
+            .mockResolvedValueOnce({ code: 0, stdout: "max_allowed_packet=67108864", stderr: "" })
+            .mockResolvedValueOnce({ code: 0, stdout: String(TOTAL_SIZE), stderr: "" })
+            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // alive check with fallback "mysql"
+            .mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+
+        const result = await restore(buildConfig({ database: "testdb" }), "/backups/dump.sql");
+
+        expect(result.success).toBe(false);
     });
 });

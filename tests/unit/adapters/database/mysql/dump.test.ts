@@ -12,6 +12,12 @@ const {
     mockFsStat,
     mockSpawnProcess,
     mockIsSSHMode,
+    mockSshConnect,
+    mockSshExecStream,
+    mockSshEnd,
+    mockExtractSshConfig,
+    mockRemoteBinaryCheck,
+    mockBuildMysqlArgs,
     PassThrough,
 } = vi.hoisted(() => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -25,6 +31,12 @@ const {
         mockFsStat: vi.fn(),
         mockSpawnProcess: vi.fn(),
         mockIsSSHMode: vi.fn(),
+        mockSshConnect: vi.fn(),
+        mockSshExecStream: vi.fn(),
+        mockSshEnd: vi.fn(),
+        mockExtractSshConfig: vi.fn(() => ({ host: "jump.example.com", port: 22 })),
+        mockRemoteBinaryCheck: vi.fn(() => Promise.resolve("mysqldump")),
+        mockBuildMysqlArgs: vi.fn(() => ["-h", "db.internal", "-u", "root"]),
         PassThrough,
     };
 });
@@ -67,16 +79,15 @@ vi.mock("child_process", () => ({
 
 vi.mock("@/lib/ssh", () => ({
     SshClient: class {
-        connect = vi.fn();
-        exec = vi.fn();
-        execStream = vi.fn();
-        end = vi.fn();
+        connect = (...args: any[]) => mockSshConnect(...args);
+        execStream = (...args: any[]) => mockSshExecStream(...args);
+        end = (...args: any[]) => mockSshEnd(...args);
     },
     isSSHMode: (...args: any[]) => mockIsSSHMode(...args),
-    extractSshConfig: vi.fn(),
-    buildMysqlArgs: vi.fn(() => []),
-    remoteEnv: vi.fn((env: any, cmd: string) => cmd),
-    remoteBinaryCheck: vi.fn(),
+    extractSshConfig: (...args: any[]) => mockExtractSshConfig(...args),
+    buildMysqlArgs: (...args: any[]) => mockBuildMysqlArgs(...args),
+    remoteEnv: vi.fn((_env: any, cmd: string) => cmd),
+    remoteBinaryCheck: (...args: any[]) => mockRemoteBinaryCheck(...args),
     shellEscape: vi.fn((s: string) => s),
 }));
 
@@ -274,5 +285,126 @@ describe("MySQL Dump - dump()", () => {
 
         expect(result.success).toBe(false);
         expect(mockCleanupTempDir).toHaveBeenCalledWith("/tmp/mysql-multidb-fail");
+    });
+});
+
+// -------------------------------------------------------------------------
+// SSH dump path
+// -------------------------------------------------------------------------
+
+/** Creates a mock SSH stream that emits exit and optional stderr data. */
+function makeSshDumpStream(exitCode = 0, stderrData?: string) {
+    const stream = new PassThrough() as any;
+    stream.stderr = new PassThrough();
+    process.nextTick(() => {
+        if (stderrData) stream.stderr.emit("data", Buffer.from(stderrData));
+        stream.emit("exit", exitCode, null);
+    });
+    return stream;
+}
+
+describe("MySQL Dump - SSH path", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockIsSSHMode.mockReturnValue(true);
+        mockFsStat.mockResolvedValue({ size: 1024 * 100 });
+        mockCleanupTempDir.mockResolvedValue(undefined);
+        mockSshConnect.mockResolvedValue(undefined);
+        mockSshEnd.mockReturnValue(undefined);
+        mockRemoteBinaryCheck.mockResolvedValue("mysqldump");
+        mockBuildMysqlArgs.mockReturnValue(["-h", "db.internal", "-u", "root"]);
+        mockExtractSshConfig.mockReturnValue({ host: "jump.example.com", port: 22 });
+        mockSshExecStream.mockImplementation((_cmd: any, callback: any) => {
+            callback(null, makeSshDumpStream(0));
+        });
+    });
+
+    it("dumps a single database via SSH successfully", async () => {
+        const result = await dump(buildConfig({ database: "mydb" }), "/tmp/mydb.sql");
+
+        expect(result.success).toBe(true);
+        expect(result.size).toBe(1024 * 100);
+        expect(mockSshExecStream).toHaveBeenCalled();
+    });
+
+    it("includes extra options from config.options in SSH args", async () => {
+        const result = await dump(
+            buildConfig({ database: "mydb", options: "--no-create-info --single-transaction" } as any),
+            "/tmp/mydb.sql"
+        );
+
+        expect(result.success).toBe(true);
+    });
+
+    it("forwards non-filtered SSH stderr to the log", async () => {
+        mockSshExecStream.mockImplementation((_cmd: any, callback: any) => {
+            callback(null, makeSshDumpStream(0, "Table storage engine not found.\n"));
+        });
+        const logs: string[] = [];
+
+        await dump(buildConfig({ database: "mydb" }), "/tmp/mydb.sql", (msg) => logs.push(msg));
+
+        expect(logs.some((l) => l.includes("Table storage engine not found"))).toBe(true);
+    });
+
+    it("filters 'Using a password' warnings from SSH stderr", async () => {
+        mockSshExecStream.mockImplementation((_cmd: any, callback: any) => {
+            callback(null, makeSshDumpStream(0, "Using a password on the command line interface can be insecure.\n"));
+        });
+        const logs: string[] = [];
+
+        await dump(buildConfig({ database: "mydb" }), "/tmp/mydb.sql", (msg) => logs.push(msg));
+
+        expect(logs.some((l) => l.toLowerCase().includes("using a password"))).toBe(false);
+    });
+
+    it("filters 'Deprecated program name' warnings from SSH stderr", async () => {
+        mockSshExecStream.mockImplementation((_cmd: any, callback: any) => {
+            callback(null, makeSshDumpStream(0, "Deprecated program name. It will be removed in a future release.\n"));
+        });
+        const logs: string[] = [];
+
+        await dump(buildConfig({ database: "mydb" }), "/tmp/mydb.sql", (msg) => logs.push(msg));
+
+        expect(logs.some((l) => l.toLowerCase().includes("deprecated program name"))).toBe(false);
+    });
+
+    it("returns failure when remote mysqldump exits with non-zero code", async () => {
+        mockSshExecStream.mockImplementation((_cmd: any, callback: any) => {
+            callback(null, makeSshDumpStream(1));
+        });
+
+        const result = await dump(buildConfig({ database: "mydb" }), "/tmp/mydb.sql");
+
+        expect(result.success).toBe(false);
+    });
+
+    it("returns failure when the dump file is empty after SSH dump", async () => {
+        mockFsStat.mockResolvedValue({ size: 0 });
+
+        const result = await dump(buildConfig({ database: "mydb" }), "/tmp/mydb.sql");
+
+        expect(result.success).toBe(false);
+        expect(result.error).toMatch(/empty/i);
+    });
+
+    it("returns failure when execStream yields an error", async () => {
+        mockSshExecStream.mockImplementation((_cmd: any, callback: any) => {
+            callback(new Error("execStream failed"), null);
+        });
+
+        const result = await dump(buildConfig({ database: "mydb" }), "/tmp/mydb.sql");
+
+        expect(result.success).toBe(false);
+    });
+
+    it("calls ssh.end in finally block even on failure", async () => {
+        mockSshExecStream.mockImplementation((_cmd: any, callback: any) => {
+            callback(null, makeSshDumpStream(1));
+        });
+
+        await dump(buildConfig({ database: "mydb" }), "/tmp/mydb.sql");
+
+        expect(mockSshEnd).toHaveBeenCalled();
     });
 });

@@ -8,11 +8,23 @@ const {
     mockIsSSHMode,
     mockGetMysqlCommand,
     mockGetMysqladminCommand,
+    mockSshConnect,
+    mockSshExec,
+    mockSshEnd,
+    mockExtractSshConfig,
+    mockRemoteBinaryCheck,
+    mockBuildMysqlArgs,
 } = vi.hoisted(() => ({
     mockExecFileCb: vi.fn(),
     mockIsSSHMode: vi.fn(),
     mockGetMysqlCommand: vi.fn(() => "mysql"),
     mockGetMysqladminCommand: vi.fn(() => "mysqladmin"),
+    mockSshConnect: vi.fn(),
+    mockSshExec: vi.fn(),
+    mockSshEnd: vi.fn(),
+    mockExtractSshConfig: vi.fn(() => ({ host: "jump.example.com", port: 22 })),
+    mockRemoteBinaryCheck: vi.fn(() => Promise.resolve("mysql")),
+    mockBuildMysqlArgs: vi.fn(() => ["-h", "db.internal", "-u", "root"]),
 }));
 
 // connection.ts uses util.promisify(execFile); mock execFile so promisify wraps the mock.
@@ -23,15 +35,15 @@ vi.mock("child_process", () => ({
 
 vi.mock("@/lib/ssh", () => ({
     SshClient: class {
-        connect = vi.fn();
-        exec = vi.fn();
-        end = vi.fn();
+        connect = (...args: any[]) => mockSshConnect(...args);
+        exec = (...args: any[]) => mockSshExec(...args);
+        end = (...args: any[]) => mockSshEnd(...args);
     },
     isSSHMode: (...args: any[]) => mockIsSSHMode(...args),
-    extractSshConfig: vi.fn(),
-    buildMysqlArgs: vi.fn(() => []),
-    remoteEnv: vi.fn((env: any, cmd: string) => cmd),
-    remoteBinaryCheck: vi.fn(),
+    extractSshConfig: (...args: any[]) => mockExtractSshConfig(...args),
+    buildMysqlArgs: (...args: any[]) => mockBuildMysqlArgs(...args),
+    remoteEnv: vi.fn((_env: any, cmd: string) => cmd),
+    remoteBinaryCheck: (...args: any[]) => mockRemoteBinaryCheck(...args),
     shellEscape: vi.fn((s: string) => s),
 }));
 
@@ -301,5 +313,246 @@ describe("MySQL Connection - ensureDatabase()", () => {
         await ensureDatabase(buildConfig(), "faildb", "root", "secret", false, logs);
 
         expect(logs.some((l) => l.includes("Warning") && l.includes("faildb"))).toBe(true);
+    });
+
+    it("includes --skip-ssl in args when disableSsl is true", async () => {
+        mockExecFileCb.mockImplementation((...args: unknown[]) => {
+            const cmdArgs = args[1] as string[];
+            expect(cmdArgs).toContain("--skip-ssl");
+            const cb = args[args.length - 1] as (err: null, result: { stdout: string; stderr: string }) => void;
+            cb(null, { stdout: "", stderr: "" });
+        });
+
+        const logs: string[] = [];
+        await ensureDatabase(buildConfig({ disableSsl: true }), "newdb", "root", "secret", false, logs);
+
+        expect(logs).toContain("Database 'newdb' ensured.");
+    });
+});
+
+// -------------------------------------------------------------------------
+// ensureDatabase() - SSH path
+// -------------------------------------------------------------------------
+
+describe("MySQL Connection - ensureDatabase() SSH path", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockIsSSHMode.mockReturnValue(true);
+        mockSshConnect.mockResolvedValue(undefined);
+        mockSshEnd.mockReturnValue(undefined);
+        mockRemoteBinaryCheck.mockResolvedValue("mysql");
+        mockBuildMysqlArgs.mockReturnValue(["-h", "db.internal", "-u", "root"]);
+    });
+
+    it("creates the database via SSH successfully", async () => {
+        mockSshExec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+        const logs: string[] = [];
+        await ensureDatabase(buildConfig(), "newdb", "root", "secret", false, logs);
+
+        expect(logs).toContain("Database 'newdb' ensured.");
+        expect(mockSshEnd).toHaveBeenCalled();
+    });
+
+    it("creates database and grants privileges via SSH", async () => {
+        mockSshExec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+        const logs: string[] = [];
+        await ensureDatabase(buildConfig(), "newdb", "root", "secret", true, logs);
+
+        expect(logs).toContain("Database 'newdb' ensured.");
+        expect(logs).toContain("Permissions granted for 'newdb'.");
+        expect(mockSshExec).toHaveBeenCalledTimes(2);
+    });
+
+    it("logs a warning when create database command returns non-zero code via SSH", async () => {
+        mockSshExec.mockResolvedValue({ code: 1, stdout: "", stderr: "Access denied" });
+        const logs: string[] = [];
+        await ensureDatabase(buildConfig(), "faildb", "root", "secret", false, logs);
+
+        expect(logs.some((l) => l.includes("Warning") && l.includes("faildb"))).toBe(true);
+    });
+
+    it("logs a warning when grant command fails via SSH", async () => {
+        mockSshExec
+            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+            .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "Grant denied" });
+        const logs: string[] = [];
+        await ensureDatabase(buildConfig(), "newdb", "root", "secret", true, logs);
+
+        expect(logs).toContain("Database 'newdb' ensured.");
+        expect(logs.some((l) => l.includes("Warning grants"))).toBe(true);
+    });
+
+    it("catches SSH connection errors and logs a warning", async () => {
+        mockSshConnect.mockRejectedValue(new Error("SSH connection refused"));
+        const logs: string[] = [];
+        await ensureDatabase(buildConfig(), "newdb", "root", "secret", false, logs);
+
+        expect(logs.some((l) => l.includes("Warning") && l.includes("newdb"))).toBe(true);
+        expect(mockSshEnd).toHaveBeenCalled();
+    });
+
+    it("does not set MYSQL_PWD when pass is undefined", async () => {
+        mockSshExec.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+        const logs: string[] = [];
+        await ensureDatabase(buildConfig(), "newdb", "root", undefined, false, logs);
+
+        expect(logs).toContain("Database 'newdb' ensured.");
+    });
+});
+
+// -------------------------------------------------------------------------
+// test() - SSH path
+// -------------------------------------------------------------------------
+
+describe("MySQL Connection - test() SSH path", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockIsSSHMode.mockReturnValue(true);
+        mockSshConnect.mockResolvedValue(undefined);
+        mockSshEnd.mockReturnValue(undefined);
+        mockRemoteBinaryCheck.mockResolvedValue("mysql");
+        mockBuildMysqlArgs.mockReturnValue(["-h", "db.internal", "-u", "root"]);
+    });
+
+    it("returns success with version via SSH", async () => {
+        mockSshExec
+            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+            .mockResolvedValueOnce({ code: 0, stdout: "8.0.35-MySQL Community Server\n", stderr: "" });
+
+        const result = await test(buildConfig());
+
+        expect(result.success).toBe(true);
+        expect(result.message).toContain("SSH");
+        expect(result.version).toBe("8.0.35");
+    });
+
+    it("returns failure when SSH ping fails", async () => {
+        mockSshExec.mockResolvedValue({ code: 1, stdout: "", stderr: "Connection refused" });
+
+        const result = await test(buildConfig());
+
+        expect(result.success).toBe(false);
+        expect(result.message).toContain("SSH ping failed");
+    });
+
+    it("returns success with version unknown when version query fails via SSH", async () => {
+        mockSshExec
+            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+            .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "Permission denied" });
+
+        const result = await test(buildConfig());
+
+        expect(result.success).toBe(true);
+        expect(result.message).toContain("version unknown");
+    });
+
+    it("returns raw version string when regex does not match via SSH", async () => {
+        mockSshExec
+            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+            .mockResolvedValueOnce({ code: 0, stdout: "custom-build\n", stderr: "" });
+
+        const result = await test(buildConfig());
+
+        expect(result.success).toBe(true);
+        expect(result.version).toBe("custom-build");
+    });
+
+    it("catches SSH exceptions and returns failure", async () => {
+        mockSshConnect.mockRejectedValue(new Error("Connection timeout"));
+
+        const result = await test(buildConfig());
+
+        expect(result.success).toBe(false);
+        expect(result.message).toContain("SSH connection failed");
+        expect(mockSshEnd).toHaveBeenCalled();
+    });
+
+    it("does not set MYSQL_PWD when password is not set via SSH", async () => {
+        mockSshExec
+            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
+            .mockResolvedValueOnce({ code: 0, stdout: "8.0.35\n", stderr: "" });
+
+        const result = await test(buildConfig({ password: undefined }));
+
+        expect(result.success).toBe(true);
+    });
+});
+
+// -------------------------------------------------------------------------
+// getDatabases() - SSH path
+// -------------------------------------------------------------------------
+
+describe("MySQL Connection - getDatabases() SSH path", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockIsSSHMode.mockReturnValue(true);
+        mockSshConnect.mockResolvedValue(undefined);
+        mockSshEnd.mockReturnValue(undefined);
+        mockRemoteBinaryCheck.mockResolvedValue("mysql");
+        mockBuildMysqlArgs.mockReturnValue(["-h", "db.internal", "-u", "root"]);
+    });
+
+    it("returns filtered databases via SSH", async () => {
+        mockSshExec.mockResolvedValue({ code: 0, stdout: "information_schema\nmysql\ntestdb\nshop\n", stderr: "" });
+
+        const dbs = await getDatabases(buildConfig());
+
+        expect(dbs).toEqual(["testdb", "shop"]);
+        expect(mockSshEnd).toHaveBeenCalled();
+    });
+
+    it("throws when SSH exec returns non-zero code", async () => {
+        mockSshExec.mockResolvedValue({ code: 1, stdout: "", stderr: "Permission denied" });
+
+        await expect(getDatabases(buildConfig())).rejects.toThrow("Failed to list databases");
+        expect(mockSshEnd).toHaveBeenCalled();
+    });
+
+    it("does not set MYSQL_PWD when password is not set via SSH", async () => {
+        mockSshExec.mockResolvedValue({ code: 0, stdout: "testdb\n", stderr: "" });
+
+        const dbs = await getDatabases(buildConfig({ password: undefined }));
+
+        expect(dbs).toEqual(["testdb"]);
+    });
+});
+
+// -------------------------------------------------------------------------
+// getDatabasesWithStats() - SSH path
+// -------------------------------------------------------------------------
+
+describe("MySQL Connection - getDatabasesWithStats() SSH path", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockIsSSHMode.mockReturnValue(true);
+        mockSshConnect.mockResolvedValue(undefined);
+        mockSshEnd.mockReturnValue(undefined);
+        mockRemoteBinaryCheck.mockResolvedValue("mysql");
+        mockBuildMysqlArgs.mockReturnValue(["-h", "db.internal", "-u", "root"]);
+    });
+
+    it("returns parsed database stats via SSH", async () => {
+        mockSshExec.mockResolvedValue({ code: 0, stdout: "shop\t102400\t12\nanalytics\t512000\t3\n", stderr: "" });
+
+        const stats = await getDatabasesWithStats(buildConfig());
+
+        expect(stats).toHaveLength(2);
+        expect(stats[0]).toEqual({ name: "shop", sizeInBytes: 102400, tableCount: 12 });
+        expect(mockSshEnd).toHaveBeenCalled();
+    });
+
+    it("throws when SSH exec returns non-zero code", async () => {
+        mockSshExec.mockResolvedValue({ code: 1, stdout: "", stderr: "Permission denied" });
+
+        await expect(getDatabasesWithStats(buildConfig())).rejects.toThrow("Failed to get database stats");
+        expect(mockSshEnd).toHaveBeenCalled();
+    });
+
+    it("does not set MYSQL_PWD when password is not set via SSH", async () => {
+        mockSshExec.mockResolvedValue({ code: 0, stdout: "shop\t1024\t5\n", stderr: "" });
+
+        const stats = await getDatabasesWithStats(buildConfig({ password: undefined }));
+
+        expect(stats[0].name).toBe("shop");
     });
 });

@@ -21,7 +21,7 @@ vi.mock('@/services/audit-service', () => ({
 }));
 vi.mock('@/services/notifications/system-notification-service', () => ({
     notify: vi.fn(),
-    getNotificationConfig: vi.fn().mockResolvedValue(null),
+    getNotificationConfig: vi.fn().mockResolvedValue({ events: {} }),
 }));
 vi.mock('@/lib/notifications/events', () => ({
     getEventDefinition: vi.fn().mockReturnValue(null),
@@ -268,28 +268,188 @@ describe('SystemTaskService', () => {
             expect(refreshStorageStatsCache).toHaveBeenCalledTimes(1);
         });
 
-        it('does not throw for unknown task id', async () => {
-            await expect(service.runTask('system.unknown_task')).resolves.toBeUndefined();
-        });
-
-        it('handles SYNC_PERMISSIONS with no SuperAdmin group gracefully', async () => {
-            prismaMock.group.updateMany.mockResolvedValue({ count: 0 });
+        it('handles SYNC_PERMISSIONS when prisma throws without propagating', async () => {
+            prismaMock.group.updateMany.mockRejectedValue(new Error('DB error'));
 
             await expect(service.runTask(SYSTEM_TASKS.SYNC_PERMISSIONS)).resolves.toBeUndefined();
         });
 
-        it('handles CLEAN_OLD_LOGS when auditService throws without propagating', async () => {
-            const { auditService } = await import('@/services/audit-service');
-            vi.mocked(auditService.cleanOldLogs).mockRejectedValue(new Error('DB error'));
-            prismaMock.notificationLog.deleteMany.mockResolvedValue({ count: 0 });
+        it('updates database versions and marks source as Unreachable when test fails', async () => {
+            const { registry: reg } = await import('@/lib/core/registry');
+            const { resolveAdapterConfig } = await import('@/lib/adapters/config-resolver');
+            prismaMock.adapterConfig.findMany.mockResolvedValue([
+                { id: 'src1', name: 'TestDB', adapterId: 'mysql', type: 'database', metadata: '{}' }
+            ] as any);
+            vi.mocked(reg.get).mockReturnValue({
+                test: vi.fn().mockResolvedValue({ success: false, message: 'refused' })
+            } as any);
+            vi.mocked(resolveAdapterConfig).mockResolvedValue({} as any);
+            prismaMock.adapterConfig.update.mockResolvedValue({} as any);
 
-            await expect(service.runTask(SYSTEM_TASKS.CLEAN_OLD_LOGS)).resolves.toBeUndefined();
+            await service.runTask(SYSTEM_TASKS.UPDATE_DB_VERSIONS);
+
+            expect(prismaMock.adapterConfig.update).toHaveBeenCalledWith(expect.objectContaining({
+                data: expect.objectContaining({ metadata: expect.stringContaining('Unreachable') }),
+            }));
         });
 
-        it('updates database versions for UPDATE_DB_VERSIONS with empty source list', async () => {
-            prismaMock.adapterConfig.findMany.mockResolvedValue([]);
+        it('updates database versions and stores engineVersion when test succeeds', async () => {
+            const { registry: reg } = await import('@/lib/core/registry');
+            const { resolveAdapterConfig } = await import('@/lib/adapters/config-resolver');
+            prismaMock.adapterConfig.findMany.mockResolvedValue([
+                { id: 'src1', name: 'TestDB', adapterId: 'mysql', type: 'database', metadata: '{}' }
+            ] as any);
+            vi.mocked(reg.get).mockReturnValue({
+                test: vi.fn().mockResolvedValue({ success: true, version: '8.0.31' })
+            } as any);
+            vi.mocked(resolveAdapterConfig).mockResolvedValue({} as any);
+            prismaMock.adapterConfig.update.mockResolvedValue({} as any);
+
+            await service.runTask(SYSTEM_TASKS.UPDATE_DB_VERSIONS);
+
+            expect(prismaMock.adapterConfig.update).toHaveBeenCalledWith(expect.objectContaining({
+                data: expect.objectContaining({ metadata: expect.stringContaining('8.0.31') }),
+            }));
+        });
+
+        it('skips source when adapter has no test() method for UPDATE_DB_VERSIONS', async () => {
+            const { registry: reg } = await import('@/lib/core/registry');
+            prismaMock.adapterConfig.findMany.mockResolvedValue([
+                { id: 'src1', name: 'TestDB', adapterId: 'mysql', type: 'database', metadata: '{}' }
+            ] as any);
+            vi.mocked(reg.get).mockReturnValue({ /* no test fn */ } as any);
 
             await expect(service.runTask(SYSTEM_TASKS.UPDATE_DB_VERSIONS)).resolves.toBeUndefined();
+            expect(prismaMock.adapterConfig.update).not.toHaveBeenCalled();
+        });
+
+        it('skips source when adapter is not found for UPDATE_DB_VERSIONS', async () => {
+            const { registry: reg } = await import('@/lib/core/registry');
+            prismaMock.adapterConfig.findMany.mockResolvedValue([
+                { id: 'src1', name: 'TestDB', adapterId: 'mysql', type: 'database', metadata: '{}' }
+            ] as any);
+            vi.mocked(reg.get).mockReturnValue(null as any);
+
+            await expect(service.runTask(SYSTEM_TASKS.UPDATE_DB_VERSIONS)).resolves.toBeUndefined();
+        });
+
+        it('handles resolveAdapterConfig failure for UPDATE_DB_VERSIONS gracefully', async () => {
+            const { registry: reg } = await import('@/lib/core/registry');
+            const { resolveAdapterConfig } = await import('@/lib/adapters/config-resolver');
+            prismaMock.adapterConfig.findMany.mockResolvedValue([
+                { id: 'src1', name: 'TestDB', adapterId: 'mysql', type: 'database', metadata: '{}' }
+            ] as any);
+            vi.mocked(reg.get).mockReturnValue({ test: vi.fn() } as any);
+            vi.mocked(resolveAdapterConfig).mockRejectedValue(new Error('decrypt error'));
+
+            await expect(service.runTask(SYSTEM_TASKS.UPDATE_DB_VERSIONS)).resolves.toBeUndefined();
+            expect(prismaMock.adapterConfig.update).not.toHaveBeenCalled();
+        });
+
+        it('calls notifyUpdateAvailable when update is available', async () => {
+            const { updateService } = await import('@/services/system/update-service');
+            const { notify } = await import('@/services/notifications/system-notification-service');
+            vi.mocked(updateService.checkForUpdates).mockResolvedValue({
+                updateAvailable: true,
+                latestVersion: 'v3.0.0',
+                currentVersion: '2.0.0',
+            });
+            prismaMock.systemSetting.findUnique.mockResolvedValue(null);
+            prismaMock.systemSetting.upsert.mockResolvedValue({} as any);
+
+            await service.runTask(SYSTEM_TASKS.CHECK_FOR_UPDATES);
+
+            expect(notify).toHaveBeenCalledWith(expect.objectContaining({
+                eventType: 'update_available',
+            }));
+        });
+
+        it('resets update state when no update is available', async () => {
+            const { updateService } = await import('@/services/system/update-service');
+            vi.mocked(updateService.checkForUpdates).mockResolvedValue({
+                updateAvailable: false,
+                latestVersion: '2.0.0',
+                currentVersion: '2.0.0',
+            });
+            prismaMock.systemSetting.deleteMany.mockResolvedValue({ count: 1 } as any);
+
+            await service.runTask(SYSTEM_TASKS.CHECK_FOR_UPDATES);
+
+            expect(prismaMock.systemSetting.deleteMany).toHaveBeenCalledWith(
+                expect.objectContaining({ where: { key: 'update.notification.state' } })
+            );
+        });
+
+        it('skips update notification when same version was already notified within cooldown', async () => {
+            const { updateService } = await import('@/services/system/update-service');
+            const { notify } = await import('@/services/notifications/system-notification-service');
+            vi.mocked(updateService.checkForUpdates).mockResolvedValue({
+                updateAvailable: true,
+                latestVersion: 'v3.0.0',
+                currentVersion: '2.0.0',
+            });
+            // State: v3.0.0 notified 1 hour ago, cooldown 168h (default)
+            const state = JSON.stringify({
+                lastNotifiedVersion: 'v3.0.0',
+                lastNotifiedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+            });
+            prismaMock.systemSetting.findUnique.mockResolvedValue({ key: 'update.notification.state', value: state } as any);
+
+            await service.runTask(SYSTEM_TASKS.CHECK_FOR_UPDATES);
+
+            expect(notify).not.toHaveBeenCalled();
+        });
+
+        it('handles CHECK_FOR_UPDATES when updateService throws', async () => {
+            const { updateService } = await import('@/services/system/update-service');
+            vi.mocked(updateService.checkForUpdates).mockRejectedValue(new Error('network error'));
+
+            await expect(service.runTask(SYSTEM_TASKS.CHECK_FOR_UPDATES)).resolves.toBeUndefined();
+        });
+
+        it('skips update notification when reminder is disabled (reminderIntervalHours = 0) and version is same', async () => {
+            const { updateService } = await import('@/services/system/update-service');
+            const { notify, getNotificationConfig } = await import('@/services/notifications/system-notification-service');
+            const { getEventDefinition } = await import('@/lib/notifications/events');
+            vi.mocked(updateService.checkForUpdates).mockResolvedValue({
+                updateAvailable: true,
+                latestVersion: 'v3.0.0',
+                currentVersion: '2.0.0',
+            });
+            vi.mocked(getNotificationConfig).mockResolvedValue({
+                events: { update_available: { reminderIntervalHours: 0 } }
+            } as any);
+            vi.mocked(getEventDefinition).mockReturnValue({ supportsReminder: true } as any);
+            // Already notified for same version
+            const state = JSON.stringify({
+                lastNotifiedVersion: 'v3.0.0',
+                lastNotifiedAt: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
+            });
+            prismaMock.systemSetting.findUnique.mockResolvedValue({ key: 'update.notification.state', value: state } as any);
+
+            await service.runTask(SYSTEM_TASKS.CHECK_FOR_UPDATES);
+
+            // reminderDisabled=true, same version → skip notification
+            expect(notify).not.toHaveBeenCalled();
+        });
+
+        it('marks source as Unreachable when test returns success=true but no version', async () => {
+            const { registry: reg } = await import('@/lib/core/registry');
+            const { resolveAdapterConfig } = await import('@/lib/adapters/config-resolver');
+            prismaMock.adapterConfig.findMany.mockResolvedValue([
+                { id: 'src1', name: 'TestDB', adapterId: 'mysql', type: 'database', metadata: '{}' }
+            ] as any);
+            vi.mocked(reg.get).mockReturnValue({
+                test: vi.fn().mockResolvedValue({ success: true }) // no version field
+            } as any);
+            vi.mocked(resolveAdapterConfig).mockResolvedValue({} as any);
+            prismaMock.adapterConfig.update.mockResolvedValue({} as any);
+
+            await service.runTask(SYSTEM_TASKS.UPDATE_DB_VERSIONS);
+
+            expect(prismaMock.adapterConfig.update).toHaveBeenCalledWith(expect.objectContaining({
+                data: expect.objectContaining({ metadata: expect.stringContaining('Unreachable') }),
+            }));
         });
     });
 });
