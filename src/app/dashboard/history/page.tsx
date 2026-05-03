@@ -32,6 +32,7 @@ export default function HistoryPage() {
 
 function HistoryContent() {
     const [executions, setExecutions] = useState<Execution[]>([]);
+    const [systemTimezone, setSystemTimezone] = useState("UTC");
     const [selectedLog, setSelectedLog] = useState<Execution | null>(null);
     const [activeTab, setActiveTab] = useState("activity");
 
@@ -77,7 +78,11 @@ function HistoryContent() {
         fetchInFlight.current = true;
         try {
             const res = await fetch("/api/history");
-            if (res.ok) setExecutions(await res.json());
+            if (res.ok) {
+                const data = await res.json();
+                setExecutions(data.executions);
+                setSystemTimezone(data.systemTimezone);
+            }
         } catch (_e) {
             console.error(_e);
         } finally {
@@ -146,7 +151,7 @@ function HistoryContent() {
         }
     }, [fetchHistory]);
 
-    const columns = useMemo(() => createColumns(setSelectedLog), []);
+    const columns = useMemo(() => createColumns(setSelectedLog, systemTimezone), [systemTimezone]);
     const notificationColumns = useMemo(
         () => createNotificationLogColumns(setSelectedNotification),
         []
@@ -285,7 +290,7 @@ function HistoryContent() {
                              )}
                         </DialogTitle>
                         <DialogDescription className="text-muted-foreground">
-                            {selectedLog?.startedAt && <DateDisplay date={selectedLog.startedAt} format="PPpp" />}
+                            {selectedLog?.startedAt && <DateDisplay date={selectedLog.startedAt} format="PPpp" timezone={systemTimezone} />}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -329,6 +334,7 @@ function HistoryContent() {
                             logs={selectedLog ? parseLogs(selectedLog.logs) : []}
                             status={selectedLog?.status}
                             executionType={selectedLog?.type}
+                            systemTimezone={systemTimezone}
                             className="h-full border-0 bg-transparent"
                          />
                     </div>

@@ -13,18 +13,27 @@ export async function GET(_req: NextRequest) {
     try {
         checkPermissionWithContext(ctx, PERMISSIONS.HISTORY.READ);
 
-        const executions = await prisma.execution.findMany({
-            include: {
-                job: {
-                    select: {
-                        name: true,
+        const [executions, tzSetting] = await Promise.all([
+            prisma.execution.findMany({
+                include: {
+                    job: {
+                        select: {
+                            name: true,
+                        }
                     }
-                }
-            },
-            orderBy: { startedAt: 'desc' },
-            take: 100
+                },
+                orderBy: { startedAt: 'desc' },
+                take: 100
+            }),
+            prisma.systemSetting.findUnique({ where: { key: "system.timezone" } })
+        ]);
+
+        const systemTimezone = tzSetting?.value || "UTC";
+
+        return NextResponse.json({
+            executions,
+            systemTimezone
         });
-        return NextResponse.json(executions);
     } catch (_error) {
         return NextResponse.json({ error: "Failed to fetch history" }, { status: 500 });
     }

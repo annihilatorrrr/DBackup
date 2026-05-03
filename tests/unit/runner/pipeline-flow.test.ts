@@ -16,6 +16,9 @@ vi.mock('@/lib/prisma', () => ({
             updateMany: vi.fn(),
             findUnique: vi.fn(),
         },
+        systemSetting: {
+            findUnique: vi.fn(),
+        },
     },
 }));
 
@@ -108,6 +111,8 @@ describe('Backup Pipeline Integration', () => {
         prisma.execution.update.mockResolvedValue(mockExecution);
         // @ts-expect-error -- Mock setup -- Mock setup
         prisma.execution.create.mockResolvedValue(mockExecution);
+        // @ts-expect-error -- Mock setup
+        prisma.systemSetting.findUnique.mockResolvedValue(null);
     });
 
     afterEach(() => {
