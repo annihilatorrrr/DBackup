@@ -32,6 +32,7 @@
 </p>
 
 <p align="center">
+  <a href="https://dbackup.app">Website</a> •
   <a href="https://docs.dbackup.app">Documentation</a> •
   <a href="https://docs.dbackup.app/user-guide/getting-started">Quick Start</a> •
   <a href="https://api.dbackup.app">API Reference</a> •
