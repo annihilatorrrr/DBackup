@@ -10,6 +10,10 @@ All notable changes to DBackup are documented here.
 - **sources**: Fixed "SSH username is required" error when testing an SSH database source connection that uses an SSH Credential Profile. The test-ssh route now resolves the credential profile before validating the username, matching the behavior of the main test-connection route.
 - **sources**: Fixed missing placeholder text for SSH Host and SSH Port fields in the SSH Connection tab - added generic `sshHost`, `sshPort`, `sshUsername`, and `sshPrivateKey` entries to `PLACEHOLDERS` in `form-constants.ts`.
 
+### 🧪 Tests
+
+- **update-service**: Fixed 3 failing unit tests that hardcoded `'2.0.0'` as `currentVersion` - tests now import `version` dynamically from `package.json` so they stay correct after every version bump.
+
 ### 🐳 Docker
 
 - **Image**: `skyfay/dbackup:v2.0.1`

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { prismaMock } from '@/lib/testing/prisma-mock';
+import { version as CURRENT_VERSION } from '../../../package.json';
 
 vi.mock('@/lib/logging/logger', () => ({
     logger: { child: () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }) },
@@ -124,13 +125,13 @@ describe('updateService.checkForUpdates()', () => {
     it('returns no update when current version is already the latest', async () => {
         globalFetch.mockResolvedValue({
             ok: true,
-            json: async () => makeTags('v2.0.0', 'v1.9.0'),
+            json: async () => makeTags(`v${CURRENT_VERSION}`, 'v1.9.0'),
         });
 
         const result = await updateService.checkForUpdates();
 
         expect(result.updateAvailable).toBe(false);
-        expect(result.latestVersion).toBe('2.0.0');
+        expect(result.latestVersion).toBe(CURRENT_VERSION);
     });
 
     it('returns no update when only older versions exist', async () => {
@@ -186,12 +187,12 @@ describe('updateService.checkForUpdates()', () => {
     it('always includes currentVersion in the result', async () => {
         globalFetch.mockResolvedValue({
             ok: true,
-            json: async () => makeTags('v2.0.0'),
+            json: async () => makeTags(`v${CURRENT_VERSION}`),
         });
 
         const result = await updateService.checkForUpdates();
 
-        expect(result.currentVersion).toBe('2.0.0');
+        expect(result.currentVersion).toBe(CURRENT_VERSION);
     });
 
     it('includes currentVersion even when fetch fails', async () => {
@@ -199,7 +200,7 @@ describe('updateService.checkForUpdates()', () => {
 
         const result = await updateService.checkForUpdates();
 
-        expect(result.currentVersion).toBe('2.0.0');
+        expect(result.currentVersion).toBe(CURRENT_VERSION);
     });
 
     // ── AbortController timeout ───────────────────────────────
