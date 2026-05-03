@@ -28,7 +28,7 @@ Pre-configured adapters automatically generate endpoints from a base URL or disc
 Create an OIDC application in your identity provider:
 
 **Required settings**:
-- Redirect URI: `https://your-dbackup-url/api/auth/callback/{provider-id}`
+- Redirect URI: `https://your-dbackup-url/api/auth/sso/callback/{provider-id}`
 - Grant type: Authorization Code
 - Scopes: `openid`, `profile`, `email`
 
@@ -201,7 +201,7 @@ Client secrets are encrypted:
 
 **Solution**:
 1. Check redirect URI in identity provider
-2. Must exactly match: `https://your-domain/api/auth/callback/{provider-id}`
+2. Must exactly match: `https://your-domain/api/auth/sso/callback/{provider-id}`
 3. Include trailing slash if configured
 
 ### "User Not Found" After SSO
@@ -273,7 +273,7 @@ If you prefer manual configuration:
 
 1. Register application in Azure Portal
 2. Configure:
-   - Redirect URI: `https://dbackup.example.com/api/auth/callback/azure`
+   - Redirect URI: `https://dbackup.example.com/api/auth/sso/callback/azure`
    - Implicit grant: ID tokens
 3. Create client secret
 4. Use Generic adapter with:

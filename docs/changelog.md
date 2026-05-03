@@ -12,6 +12,8 @@ All notable changes to DBackup are documented here.
 - **credentials**: Added the Generic Credential Profile System - reusable, AES-256-GCM encrypted credential profiles (Username/Password, SSH Key, Access Key, Token, SMTP) that adapters reference instead of storing secrets inline. Profiles are managed in the Security Vault, assigned via a searchable picker in the adapter form, and automatically merged into every backup, restore, health check, and notification at runtime.
 - **storage**: Added `jurisdiction` field to the Cloudflare R2 adapter (`Standard`, `EU`, `FedRAMP`) - EU-jurisdiction buckets require the `*.eu.r2.cloudflarestorage.com` endpoint, without this setting they return "Access Denied" or "bucket does not exist"
 - **website**: Added a new Website https://dbackup.app
+- **scheduler**: Added a UI setting in Settings > General to configure the scheduler timezone without changing the `TZ` environment variable. When set, the DB value takes explicit priority over `TZ` for all cron jobs. Thanks @iberlob ([#41](https://github.com/Skyfay/DBackup/pull/41))
+- **backup**: Added a configurable filename pattern for backup files. Patterns support tokens (`{name}`, `{db_name}`, `yyyy`, `MM`, `dd`, `HH`, `mm`, `ss`) with a live preview and clickable token chips in Settings > General. Thanks @iberlob ([#41](https://github.com/Skyfay/DBackup/pull/41))
 
 ### 🐛 Bug Fixes
 
@@ -41,6 +43,7 @@ All notable changes to DBackup are documented here.
 
 ### 📝 Documentation
 
+- **SSO**: Fixed incorrect SSO callback URL in all provider setup guides - the correct path is `/api/auth/sso/callback/{provider-id}`, not `/api/auth/callback/{provider-id}`.
 - **credentials**: Added a new user-guide page `security/credential-profiles.md` documenting types, slots, inline creation flow, reference tracking, REVEAL semantics, and the REST surface, added a top-of-page note to `security/encryption.md` clarifying that the Vault now hosts both an Encryption tab and a Credentials tab, added the page to the security sidebar in `.vitepress/config.mts`
 - **api**: Documented the full `/api/credentials` REST surface in `public/openapi.yaml` under the `Vault` tag, including a `CredentialType` enum and per-type `data` schemas (`UsernamePasswordData`, `SshKeyData`, `AccessKeyData`, `TokenData`, `SmtpData`), plus a new `BadRequest` shared response
 
@@ -67,7 +70,7 @@ All notable changes to DBackup are documented here.
 
 - **scheduler**: Fixed a race condition where concurrent `scheduler.refresh()` calls (e.g. saving a job while config-backup settings are updated simultaneously) could create orphaned `node-cron` tasks that are never stopped. These ghost tasks could cause scheduled jobs to fire more than once per cron interval
 - **scheduler**: Fixed the scheduler singleton not being stored on `globalThis` in production mode (`NODE_ENV=production`). If the module was re-imported in a fresh module scope (a known Next.js standalone behavior), a second independent `BackupScheduler` instance with its own cron tasks was created
-- **runner**: Fixed a TOCTOU race condition in `performExecution` that caused duplicate backup files when two or more jobs are scheduled at the same cron minute. Both `processQueue()` calls ran concurrently, both found the same `Pending` execution, and both ran the full backup pipeline. The execution is now claimed atomically via a conditional `updateMany` (`status: "Pending" → "Running"`), the call that gets `count=0` back exits immediately without running the backup (#32)
+- **runner**: Fixed a TOCTOU race condition in `performExecution` that caused duplicate backup files when two or more jobs are scheduled at the same cron minute. Both `processQueue()` calls ran concurrently, both found the same `Pending` execution, and both ran the full backup pipeline. The execution is now claimed atomically via a conditional `updateMany` (`status: "Pending" → "Running"`), the call that gets `count=0` back exits immediately without running the backup ([#32](https://github.com/Skyfay/DBackup/issues/32))
 - **tls**: Fixed self-signed certificate not including the hostname from `BETTER_AUTH_URL` as a SubjectAltName (SAN). Browsers like Brave (and per RFC, all browsers) block `fetch()` API calls when the SAN does not match the accessed hostname, even after manually accepting the certificate warning for the page itself. The generated SAN now includes the hostname/IP extracted from `BETTER_AUTH_URL` in addition to `localhost` and `127.0.0.1`. On startup, if an existing self-signed cert is missing the configured hostname, it is automatically regenerated. The "Regenerate" button in Settings also benefits from this fix
 
 ### 🎨 Improvements
@@ -90,18 +93,18 @@ All notable changes to DBackup are documented here.
 
 ### ✨ Features
 
-- **postgresql**: Added per-job native PostgreSQL dump compression. Jobs with a PostgreSQL source now expose an "Algorithm" selector (Legacy Gzip-6, None, Gzip, LZ4, ZSTD) and a "Level" input under the Security tab. The selection maps directly to `pg_dump -Z`, allowing e.g. `-Z zstd:3` or `-Z lz4:1` without modifying the source adapter config (#24)
+- **postgresql**: Added per-job native PostgreSQL dump compression. Jobs with a PostgreSQL source now expose an "Algorithm" selector (Legacy Gzip-6, None, Gzip, LZ4, ZSTD) and a "Level" input under the Security tab. The selection maps directly to `pg_dump -Z`, allowing e.g. `-Z zstd:3` or `-Z lz4:1` without modifying the source adapter config ([#24](https://github.com/Skyfay/DBackup/issues/24))
 
 ### 🐛 Bug Fixes
 
-- **postgresql**: Fixed hardcoded `-Z 6` in the PostgreSQL dump adapter. Previously, `pg_dump` always ran with Gzip level 6 regardless of the job's compression setting, resulting in silent double-compression when pipeline Gzip or Brotli was enabled. The adapter now derives the `-Z` flag from the job's `pgCompression` setting (legacy jobs are unaffected) (#24)
-- **mssql**: Fixed `Dump failed: No database specified for backup` when no databases were selected in the job. The MSSQL adapter now auto-discovers all user databases (matching the behavior of MySQL/PostgreSQL adapters) instead of aborting (#30)
-- **backup**: Fixed all database adapters (MySQL, PostgreSQL, MSSQL, etc.) only backing up one database when no explicit selection was made in the job config. The source config's default `database` field was leaking through and overriding the intended "backup all" behavior (#30)
+- **postgresql**: Fixed hardcoded `-Z 6` in the PostgreSQL dump adapter. Previously, `pg_dump` always ran with Gzip level 6 regardless of the job's compression setting, resulting in silent double-compression when pipeline Gzip or Brotli was enabled. The adapter now derives the `-Z` flag from the job's `pgCompression` setting (legacy jobs are unaffected) ([#24](https://github.com/Skyfay/DBackup/issues/24))
+- **mssql**: Fixed `Dump failed: No database specified for backup` when no databases were selected in the job. The MSSQL adapter now auto-discovers all user databases (matching the behavior of MySQL/PostgreSQL adapters) instead of aborting ([#30](https://github.com/Skyfay/DBackup/issues/30))
+- **backup**: Fixed all database adapters (MySQL, PostgreSQL, MSSQL, etc.) only backing up one database when no explicit selection was made in the job config. The source config's default `database` field was leaking through and overriding the intended "backup all" behavior ([#30](https://github.com/Skyfay/DBackup/issues/30))
 
 ### 🔧 CI/CD
 
 - **docker**: Added `lz4` and `zstd` Alpine packages to the base image so that `pg_dump` (postgresql18-client) can use LZ4 and ZSTD native compression at runtime
-- **docker**: Added OCI standard labels to Docker image (`title`, `description`, `url`, `source`, `version`, `revision`, `created`, `licenses`, `vendor`) via `docker/metadata-action@v5` for better registry compatibility and dependency bot integration (#27) - Thanks @Erwan-loot
+- **docker**: Added OCI standard labels to Docker image (`title`, `description`, `url`, `source`, `version`, `revision`, `created`, `licenses`, `vendor`) via `docker/metadata-action@v5` for better registry compatibility and dependency bot integration ([#27](https://github.com/Skyfay/DBackup/pull/27)) - Thanks @Erwan-loot
 - **codecov**: Added Codecov integration - `codecov.yml`, `@vitest/coverage-v8`, `test:coverage` script, lcov reporter in `vitest.config.ts`, and coverage upload step in `validate.yml` using OIDC (no token secret required)
 
 ### 🐳 Docker
@@ -116,7 +119,7 @@ All notable changes to DBackup are documented here.
 
 ### 🔄 Changed
 
-- **backup**: Multi-database backups now use `.tar` file extension instead of the adapter-specific extension (e.g. `.sql`), correctly reflecting the TAR archive format (#25)
+- **backup**: Multi-database backups now use `.tar` file extension instead of the adapter-specific extension (e.g. `.sql`), correctly reflecting the TAR archive format ([#25](https://github.com/Skyfay/DBackup/issues/25))
 
 ### 🔧 CI/CD
 
@@ -134,7 +137,7 @@ All notable changes to DBackup are documented here.
 
 ### 🐛 Bug Fixes
 
-- **postgres**: Fixed single-database backups via SSH running `pg_dump` locally instead of on the remote server, causing "Connection refused" errors (#22)
+- **postgres**: Fixed single-database backups via SSH running `pg_dump` locally instead of on the remote server, causing "Connection refused" errors ([#22](https://github.com/Skyfay/DBackup/issues/22))
 - **mongodb**: Fixed same SSH bypass bug for single-database `mongodump` backups
 
 ### 🐳 Docker
