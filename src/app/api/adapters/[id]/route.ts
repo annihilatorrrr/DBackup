@@ -111,7 +111,7 @@ export async function PUT(
         // RBAC: Check permission based on adapter type
         const existingAdapter = await prisma.adapterConfig.findUnique({
             where: { id: params.id },
-            select: { type: true, adapterId: true }
+            select: { type: true, adapterId: true, lastError: true }
         });
         if (!existingAdapter) {
             return NextResponse.json({ success: false, error: "Adapter not found" }, { status: 404 });
@@ -163,6 +163,10 @@ export async function PUT(
                 ...(primaryCredentialId !== undefined ? { primaryCredentialId: primaryCredentialId ?? null } : {}),
                 ...(sshCredentialId !== undefined ? { sshCredentialId: sshCredentialId ?? null } : {}),
                 ...(metadata !== undefined ? { metadata: JSON.stringify(metadata) } : {}),
+                // Clear the "No credential profile assigned" OFFLINE/DEGRADED flag when a profile is now assigned.
+                ...(primaryCredentialId && existingAdapter.lastError === "No credential profile assigned"
+                    ? { lastStatus: "ONLINE", lastError: null, consecutiveFailures: 0 }
+                    : {}),
             }
         });
 

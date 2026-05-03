@@ -463,8 +463,9 @@ export function AdapterManager({ type, title, description, canManage = true, per
  * are flagged OFFLINE due to a missing credential profile assignment.
  *
  * The startup-checks job sets `lastError = "No credential profile assigned"`
- * for adapters that require but don't have a primary credential. This banner
- * informs the user and links them to the vault to create/assign profiles.
+ * for adapters that existed before the credential vault (v2.0.0 migration).
+ * New adapters where the user intentionally leaves the credential field empty
+ * are never flagged and therefore never appear here.
  *
  * TODO(2026-06-28): Remove this migration banner. It was added for the v1.5
  * credential profiles rollout to guide users through reassigning their
@@ -472,7 +473,7 @@ export function AdapterManager({ type, title, description, canManage = true, per
  */
 function CredentialUpgradeBanner({ configs }: { configs: AdapterConfig[] }) {
     const affected = configs.filter(
-        (c) => c.lastStatus === "OFFLINE" && c.lastError === "No credential profile assigned"
+        (c) => (c.lastStatus === "OFFLINE" || c.lastStatus === "DEGRADED") && c.lastError === "No credential profile assigned"
     );
     if (affected.length === 0) return null;
 
