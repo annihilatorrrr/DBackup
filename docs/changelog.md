@@ -10,6 +10,7 @@ All notable changes to DBackup are documented here.
 ### ✨ Features
 
 - **credentials**: Added the Generic Credential Profile System - reusable, AES-256-GCM encrypted credential profiles (Username/Password, SSH Key, Access Key, Token, SMTP) that adapters reference instead of storing secrets inline. Profiles are managed in the Security Vault, assigned via a searchable picker in the adapter form, and automatically merged into every backup, restore, health check, and notification at runtime.
+- **setup**: Added Credential Profile picker to the Quick Setup Wizard Source, Destination, and Notification steps - the picker now renders identically to the standalone "Add Source/Destination/Notification" dialogs, including SSH credential support. The selected profile IDs are included in the adapter creation payload.
 - **ui**: Added clone (copy) button to Sources, Destinations, Notifications, and Backup Jobs - cloning creates a duplicate with the name suffix "(Copy)" and carries over all settings including Vault credential references. Cloned jobs start as disabled to prevent accidental execution. Resolves [#34](https://github.com/Skyfay/DBackup/issues/34)
 - **storage**: Added `jurisdiction` field to the Cloudflare R2 adapter (`Standard`, `EU`, `FedRAMP`) - EU-jurisdiction buckets require the `*.eu.r2.cloudflarestorage.com` endpoint, without this setting they return "Access Denied" or "bucket does not exist"
 - **website**: Added a new Website https://dbackup.app

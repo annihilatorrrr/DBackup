@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -34,10 +34,31 @@ interface DestinationStepProps {
 export function DestinationStep({ adapters, wizardData, onUpdate, onNext, onPrev }: DestinationStepProps) {
     const [selectedAdapter, setSelectedAdapter] = useState<AdapterDefinition | null>(null);
     const [isSaved, setIsSaved] = useState(!!wizardData.destinationId);
+    const [primaryCredentialId, setPrimaryCredentialId] = useState<string | null>(null);
+    const [sshCredentialId, setSshCredentialId] = useState<string | null>(null);
+
+    // Patch schema: make credential-managed fields optional so hidden inputs
+    // don't cause silent required-field validation failures.
+    const configSchema = useMemo(() => {
+        if (!selectedAdapter) return z.any();
+        const base = selectedAdapter.configSchema;
+        if (!(base instanceof z.ZodObject)) return base;
+        const keys: string[] = [];
+        if (selectedAdapter.credentials?.primary === "USERNAME_PASSWORD") keys.push("user", "username", "password");
+        if (selectedAdapter.credentials?.primary === "SSH_KEY") keys.push("username", "authType", "password", "privateKey", "passphrase");
+        if (selectedAdapter.credentials?.primary === "ACCESS_KEY") keys.push("accessKeyId", "secretAccessKey");
+        if (selectedAdapter.credentials?.primary === "TOKEN") keys.push("token", "appToken", "accessToken", "botToken");
+        if (selectedAdapter.credentials?.primary === "SMTP") keys.push("user", "password");
+        if (selectedAdapter.credentials?.ssh === "SSH_KEY") keys.push("sshUsername", "sshAuthType", "sshPassword", "sshPrivateKey", "sshPassphrase", "username", "authType", "privateKey", "passphrase");
+        if (keys.length === 0) return base;
+        const shape = { ...base.shape };
+        for (const k of keys) { if (shape[k]) shape[k] = shape[k].optional(); }
+        return z.object(shape);
+    }, [selectedAdapter]);
 
     const schema = z.object({
         name: z.string().min(1, "Name is required"),
-        config: selectedAdapter ? selectedAdapter.configSchema : z.any(),
+        config: configSchema,
     });
 
     const form = useForm({
@@ -51,11 +72,15 @@ export function DestinationStep({ adapters, wizardData, onUpdate, onNext, onPrev
     const { testConnection } = useAdapterConnection({
         adapterId: selectedAdapter?.id || "",
         form: form as unknown as ReturnType<typeof useForm>,
+        primaryCredentialId,
+        sshCredentialId,
     });
 
     const handleAdapterSelect = (adapter: AdapterDefinition) => {
         setSelectedAdapter(adapter);
         form.reset({ name: "", config: {} });
+        setPrimaryCredentialId(null);
+        setSshCredentialId(null);
         setIsSaved(false);
     };
 
@@ -66,6 +91,8 @@ export function DestinationStep({ adapters, wizardData, onUpdate, onNext, onPrev
                 adapterId: selectedAdapter!.id,
                 config: data.config,
                 type: "storage",
+                primaryCredentialId,
+                sshCredentialId,
             };
 
             const res = await fetch("/api/adapters", {
@@ -193,7 +220,13 @@ export function DestinationStep({ adapters, wizardData, onUpdate, onNext, onPrev
                             </div>
                         </div>
 
-                        <StorageFormContent adapter={selectedAdapter} />
+                        <StorageFormContent
+                            adapter={selectedAdapter}
+                            primaryCredentialId={primaryCredentialId}
+                            sshCredentialId={sshCredentialId}
+                            onPrimaryChange={setPrimaryCredentialId}
+                            onSshChange={setSshCredentialId}
+                        />
 
                         <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-2 pt-4">
                             <Button type="button" variant="outline" onClick={() => setSelectedAdapter(null)}>
