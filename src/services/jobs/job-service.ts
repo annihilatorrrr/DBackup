@@ -173,6 +173,58 @@ export class JobService {
 
         return deletedJob;
     }
+
+    async cloneJob(id: string) {
+        const original = await prisma.job.findUnique({
+            where: { id },
+            include: {
+                destinations: true,
+                notifications: true,
+            }
+        });
+
+        if (!original) {
+            throw new Error(`Job with id "${id}" not found.`);
+        }
+
+        // Generate a unique name: "X (Copy)", then "X (Copy 2)", etc.
+        const baseName = `${original.name} (Copy)`;
+        let uniqueName = baseName;
+        let counter = 2;
+        while (await prisma.job.findFirst({ where: { name: uniqueName } })) {
+            uniqueName = `${original.name} (Copy ${counter})`;
+            counter++;
+        }
+
+        const clonedJob = await prisma.job.create({
+            data: {
+                name: uniqueName,
+                schedule: original.schedule,
+                sourceId: original.sourceId,
+                databases: original.databases,
+                enabled: false,
+                encryptionProfileId: original.encryptionProfileId ?? null,
+                compression: original.compression,
+                pgCompression: original.pgCompression,
+                notificationEvents: original.notificationEvents,
+                notifications: {
+                    connect: original.notifications.map((n) => ({ id: n.id }))
+                },
+                destinations: {
+                    create: original.destinations.map((d) => ({
+                        configId: d.configId,
+                        priority: d.priority,
+                        retention: d.retention
+                    }))
+                }
+            },
+            include: jobInclude
+        });
+
+        scheduler.refresh().catch((e) => log.error("Scheduler refresh failed after cloneJob", {}, wrapError(e)));
+
+        return clonedJob;
+    }
 }
 
 export const jobService = new JobService();

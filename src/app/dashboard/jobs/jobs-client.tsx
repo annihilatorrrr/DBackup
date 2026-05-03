@@ -14,7 +14,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Edit, Play, Trash2, Clock, Lock, Webhook } from "lucide-react";
+import { Edit, Play, Trash2, Clock, Lock, Webhook, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { JobForm, JobData, AdapterOption, EncryptionOption } from "@/components/dashboard/jobs/job-form";
 import { ApiTriggerDialog } from "@/components/dashboard/jobs/api-trigger-dialog";
@@ -61,6 +61,7 @@ export function JobsClient({ canManage, canExecute }: JobsClientProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingJob, setEditingJob] = useState<Job | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [cloningJobId, setCloningJobId] = useState<string | null>(null);
     const [apiTriggerJob, setApiTriggerJob] = useState<{ id: string; name: string } | null>(null);
     const router = useRouter();
     const { autoRedirectOnJobStart } = useUserPreferences();
@@ -122,6 +123,22 @@ export function JobsClient({ canManage, canExecute }: JobsClientProps) {
         } catch { toast.error("Error deleting job"); }
         setDeletingId(null);
     };
+
+    const cloneJob = useCallback(async (id: string) => {
+        setCloningJobId(id);
+        try {
+            const res = await fetch(`/api/jobs/${id}/clone`, { method: "POST" });
+            const data = await res.json();
+            if (res.ok) {
+                toast.success("Job cloned successfully");
+                const refreshed = await fetch("/api/jobs");
+                if (refreshed.ok) setJobs(await refreshed.json());
+            } else {
+                toast.error(data.error || "Failed to clone job");
+            }
+        } catch { toast.error("Error cloning job"); }
+        finally { setCloningJobId(null); }
+    }, []);
 
     const runJob = useCallback(async (id: string) => {
         toast.info("Starting backup job...");
@@ -234,6 +251,9 @@ export function JobsClient({ canManage, canExecute }: JobsClientProps) {
                     )}
                     {canManage && (
                         <>
+                            <Button variant="ghost" size="icon" onClick={() => cloneJob(row.original.id)} disabled={cloningJobId === row.original.id} title="Clone Job">
+                                <Copy className="h-4 w-4" />
+                            </Button>
                             <Button variant="ghost" size="icon" onClick={() => { setEditingJob(row.original); setIsDialogOpen(true); }}>
                                 <Edit className="h-4 w-4" />
                             </Button>
@@ -245,7 +265,7 @@ export function JobsClient({ canManage, canExecute }: JobsClientProps) {
                 </div>
             )
         }
-    ], [canManage, canExecute, runJob]);
+    ], [canManage, canExecute, runJob, cloneJob, cloningJobId]);
 
     if (isLoading) {
         return (

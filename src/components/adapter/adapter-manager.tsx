@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Trash, BarChart3, SearchCode } from "lucide-react";
+import { Edit, Trash, BarChart3, SearchCode, Copy } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -36,6 +36,7 @@ export function AdapterManager({ type, title, description, canManage = true, per
     const [availableAdapters, setAvailableAdapters] = useState<AdapterDefinition[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [cloningId, setCloningId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [historyAdapter, setHistoryAdapter] = useState<{ id: string; name: string } | null>(null);
     const router = useRouter();
@@ -105,6 +106,24 @@ export function AdapterManager({ type, title, description, canManage = true, per
              toast.error("Error deleting configuration");
         } finally {
             setDeletingId(null);
+        }
+    };
+
+    const cloneAdapter = async (id: string) => {
+        setCloningId(id);
+        try {
+            const res = await fetch(`/api/adapters/${id}/clone`, { method: "POST" });
+            const data = await res.json();
+            if (res.ok) {
+                toast.success("Configuration cloned successfully");
+                fetchConfigs();
+            } else {
+                toast.error(data.error || "Failed to clone configuration");
+            }
+        } catch (_error) {
+            toast.error("Error cloning configuration");
+        } finally {
+            setCloningId(null);
         }
     };
 
@@ -264,6 +283,15 @@ export function AdapterManager({ type, title, description, canManage = true, per
                         )}
                         {canManage && (
                             <>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    title="Clone"
+                                    disabled={cloningId === row.original.id}
+                                    onClick={() => cloneAdapter(row.original.id)}
+                                >
+                                    <Copy className="h-4 w-4" />
+                                </Button>
                                 <Button
                                     variant="ghost"
                                     size="icon"
