@@ -2,10 +2,10 @@
 
 All notable changes to DBackup are documented here.
 
-## v2.0.0
-*Release: In Progress*
+## v2.0.0 - Credential Profiles, Naming Template, Cloning, and Major Refactor
+*Released: May 3, 2026*
 
-> ⚠️ **Breaking:** Existing Sources, Destinations and Notifications that store credentials inline will require a Credential Profile to be assigned before they come back online. Create the matching profiles in the Security Vault, then assign them to each adapter via the edit form.
+> ⚠️ **Breaking:** Existing Sources, Destinations and Notifications that store credentials inline will require a Credential Profile to be assigned before they come back online. Create the matching profiles in the Security Vault, then assign them to each adapter via the edit form. This has to be done manually for each adapter, so take some time before upgrading. The new Credential Profile system is a critical security improvement that centralizes and encrypts all secrets in the Vault, but it does require some manual migration effort for existing adapters. New adapters created after the update will require credential profiles from the start.
 
 ### ✨ Features
 
