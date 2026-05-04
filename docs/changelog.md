@@ -2,6 +2,16 @@
 
 All notable changes to DBackup are documented here.
 
+## vNEXT
+*Release: In Progress*
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:vNEXT`
+- **Also tagged as**: `latest`, `vNEXT`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v2.0.1 - SSH Connection Fix with new Credential Profiles
 *Released: May 3, 2026*
 

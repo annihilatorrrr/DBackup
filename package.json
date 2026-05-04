@@ -22,6 +22,7 @@
     "test:stress": "pnpm run test:env:up && sleep 45 && pnpm run test:stress:generate",
     "version:sync": "./scripts/sync-version.sh --sync-only",
     "version:bump": "./scripts/sync-version.sh",
+    "changelog:next": "./scripts/sync-version.sh --changelog-init",
     "database:deploy": "prisma db push && npx prisma generate",
     "docs:install": "cd docs && pnpm install",
     "docs:dev": "cd docs && pnpm dev",
