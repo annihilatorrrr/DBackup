@@ -7,6 +7,7 @@ All notable changes to DBackup are documented here.
 
 ### ✨ Features
 
+- **Telegram**: Added optional Topic/Thread ID field (`messageThreadId`) to the Telegram notification adapter, enabling notifications to be sent to a specific topic in Telegram forum groups. Leave the field empty to send to the main chat (fully backwards-compatible). ([#45](https://github.com/Skyfay/DBackup/issues/45))
 - **2FA**: The TOTP setup dialog now has a tab switcher between "QR Code" and "Manual Key". The secret key is hidden by default and can be revealed with the eye icon, supporting manual entry in authenticator apps even without clipboard access (e.g. over plain HTTP). ([#39](https://github.com/Skyfay/DBackup/issues/39))
 
 ### 🐳 Docker
