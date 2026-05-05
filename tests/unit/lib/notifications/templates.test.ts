@@ -106,7 +106,7 @@ describe("Notification Templates", () => {
           },
         });
 
-        expect(payload.title).toBe("Backup Successful");
+        expect(payload.title).toBe("Backup Successful: Daily MySQL");
         expect(payload.message).toContain("Daily MySQL");
         expect(payload.success).toBe(true);
         expect(payload.color).toBe("#22c55e");
@@ -148,7 +148,7 @@ describe("Notification Templates", () => {
           },
         });
 
-        expect(payload.title).toBe("Backup Failed");
+        expect(payload.title).toBe("Backup Failed: Daily MySQL");
         expect(payload.message).toContain("Connection refused");
         expect(payload.success).toBe(false);
         expect(payload.color).toBe("#ef4444"); // red
