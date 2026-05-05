@@ -62,7 +62,8 @@ function userCreatedTemplate(data: UserCreatedData): NotificationPayload {
 
 function backupSuccessTemplate(data: BackupResultData): NotificationPayload {
   return {
-    title: "Backup Successful",
+    title: `Backup Successful: ${data.jobName}`,
+
     message: `Backup job '${data.jobName}' completed successfully.`,
     fields: [
       { name: "Job", value: data.jobName, inline: true },
@@ -90,7 +91,8 @@ function backupSuccessTemplate(data: BackupResultData): NotificationPayload {
 
 function backupFailureTemplate(data: BackupResultData): NotificationPayload {
   return {
-    title: "Backup Failed",
+    title: `Backup Failed: ${data.jobName}`,
+
     message: `Backup job '${data.jobName}' failed.${data.error ? ` Error: ${data.error}` : ""}`,
     fields: [
       { name: "Job", value: data.jobName, inline: true },
