@@ -73,14 +73,20 @@ describe('RestoreService', () => {
         vi.spyOn(fs.promises, 'unlink').mockResolvedValue(undefined);
     });
 
-    const flushPromises = () => new Promise(resolve => setTimeout(resolve, 20));
+    // Waits for the background pipeline to complete. Uses 500ms to ensure CI runners
+    // (which may be slower due to Docker/overlayfs I/O) have enough headroom.
+    // Root cause of flakiness: real fs I/O must never happen inside unit tests -
+    // always mock fs operations that touch the filesystem.
+    const flushPromises = () => new Promise(resolve => setTimeout(resolve, 500));
 
     it('should execute full restore flow successfully', async () => {
         // Arrange
         const executionId = 'exec-123';
         const mockStorageAdapter = {
-            download: vi.fn().mockResolvedValue(true),
-            read: vi.fn().mockResolvedValue(null), // No metadata file
+            // First call is the .meta.json sidecar check - return false so no real fs.readFile is triggered.
+            // Second call is the actual backup file download.
+            download: vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true),
+            read: vi.fn().mockResolvedValue(null),
         } as unknown as StorageAdapter;
 
         const mockDbAdapter = {
@@ -173,7 +179,9 @@ describe('RestoreService', () => {
     it('should handle restore failure from adapter', async () => {
          const executionId = 'exec-fail-restore';
          const mockStorageAdapter = {
-            download: vi.fn().mockResolvedValue(true),
+            // First call is the .meta.json sidecar check - return false so no real fs.readFile is triggered.
+            // Second call is the actual backup file download.
+            download: vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true),
             read: vi.fn().mockResolvedValue(null),
         } as unknown as StorageAdapter;
 
