@@ -2,8 +2,8 @@
 
 All notable changes to DBackup are documented here.
 
-## vNEXT
-*Release: In Progress*
+## v2.1.1 - Docker Secrets support and SSH Credential Profile fixes
+*Released: May 5, 2026*
 
 ### ✨ Features
 
@@ -17,12 +17,14 @@ All notable changes to DBackup are documented here.
 
 - **sources**: Fixed "SSH username is required" error when testing an SSH connection for a SQLite source that uses an SSH Credential Profile. The SQLite SSH test button now correctly passes `adapterId` and `sshCredentialId` to the `test-ssh` route so the credential profile is resolved server-side. The route also normalizes SQLite's unprefixed SSH fields (`username`, `authType`, etc.) to the standard `ssh*`-prefixed convention expected by `extractSshConfig`. Fixed the same credential-profile issue for the remote file browser ("Select Remote Path") in the Configuration tab - `sshCredentialId` is now forwarded through `FieldList` and `SchemaField` to `FileBrowserDialog` and resolved in the `filesystem/remote` API route before connecting via SFTP. ([#55](https://github.com/Skyfay/DBackup/issues/55))
 
+### 📝 Documentation
+
 - **Docker Secrets**: Added "Docker Secrets (`_FILE` convention)" section to the Installation Guide with full setup examples for Docker Swarm and Docker Compose. Added the same convention to the Environment Variables developer reference, including error handling behavior and a link to the install guide.
 
 ### 🐳 Docker
 
-- **Image**: `skyfay/dbackup:vNEXT`
-- **Also tagged as**: `latest`, `vNEXT`
+- **Image**: `skyfay/dbackup:v2.1.1`
+- **Also tagged as**: `latest`, `v2`
 - **Platforms**: linux/amd64, linux/arm64
 
 
