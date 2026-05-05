@@ -48,7 +48,41 @@ export async function importConfiguration(
       }
     }
 
-    // 2. Restore Adapters
+    // 2. Restore Credential Profiles (MUST be before Adapters due to FK constraint)
+    // Build mapping from backup credential ID → actual credential ID for FK remapping in adapters
+    const credentialIdMap = new Map<string, string>();
+    if (opts.profiles && data.credentialProfiles && data.credentialProfiles.length > 0) {
+      for (const profile of data.credentialProfiles) {
+        // Skip profiles that were exported without secrets (data is empty string)
+        if (!profile.data) {
+          svcLog.warn("Skipping credential profile - secret data missing in export", { profileId: profile.id, name: profile.name });
+          continue;
+        }
+
+        // Re-encrypt data with CURRENT system key
+        const encryptedData = encrypt(profile.data);
+        const profileData = { ...profile, data: encryptedData };
+
+        // Check if a profile with the same name but different ID exists
+        const existingByName = await tx.credentialProfile.findUnique({ where: { name: profile.name } });
+        if (existingByName && existingByName.id !== profile.id) {
+          const { id: _id, ...updateFields } = profileData;
+          await tx.credentialProfile.update({
+            where: { id: existingByName.id },
+            data: updateFields,
+          });
+          credentialIdMap.set(profile.id, existingByName.id);
+        } else {
+          await tx.credentialProfile.upsert({
+            where: { id: profile.id },
+            create: profileData,
+            update: profileData,
+          });
+        }
+      }
+    }
+
+    // 3. Restore Adapters
     // Build mapping from backup adapter ID → actual adapter ID for FK remapping
     const adapterIdMap = new Map<string, string>();
     if (opts.adapters) {
@@ -62,6 +96,30 @@ export async function importConfiguration(
         configObj = encryptConfig(configObj);
 
         const adapterData = { ...adapter, config: JSON.stringify(configObj) };
+
+        // Remap credential profile IDs if they were merged
+        if (adapterData.primaryCredentialId && credentialIdMap.has(adapterData.primaryCredentialId)) {
+          adapterData.primaryCredentialId = credentialIdMap.get(adapterData.primaryCredentialId)!;
+        }
+        if (adapterData.sshCredentialId && credentialIdMap.has(adapterData.sshCredentialId)) {
+          adapterData.sshCredentialId = credentialIdMap.get(adapterData.sshCredentialId)!;
+        }
+
+        // Null out credential references that don't exist on this system
+        if (adapterData.primaryCredentialId) {
+          const credExists = await tx.credentialProfile.findUnique({ where: { id: adapterData.primaryCredentialId }, select: { id: true } });
+          if (!credExists) {
+            svcLog.warn("Removing invalid primaryCredentialId from adapter", { adapterId: adapter.id, primaryCredentialId: adapterData.primaryCredentialId });
+            adapterData.primaryCredentialId = null;
+          }
+        }
+        if (adapterData.sshCredentialId) {
+          const credExists = await tx.credentialProfile.findUnique({ where: { id: adapterData.sshCredentialId }, select: { id: true } });
+          if (!credExists) {
+            svcLog.warn("Removing invalid sshCredentialId from adapter", { adapterId: adapter.id, sshCredentialId: adapterData.sshCredentialId });
+            adapterData.sshCredentialId = null;
+          }
+        }
 
         // Check if an adapter with the same name and type already exists
         const existingByName = await tx.adapterConfig.findFirst({
@@ -85,7 +143,7 @@ export async function importConfiguration(
       }
     }
 
-    // 3. Restore Encryption Profiles (Metadata only)
+    // 4. Restore Encryption Profiles (Metadata only)
     // Build mapping from backup profile ID → actual profile ID for FK remapping
     const profileIdMap = new Map<string, string>();
     if (opts.profiles) {
@@ -136,7 +194,7 @@ export async function importConfiguration(
       }
     }
 
-    // 4. Restore Jobs
+    // 5. Restore Jobs
     if (opts.jobs) {
       for (const jobItem of data.jobs) {
         const job = { ...jobItem };
@@ -210,7 +268,7 @@ export async function importConfiguration(
       }
     }
 
-    // 5. Restore Groups
+    // 6. Restore Groups
     // Build mappings from backup IDs → actual IDs for FK remapping
     const groupIdMap = new Map<string, string>();
     const userIdMap = new Map<string, string>();
@@ -234,7 +292,7 @@ export async function importConfiguration(
         }
       }
 
-      // 6. Restore Users
+      // 7. Restore Users
       for (const user of data.users) {
         const { accounts, ...userFields } = user;
 
@@ -275,7 +333,7 @@ export async function importConfiguration(
         }
       }
 
-      // 6b. Restore API Keys
+      // 7b. Restore API Keys
       if (data.apiKeys && data.apiKeys.length > 0) {
         for (const key of data.apiKeys) {
           // Skip keys with stripped hashedKey (no-secret exports)
@@ -293,7 +351,7 @@ export async function importConfiguration(
       }
     }
 
-    // 7. Restore SSO Providers
+    // 8. Restore SSO Providers
     if (opts.sso) {
       for (const provider of data.ssoProviders) {
         // Re-encrypt secrets with current system key before storing
@@ -331,7 +389,7 @@ export async function importConfiguration(
       }
     }
 
-    // 8. Restore Statistics (optional)
+    // 9. Restore Statistics (optional)
     if (opts.statistics && data.statistics) {
       if (data.statistics.storageSnapshots) {
         for (const snapshot of data.statistics.storageSnapshots) {

@@ -10,7 +10,11 @@ applyTo: "**/*"
 
 ### Finding the active version
 
-The active (unreleased) version is the topmost `## vX.Y.Z` block with `*Release: In Progress*`. Always add entries there.
+The active (unreleased) version is either:
+- A `## vNEXT` block at the top (version not yet decided), **or**
+- The topmost `## vX.Y.Z` block with `*Release: In Progress*`
+
+Always add entries to whichever of these is present. If neither exists, run `pnpm changelog:next` to create a `## vNEXT` placeholder first.
 
 ### Mapping changes to sections
 

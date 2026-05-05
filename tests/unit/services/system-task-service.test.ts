@@ -451,5 +451,37 @@ describe('SystemTaskService', () => {
                 data: expect.objectContaining({ metadata: expect.stringContaining('Unreachable') }),
             }));
         });
+
+        it('records lastRunAt timestamp when runTask is called', async () => {
+            prismaMock.systemSetting.upsert.mockResolvedValue({} as any);
+
+            await service.runTask(SYSTEM_TASKS.HEALTH_CHECK);
+
+            expect(prismaMock.systemSetting.upsert).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: { key: `task.${SYSTEM_TASKS.HEALTH_CHECK}.lastRunAt` },
+                    update: { value: expect.any(String) },
+                })
+            );
+        });
+    });
+
+    describe('getTaskLastRunAt()', () => {
+        it('returns ISO timestamp string from DB when set', async () => {
+            const ts = new Date().toISOString();
+            prismaMock.systemSetting.findUnique.mockResolvedValue({ key: `task.${SYSTEM_TASKS.HEALTH_CHECK}.lastRunAt`, value: ts } as any);
+
+            const result = await service.getTaskLastRunAt(SYSTEM_TASKS.HEALTH_CHECK);
+
+            expect(result).toBe(ts);
+        });
+
+        it('returns null when no DB entry exists', async () => {
+            prismaMock.systemSetting.findUnique.mockResolvedValue(null);
+
+            const result = await service.getTaskLastRunAt(SYSTEM_TASKS.HEALTH_CHECK);
+
+            expect(result).toBeNull();
+        });
     });
 });

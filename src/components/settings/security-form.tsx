@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Loader2, CheckCircle2, AlertCircle, Fingerprint, Plus, Trash2, Smartphone, KeyRound, Copy, Check } from "lucide-react"
+import { Loader2, CheckCircle2, AlertCircle, Fingerprint, Plus, Trash2, Smartphone, KeyRound, Copy, Check, Eye, EyeOff } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
 import { Switch } from "@/components/ui/switch"
 import { DateDisplay } from "@/components/utils/date-display"
@@ -49,6 +50,7 @@ export function SecurityForm({ canUpdatePassword, canManage2FA, canManagePasskey
     const [confirmPassword, setConfirmPassword] = useState("")
     const [isChangingPassword, setIsChangingPassword] = useState(false)
     const [copiedSecret, setCopiedSecret] = useState(false)
+    const [showSecret, setShowSecret] = useState(false)
 
     // Passkey State
     const [passkeys, setPasskeys] = useState<Passkey[]>([])
@@ -445,36 +447,59 @@ export function SecurityForm({ canUpdatePassword, canManage2FA, canManagePasskey
 
                                     {totpURI && !showBackupCodes && (
                                         <div className="space-y-4 py-4">
-                                            <div className="flex justify-center p-4 bg-white rounded-lg">
-                                                <QRCodeSVG value={totpURI} size={150} />
-                                            </div>
-                                            <p className="text-sm text-muted-foreground text-center">
-                                                Scan this QR code with your authenticator app (e.g. Google Authenticator, Authy).
-                                            </p>
-                                            <div className="flex justify-center">
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-xs text-muted-foreground h-auto py-1 px-2"
-                                                    onClick={() => {
-                                                        try {
-                                                            const secret = new URL(totpURI!).searchParams.get("secret") || ""
-                                                            navigator.clipboard.writeText(secret)
-                                                            setCopiedSecret(true)
-                                                            setTimeout(() => setCopiedSecret(false), 2000)
-                                                        } catch {
-                                                            toast.error("Failed to copy secret")
-                                                        }
-                                                    }}
-                                                >
-                                                    {copiedSecret ? (
-                                                        <><Check className="mr-1 h-3 w-3" />Copied!</>
-                                                    ) : (
-                                                        <><Copy className="mr-1 h-3 w-3" />Can&apos;t scan? Copy the secret key</>
-                                                    )}
-                                                </Button>
-                                            </div>
+                                            <Tabs defaultValue="qr">
+                                                <TabsList className="w-full">
+                                                    <TabsTrigger value="qr" className="flex-1">QR Code</TabsTrigger>
+                                                    <TabsTrigger value="manual" className="flex-1">Manual Key</TabsTrigger>
+                                                </TabsList>
+                                                <TabsContent value="qr" className="mt-4 space-y-3">
+                                                    <div className="flex justify-center p-4 bg-white rounded-lg">
+                                                        <QRCodeSVG value={totpURI} size={150} />
+                                                    </div>
+                                                    <p className="text-sm text-muted-foreground text-center">
+                                                        Scan this QR code with your authenticator app (e.g. Google Authenticator, Authy).
+                                                    </p>
+                                                </TabsContent>
+                                                <TabsContent value="manual" className="mt-4 space-y-3">
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Enter this key manually in your authenticator app.
+                                                    </p>
+                                                    <div className="flex items-center gap-2">
+                                                        <code className="flex-1 text-center font-mono text-sm bg-muted px-3 py-2 rounded break-all select-all">
+                                                            {showSecret
+                                                                ? (new URL(totpURI!).searchParams.get("secret") || "")
+                                                                : "••••••••••••••••••••••••••••••••"}
+                                                        </code>
+                                                        <div className="flex shrink-0 gap-1">
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => setShowSecret((v) => !v)}
+                                                            >
+                                                                {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                            </Button>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => {
+                                                                    try {
+                                                                        const secret = new URL(totpURI!).searchParams.get("secret") || ""
+                                                                        navigator.clipboard.writeText(secret)
+                                                                        setCopiedSecret(true)
+                                                                        setTimeout(() => setCopiedSecret(false), 2000)
+                                                                    } catch {
+                                                                        toast.error("Failed to copy secret")
+                                                                    }
+                                                                }}
+                                                            >
+                                                                {copiedSecret ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                </TabsContent>
+                                            </Tabs>
                                             <div className="space-y-2">
                                                 <Label htmlFor="code">Verification Code</Label>
                                                 <Input
@@ -485,7 +510,7 @@ export function SecurityForm({ canUpdatePassword, canManage2FA, canManagePasskey
                                                     className="text-center text-lg tracking-widest"
                                                 />
                                             </div>
-                                             <Button onClick={handleVerifyTOTP} disabled={verificationCode.length !== 6 || isPending} className="w-full">
+                                            <Button onClick={handleVerifyTOTP} disabled={verificationCode.length !== 6 || isPending} className="w-full">
                                                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                                 Verify & Enable
                                             </Button>

@@ -4,6 +4,7 @@ import { ConfigService } from '../../../src/services/config/config-service';
 vi.mock('@/lib/prisma', () => ({
   default: {
     systemSetting: { findMany: vi.fn(), upsert: vi.fn() },
+    credentialProfile: { findMany: vi.fn(), findUnique: vi.fn(), upsert: vi.fn(), update: vi.fn() },
     adapterConfig: { findMany: vi.fn(), upsert: vi.fn() },
     job: { findMany: vi.fn(), upsert: vi.fn(), update: vi.fn() },
     jobDestination: { findMany: vi.fn(), upsert: vi.fn() },
@@ -49,6 +50,7 @@ describe('ConfigService', () => {
 
     // Mock other calls with empty arrays
     prismaMock.systemSetting.findMany.mockResolvedValue([]);
+    prismaMock.credentialProfile.findMany.mockResolvedValue([]);
     prismaMock.job.findMany.mockResolvedValue([]);
     prismaMock.jobDestination.findMany.mockResolvedValue([]);
     prismaMock.apiKey.findMany.mockResolvedValue([]);

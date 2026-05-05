@@ -197,8 +197,25 @@ export class SystemTaskService {
         });
     }
 
+    async getTaskLastRunAt(taskId: string): Promise<string | null> {
+        const key = `task.${taskId}.lastRunAt`;
+        const setting = await prisma.systemSetting.findUnique({ where: { key } });
+        return setting?.value ?? null;
+    }
+
+    private async setTaskLastRunAt(taskId: string) {
+        const key = `task.${taskId}.lastRunAt`;
+        const value = new Date().toISOString();
+        await prisma.systemSetting.upsert({
+            where: { key },
+            update: { value },
+            create: { key, value, description: `Last run timestamp for ${taskId}` }
+        });
+    }
+
     async runTask(taskId: string) {
         log.info("Running system task", { taskId });
+        await this.setTaskLastRunAt(taskId);
 
         switch (taskId) {
             case SYSTEM_TASKS.UPDATE_DB_VERSIONS:

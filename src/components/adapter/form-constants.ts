@@ -18,7 +18,7 @@ export const NOTIFICATION_CONNECTION_KEYS = [
     'user', 'password',
     'method', 'contentType', 'authHeader',
     'serverUrl', 'appToken', 'accessToken', 'topic',
-    'botToken', 'chatId',
+    'botToken', 'chatId', 'messageThreadId',
     'accountSid', 'authToken',
 ];
 
@@ -162,6 +162,7 @@ export const PLACEHOLDERS: Record<string, string> = {
     // Telegram
     "telegram.botToken": "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
     "telegram.chatId": "-1001234567890",
+    "telegram.messageThreadId": "123",
 
     // Twilio SMS
     "twilio-sms.accountSid": "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",

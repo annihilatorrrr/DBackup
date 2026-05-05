@@ -1,6 +1,6 @@
 {
   "name": "dbackup",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -22,6 +22,7 @@
     "test:stress": "pnpm run test:env:up && sleep 45 && pnpm run test:stress:generate",
     "version:sync": "./scripts/sync-version.sh --sync-only",
     "version:bump": "./scripts/sync-version.sh",
+    "changelog:next": "./scripts/sync-version.sh --changelog-init",
     "database:deploy": "prisma db push && npx prisma generate",
     "docs:install": "cd docs && pnpm install",
     "docs:dev": "cd docs && pnpm dev",
@@ -65,6 +66,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "croner": "^10.0.1",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "dropbox": "^10.34.0",
@@ -92,7 +94,7 @@
     "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7",
     "tar-stream": "^3.2.0",
-    "webdav": "^5.9.0",
+    "webdav": "^5.10.0",
     "zod": "^4.4.1"
   },
   "devDependencies": {
@@ -124,6 +126,10 @@
     "vitest-mock-extended": "^3.1.1"
   },
   "pnpm": {
+    "overrides": {
+      "dompurify": ">=3.4.0",
+      "postcss": ">=8.5.10"
+    },
     "onlyBuiltDependencies": [
       "@prisma/client",
       "@prisma/engines",

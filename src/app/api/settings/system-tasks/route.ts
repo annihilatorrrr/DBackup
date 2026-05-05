@@ -8,6 +8,8 @@ import { auditService } from "@/services/audit-service";
 import { AUDIT_ACTIONS, AUDIT_RESOURCES } from "@/lib/core/audit-types";
 import { logger } from "@/lib/logging/logger";
 import { wrapError } from "@/lib/logging/errors";
+import { Cron } from "croner";
+import prisma from "@/lib/prisma";
 
 const log = logger.child({ route: "system-tasks" });
 
@@ -16,14 +18,29 @@ export async function GET(_req: NextRequest) {
     if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     checkPermissionWithContext(ctx, PERMISSIONS.SETTINGS.READ); // assuming generic settings permission
 
+    const tzSetting = await prisma.systemSetting.findUnique({ where: { key: "system.timezone" } });
+    const timezone = tzSetting?.value || "UTC";
+
     const tasks = [];
     for (const [_key, taskId] of Object.entries(SYSTEM_TASKS)) {
         const schedule = await systemTaskService.getTaskConfig(taskId);
         const runOnStartup = await systemTaskService.getTaskRunOnStartup(taskId);
         const enabled = await systemTaskService.getTaskEnabled(taskId);
+        const lastRunAt = await systemTaskService.getTaskLastRunAt(taskId);
         const config = DEFAULT_TASK_CONFIG[taskId];
 
         if (!config) continue;
+
+        let nextRunAt: string | null = null;
+        if (enabled && schedule) {
+            try {
+                const job = new Cron(schedule, { timezone });
+                const next = job.nextRun();
+                nextRunAt = next ? next.toISOString() : null;
+            } catch {
+                // Invalid cron expression - leave nextRunAt null
+            }
+        }
 
         tasks.push({
             id: taskId,
@@ -31,7 +48,10 @@ export async function GET(_req: NextRequest) {
             runOnStartup,
             enabled,
             label: config.label,
-            description: config.description
+            description: config.description,
+            lastRunAt,
+            nextRunAt,
+            timezone,
         });
     }
 

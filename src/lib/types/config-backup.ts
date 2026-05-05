@@ -1,4 +1,4 @@
-import { AdapterConfig, Job, JobDestination, SystemSetting, User, Group, SsoProvider, EncryptionProfile, Account, ApiKey, StorageSnapshot, Execution, AuditLog, NotificationLog } from "@prisma/client";
+import { AdapterConfig, Job, JobDestination, SystemSetting, User, Group, SsoProvider, EncryptionProfile, CredentialProfile, Account, ApiKey, StorageSnapshot, Execution, AuditLog, NotificationLog } from "@prisma/client";
 
 export interface AppConfigurationBackup {
   metadata: {
@@ -9,6 +9,7 @@ export interface AppConfigurationBackup {
     sourceType: 'SYSTEM' | 'MANUAL';
   };
   settings: SystemSetting[];
+  credentialProfiles: (Omit<CredentialProfile, 'data'> & { data: string })[];
   adapters: AdapterConfig[];
   jobs: Job[];
   jobDestinations: JobDestination[];

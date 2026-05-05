@@ -24,6 +24,7 @@ export async function exportConfiguration(
 
   const { includeSecrets, includeStatistics = false } = opts;
   const settings = await prisma.systemSetting.findMany();
+  const credentialProfiles = await prisma.credentialProfile.findMany();
   const adapters = await prisma.adapterConfig.findMany();
   const jobs = await prisma.job.findMany();
   const jobDestinations = await prisma.jobDestination.findMany();
@@ -43,6 +44,21 @@ export async function exportConfiguration(
       jobNotifications[j.id] = j.notifications.map(n => n.id);
     }
   }
+
+  // Process Credential Profiles
+  // The `data` field is a single encrypted string (not nested fields), so we decrypt it directly.
+  const processedCredentialProfiles = credentialProfiles.map((profile) => {
+    if (includeSecrets) {
+      try {
+        const plainData = decrypt(profile.data);
+        return { ...profile, data: plainData };
+      } catch (e: unknown) {
+        svcLog.error("Failed to decrypt credential profile data for export", { profileId: profile.id }, wrapError(e));
+        return { ...profile, data: "" };
+      }
+    }
+    return { ...profile, data: "" };
+  });
 
   // Process Adapters
   const processedAdapters = adapters.map((adapter) => {
@@ -161,6 +177,7 @@ export async function exportConfiguration(
       sourceType: "SYSTEM",
     },
     settings,
+    credentialProfiles: processedCredentialProfiles,
     adapters: processedAdapters,
     jobs,
     jobDestinations,

@@ -36,12 +36,13 @@ The goal is to store the entire app configuration in a portable manner. If the s
 | Area | Description | Secrets Handling |
 |------|-------------|------------------|
 | **System Settings** | Global settings | Always included |
+| **Credential Profiles** | Vault - reusable credentials for adapters | Data only with `includeSecrets` |
 | **Adapter Configs** | Database & storage connections | Passwords only with `includeSecrets` |
 | **Jobs** | Backup schedules, retention | Always included |
 | **Users** | Local user accounts | Password hashes only with `includeSecrets` |
 | **Groups** | RBAC configurations | Always included |
 | **SSO Providers** | OIDC configurations | Client secrets only with `includeSecrets` |
-| **Encryption Profiles** | Vault profiles | Keys only with `includeSecrets` |
+| **Encryption Profiles** | Vault - backup encryption keys | Keys only with `includeSecrets` |
 
 **Not included:**
 - Actual backup files (SQL dumps)

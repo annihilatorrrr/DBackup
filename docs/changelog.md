@@ -2,6 +2,32 @@
 
 All notable changes to DBackup are documented here.
 
+## v2.1.0 - Backup Notification Subjects, Telegram Topic Support, and 2FA Setup UX
+*Released: May 5, 2026*
+
+### ✨ Features
+
+- **System Tasks**: Each task row in Settings - System Tasks now shows a "Last run" timestamp and a "Next run" timestamp. Both are displayed in the system timezone (Scheduler Timezone setting) and respect the user's configured date and time format.
+- **Notifications**: Backup notification subjects (email, Discord, Slack, etc.) now include the job name (e.g. "Backup Successful: Production DB" / "Backup Failed: Production DB"), making it easy to identify which job triggered the notification without opening it. ([#46](https://github.com/Skyfay/DBackup/issues/46))
+- **Telegram**: Added optional Topic/Thread ID field (`messageThreadId`) to the Telegram notification adapter, enabling notifications to be sent to a specific topic in Telegram forum groups. Leave the field empty to send to the main chat (fully backwards-compatible). ([#45](https://github.com/Skyfay/DBackup/issues/45))
+- **2FA**: The TOTP setup dialog now has a tab switcher between "QR Code" and "Manual Key". The secret key is hidden by default and can be revealed with the eye icon, supporting manual entry in authenticator apps even without clipboard access (e.g. over plain HTTP). ([#39](https://github.com/Skyfay/DBackup/issues/39))
+
+### 🐛 Bug Fixes
+
+- **System Configuration Backup**: Credential Profiles (Vault) were missing from config backup export and import. The export now includes all credential profiles (with encrypted `data` decrypted to plaintext inside the backup, re-encrypted on import). The import restores credential profiles before adapters (required by FK constraint) and correctly remaps `primaryCredentialId`/`sshCredentialId` on adapters when IDs differ between systems. Invalid credential references are now silently nulled out with a warning instead of causing a transaction failure.
+
+### 🔒 Security
+
+- **Dependencies**: Updated `webdav` to `5.10.0` to pull in `fast-xml-parser >= 5.7.0`, fixing an XML Comment/CDATA injection vulnerability (GHSA-gh4j-gqv2-49f6).
+- **Dependencies**: Added `pnpm overrides` to force `dompurify >= 3.4.0` (fixes 9 XSS/prototype-pollution CVEs in the `monaco-editor` transitive dependency) and `postcss >= 8.5.10` (fixes XSS via unescaped `</style>` in Next.js transitive dependency, GHSA-qx2v-qp2m-jg93).
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v2.1.0`
+- **Also tagged as**: `latest`, `v2`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v2.0.1 - SSH Connection Fix with new Credential Profiles
 *Released: May 3, 2026*
 

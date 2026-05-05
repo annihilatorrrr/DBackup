@@ -484,7 +484,7 @@ export function RestoreClient() {
                                         { key: 'jobs' as const, label: 'Jobs & Schedules' },
                                         { key: 'users' as const, label: 'Users & Groups' },
                                         { key: 'sso' as const, label: 'SSO Providers' },
-                                        { key: 'profiles' as const, label: 'Encryption Profiles' },
+                                        { key: 'profiles' as const, label: 'Vault Profiles' },
                                         { key: 'statistics' as const, label: 'Statistics & History' },
                                     ]).map(opt => (
                                         <div key={opt.key} className="flex items-center space-x-2">

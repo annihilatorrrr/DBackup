@@ -329,7 +329,7 @@ export function SystemSettingsForm({ initialMaxConcurrentJobs, initialDisablePas
                             <CardTitle>Scheduler Timezone</CardTitle>
                         </div>
                         <CardDescription>
-                            Timezone used for all backup job schedules. &quot;3:00 AM&quot; means 3:00 AM in this timezone.
+                            Timezone used for all backup job schedules and system task schedules. &quot;3:00 AM&quot; means 3:00 AM in this timezone.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>

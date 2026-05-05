@@ -64,6 +64,7 @@ export const TelegramAdapter: NotificationAdapter = {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     chat_id: config.chatId,
+                    ...(config.messageThreadId ? { message_thread_id: config.messageThreadId } : {}),
                     text: "🔔 <b>DBackup Connection Test</b>\n\nThis is a test notification to verify your Telegram configuration.",
                     parse_mode: "HTML",
                     disable_notification: true,
@@ -93,6 +94,7 @@ export const TelegramAdapter: NotificationAdapter = {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     chat_id: config.chatId,
+                    ...(config.messageThreadId ? { message_thread_id: config.messageThreadId } : {}),
                     text: formattedMessage,
                     parse_mode: config.parseMode || "HTML",
                     disable_notification: config.disableNotification ?? false,
