@@ -826,5 +826,140 @@ describe('import.ts - uncovered branches', () => {
     expect(prismaMock.user.upsert).toHaveBeenCalled();
     expect(prismaMock.account.upsert).not.toHaveBeenCalled();
   });
+
+  // ---------------------------------------------------------------------------
+  // Credential Profile - export branch coverage
+  // ---------------------------------------------------------------------------
+
+  it('decrypts credential profile data when includeSecrets=true (happy path)', async () => {
+    setupEmptyExport();
+    prismaMock.credentialProfile.findMany.mockResolvedValue([
+      { id: 'cp1', name: 'SSH Key', description: null, type: 'ssh', data: 'ENC_s3cr3t', createdAt: new Date(), updatedAt: new Date() },
+    ] as any);
+
+    const result = await exportConfiguration(true);
+
+    // decrypt('ENC_s3cr3t') returns 's3cr3t' (mock removes ENC_ prefix)
+    expect(result.credentialProfiles[0].data).toBe('s3cr3t');
+  });
+
+  it('falls back to empty data string when credential profile decrypt fails (error branch)', async () => {
+    const cryptoModule = await import('@/lib/crypto');
+    (cryptoModule.decrypt as any).mockImplementationOnce(() => {
+      throw new Error('Decryption error');
+    });
+
+    setupEmptyExport();
+    prismaMock.credentialProfile.findMany.mockResolvedValue([
+      { id: 'cp-bad', name: 'Broken Creds', description: null, type: 'ssh', data: 'corrupted', createdAt: new Date(), updatedAt: new Date() },
+    ] as any);
+
+    const result = await exportConfiguration(true);
+
+    expect(result.credentialProfiles[0].data).toBe('');
+  });
+
+  it('strips credential profile data when includeSecrets=false', async () => {
+    setupEmptyExport();
+    prismaMock.credentialProfile.findMany.mockResolvedValue([
+      { id: 'cp2', name: 'DB Creds', description: null, type: 'database', data: 'ENC_password', createdAt: new Date(), updatedAt: new Date() },
+    ] as any);
+
+    const result = await exportConfiguration(false);
+
+    expect(result.credentialProfiles[0].data).toBe('');
+  });
+});
+
+describe('import.ts - credential profile branches', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupMinimalImport();
+  });
+
+  it('upserts credential profile when no name collision exists', async () => {
+    // findUnique returns null for name check (from setupMinimalImport default)
+    const backup = makeBackup({
+      credentialProfiles: [
+        { id: 'cp1', name: 'SSH Key', type: 'ssh', data: 'plain-secret', description: null, createdAt: new Date(), updatedAt: new Date() },
+      ],
+    });
+
+    await importConfiguration(backup as any, 'OVERWRITE');
+
+    expect(prismaMock.credentialProfile.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'cp1' } }),
+    );
+  });
+
+  it('skips credential profile with empty data and warns', async () => {
+    const backup = makeBackup({
+      credentialProfiles: [
+        { id: 'cp-empty', name: 'Stripped Creds', type: 'ssh', data: '', description: null, createdAt: new Date(), updatedAt: new Date() },
+      ],
+    });
+
+    await importConfiguration(backup as any, 'OVERWRITE');
+
+    expect(prismaMock.credentialProfile.upsert).not.toHaveBeenCalled();
+    expect(prismaMock.credentialProfile.update).not.toHaveBeenCalled();
+  });
+
+  it('merges credential profile by name collision and builds credentialIdMap for adapter remapping', async () => {
+    // Name lookup: existing profile with same name but different ID
+    prismaMock.credentialProfile.findUnique
+      .mockResolvedValueOnce({ id: 'db-cp-id', name: 'SSH Key' } as any) // name lookup
+      .mockResolvedValue({ id: 'db-cp-id' } as any); // adapter FK existence checks
+
+    const backup = makeBackup({
+      credentialProfiles: [
+        { id: 'backup-cp-id', name: 'SSH Key', type: 'ssh', data: 'plain', description: null, createdAt: new Date(), updatedAt: new Date() },
+      ],
+      adapters: [{
+        id: 'a1', name: 'Adapter 1', type: 'database', adapterId: 'mysql', config: '{}',
+        primaryCredentialId: 'backup-cp-id', sshCredentialId: null,
+      }],
+    });
+
+    await importConfiguration(backup as any, 'OVERWRITE');
+
+    // Profile was merged via update (not upsert) at the existing DB ID
+    expect(prismaMock.credentialProfile.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'db-cp-id' } }),
+    );
+
+    // Adapter's primaryCredentialId was remapped to the existing DB ID
+    const adapterCall = (prismaMock.adapterConfig.upsert as any).mock.calls[0][0];
+    expect(adapterCall.create.primaryCredentialId).toBe('db-cp-id');
+  });
+
+  it('nulls out primaryCredentialId on adapter when the referenced credential does not exist', async () => {
+    // findUnique returns null = credential not in DB (default from setupMinimalImport)
+    const backup = makeBackup({
+      adapters: [{
+        id: 'a1', name: 'Adapter 1', type: 'database', adapterId: 'mysql', config: '{}',
+        primaryCredentialId: 'nonexistent-cred', sshCredentialId: null,
+      }],
+    });
+
+    await importConfiguration(backup as any, 'OVERWRITE');
+
+    const adapterCall = (prismaMock.adapterConfig.upsert as any).mock.calls[0][0];
+    expect(adapterCall.create.primaryCredentialId).toBeNull();
+  });
+
+  it('nulls out sshCredentialId on adapter when the referenced credential does not exist', async () => {
+    const backup = makeBackup({
+      adapters: [{
+        id: 'a1', name: 'Adapter 1', type: 'database', adapterId: 'mysql', config: '{}',
+        primaryCredentialId: null, sshCredentialId: 'nonexistent-ssh',
+      }],
+    });
+
+    await importConfiguration(backup as any, 'OVERWRITE');
+
+    const adapterCall = (prismaMock.adapterConfig.upsert as any).mock.calls[0][0];
+    expect(adapterCall.create.sshCredentialId).toBeNull();
+  });
 });
 

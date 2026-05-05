@@ -204,5 +204,28 @@ describe("Telegram Adapter", () => {
 
             expect(result).toBe(false);
         });
+
+        it("should include message_thread_id when messageThreadId is set", async () => {
+            mockFetch.mockResolvedValue({ ok: true });
+
+            await TelegramAdapter.send(
+                { ...baseConfig, messageThreadId: 42 },
+                "Thread message",
+            );
+
+            const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+            expect(body.message_thread_id).toBe(42);
+        });
+    });
+
+    describe("test() with messageThreadId", () => {
+        it("should include message_thread_id in test notification when set", async () => {
+            mockFetch.mockResolvedValue({ ok: true, status: 200 });
+
+            await TelegramAdapter.test!({ ...baseConfig, messageThreadId: 99 });
+
+            const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+            expect(body.message_thread_id).toBe(99);
+        });
     });
 });
