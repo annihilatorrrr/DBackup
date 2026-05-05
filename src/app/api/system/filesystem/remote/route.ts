@@ -4,6 +4,10 @@ import { PERMISSIONS } from "@/lib/auth/permissions";
 import Client from "ssh2-sftp-client";
 import { logger } from "@/lib/logging/logger";
 import { wrapError, getErrorMessage } from "@/lib/logging/errors";
+import { overlayCredentialsOnConfig } from "@/lib/adapters/config-resolver";
+import { registerAdapters } from "@/lib/adapters";
+
+registerAdapters();
 
 const log = logger.child({ route: "filesystem/remote" });
 
@@ -12,22 +16,38 @@ export async function POST(req: NextRequest) {
         await checkPermission(PERMISSIONS.SETTINGS.READ);
 
         const body = await req.json();
-        const { config, path: requestedPath = "/" } = body;
+        const { config, path: requestedPath = "/", adapterId, sshCredentialId } = body;
 
         if (!config || !config.host) {
             return NextResponse.json({ success: false, error: "Missing SSH configuration" }, { status: 400 });
+        }
+
+        // Resolve SSH credential profile if provided (e.g. SQLite SSH mode).
+        let resolvedConfig: Record<string, any> = { ...config };
+        if (adapterId && sshCredentialId) {
+            try {
+                resolvedConfig = await overlayCredentialsOnConfig(
+                    adapterId,
+                    resolvedConfig,
+                    null,
+                    sshCredentialId
+                ) as Record<string, any>;
+            } catch (overlayError: unknown) {
+                log.warn("Failed to overlay SSH credential for file browser", { adapterId, sshCredentialId }, wrapError(overlayError));
+                return NextResponse.json({ success: false, error: "Failed to resolve SSH credential profile" }, { status: 400 });
+            }
         }
 
         const sftp = new Client();
 
         try {
             await sftp.connect({
-                host: config.host,
-                port: config.port || 22,
-                username: config.username,
-                password: config.password,
-                privateKey: config.privateKey,
-                passphrase: config.passphrase,
+                host: resolvedConfig.host,
+                port: resolvedConfig.port || 22,
+                username: resolvedConfig.username,
+                password: resolvedConfig.password,
+                privateKey: resolvedConfig.privateKey,
+                passphrase: resolvedConfig.passphrase,
                 // Add reasonable timeout
                 readyTimeout: 10000,
             });

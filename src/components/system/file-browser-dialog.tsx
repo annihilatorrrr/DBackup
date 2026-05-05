@@ -23,6 +23,8 @@ interface FileBrowserDialogProps {
     selectionType?: "file" | "directory" | "all";
     title?: string;
     remoteConfig?: any; // If provided, uses remote API
+    remoteAdapterId?: string;
+    remoteSshCredentialId?: string | null;
 }
 
 export function FileBrowserDialog({
@@ -32,7 +34,9 @@ export function FileBrowserDialog({
     initialPath = "/",
     selectionType = "all",
     title = "Select File or Directory",
-    remoteConfig
+    remoteConfig,
+    remoteAdapterId,
+    remoteSshCredentialId,
 }: FileBrowserDialogProps) {
     const [currentPath, setCurrentPath] = useState(initialPath);
     const [parentPath, setParentPath] = useState<string | null>(null);
@@ -56,7 +60,12 @@ export function FileBrowserDialog({
                  res = await fetch(`/api/system/filesystem/remote`, {
                      method: 'POST',
                      headers: { 'Content-Type': 'application/json' },
-                     body: JSON.stringify({ config: remoteConfig, path })
+                     body: JSON.stringify({
+                         config: remoteConfig,
+                         path,
+                         adapterId: remoteAdapterId,
+                         sshCredentialId: remoteSshCredentialId ?? null,
+                     })
                  });
             } else {
                  const params = new URLSearchParams({ path });

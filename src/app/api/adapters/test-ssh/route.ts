@@ -57,6 +57,23 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // Normalize: SQLite uses mode:"ssh" with unprefixed SSH fields (host/username/authType/...)
+        // instead of the standard connectionMode:"ssh" with sshHost/sshUsername/... convention.
+        // Lift the unprefixed fields to the prefixed counterparts so that extractSshConfig and
+        // the username check below work uniformly for all adapters.
+        if (resolvedConfig.mode === "ssh" && !resolvedConfig.sshUsername && resolvedConfig.username) {
+            resolvedConfig = {
+                ...resolvedConfig,
+                sshHost: resolvedConfig.sshHost ?? resolvedConfig.host,
+                sshPort: resolvedConfig.sshPort ?? resolvedConfig.port,
+                sshUsername: resolvedConfig.username,
+                sshAuthType: resolvedConfig.sshAuthType ?? resolvedConfig.authType,
+                ...(resolvedConfig.password !== undefined && { sshPassword: resolvedConfig.sshPassword ?? resolvedConfig.password }),
+                ...(resolvedConfig.privateKey !== undefined && { sshPrivateKey: resolvedConfig.sshPrivateKey ?? resolvedConfig.privateKey }),
+                ...(resolvedConfig.passphrase !== undefined && { sshPassphrase: resolvedConfig.sshPassphrase ?? resolvedConfig.passphrase }),
+            };
+        }
+
         if (!resolvedConfig.sshUsername) {
             return NextResponse.json(
                 { success: false, message: "SSH username is required" },
