@@ -9,6 +9,10 @@ All notable changes to DBackup are documented here.
 
 - **Docker Secrets**: Added `_FILE` convention support for `ENCRYPTION_KEY` and `BETTER_AUTH_SECRET` - set `ENCRYPTION_KEY_FILE=/run/secrets/encryption_key` to load the value from a file instead of passing it as a plaintext environment variable. Docker Swarm secrets and any file-based secrets manager (Vault Agent, Kubernetes secrets mounted as files) are now supported without a custom entrypoint wrapper. ([#53](https://github.com/Skyfay/DBackup/issues/53))
 
+### 🎨 Improvements
+
+- **Storage Explorer**: The "Source" column now shows the database-specific adapter icon (MySQL, PostgreSQL, MongoDB, SQLite, etc.) instead of the generic database icon, matching the icon style used on the Sources page.
+
 ### 🐛 Bug Fixes
 
 - **sources**: Fixed "SSH username is required" error when testing an SSH connection for a SQLite source that uses an SSH Credential Profile. The SQLite SSH test button now correctly passes `adapterId` and `sshCredentialId` to the `test-ssh` route so the credential profile is resolved server-side. The route also normalizes SQLite's unprefixed SSH fields (`username`, `authType`, etc.) to the standard `ssh*`-prefixed convention expected by `extractSshConfig`. Fixed the same credential-profile issue for the remote file browser ("Select Remote Path") in the Configuration tab - `sshCredentialId` is now forwarded through `FieldList` and `SchemaField` to `FileBrowserDialog` and resolved in the `filesystem/remote` API route before connecting via SFTP. ([#55](https://github.com/Skyfay/DBackup/issues/55))

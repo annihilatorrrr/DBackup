@@ -1,7 +1,8 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, Database, HardDrive } from "lucide-react";
+import { ArrowUpDown, HardDrive } from "lucide-react";
+import { AdapterIcon } from "@/components/adapter/adapter-icon";
 import { Button } from "@/components/ui/button";
 import { DateDisplay } from "@/components/utils/date-display";
 import { formatBytes } from "@/lib/utils";
@@ -69,7 +70,7 @@ export const getColumns = ({ onRestore, onDownload, onDelete, onToggleLock, onGe
             if (!name || name === "Unknown") return <span className="text-muted-foreground">-</span>;
             return (
                 <div className="flex items-center gap-2 text-sm">
-                    <Database className="h-3 w-3 text-muted-foreground" />
+                    <AdapterIcon adapterId={type ?? ""} className="h-3 w-3" />
                     <span>{name}</span>
                     {type && <Badge variant="outline" className="text-[10px] h-5 px-1.5">{type}</Badge>}
                 </div>
