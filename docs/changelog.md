@@ -2,6 +2,24 @@
 
 All notable changes to DBackup are documented here.
 
+## vNEXT
+*Release: In Progress*
+
+### ✨ Features
+
+- **Docker Secrets**: Added `_FILE` convention support for `ENCRYPTION_KEY` and `BETTER_AUTH_SECRET` - set `ENCRYPTION_KEY_FILE=/run/secrets/encryption_key` to load the value from a file instead of passing it as a plaintext environment variable. Docker Swarm secrets and any file-based secrets manager (Vault Agent, Kubernetes secrets mounted as files) are now supported without a custom entrypoint wrapper. ([#53](https://github.com/Skyfay/DBackup/issues/53))
+
+### 📝 Documentation
+
+- **Docker Secrets**: Added "Docker Secrets (`_FILE` convention)" section to the Installation Guide with full setup examples for Docker Swarm and Docker Compose. Added the same convention to the Environment Variables developer reference, including error handling behavior and a link to the install guide.
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:vNEXT`
+- **Also tagged as**: `latest`, `vNEXT`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v2.1.0 - Backup Notification Subjects, Telegram Topic Support, and 2FA Setup UX
 *Released: May 5, 2026*
 

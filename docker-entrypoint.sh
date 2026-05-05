@@ -1,6 +1,31 @@
 #!/bin/sh
 set -e
 
+# ─── Docker Secrets / _FILE resolution ───────────────────────
+# Supports the common _FILE convention used by Docker Swarm secrets.
+# If ENCRYPTION_KEY_FILE or BETTER_AUTH_SECRET_FILE is set, the content
+# of that file is read and exported as the corresponding env variable.
+# The file content is stripped of trailing newlines/carriage returns.
+_resolve_secret() {
+  var_name="$1"
+  file_var="${var_name}_FILE"
+  file_path=$(printenv "$file_var" || true)
+  if [ -n "$file_path" ]; then
+    if [ ! -r "$file_path" ]; then
+      echo "Error: $file_var is set but '$file_path' is not readable"; exit 1
+    fi
+    secret_val=$(tr -d '\r\n' < "$file_path")
+    if [ -z "$secret_val" ]; then
+      echo "Error: $file_var points to an empty file '$file_path'"; exit 1
+    fi
+    export "$var_name=$secret_val"
+    echo "Loaded $var_name from $file_var"
+  fi
+}
+
+_resolve_secret ENCRYPTION_KEY
+_resolve_secret BETTER_AUTH_SECRET
+
 # ─── Configurable UID/GID ────────────────────────────────────
 # Defaults match the build-time user (1001:1001).
 # Override with PUID/PGID env vars to match host user permissions.

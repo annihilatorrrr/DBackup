@@ -112,6 +112,83 @@ environment:
 Store it securely in a password manager or secrets vault.
 :::
 
+## Docker Secrets (`_FILE` convention)
+
+DBackup supports the `_FILE` convention for `ENCRYPTION_KEY` and `BETTER_AUTH_SECRET`. Instead of passing the secret value directly as an environment variable, you point to a file path - DBackup reads the contents at startup.
+
+This is the standard approach for **Docker Swarm secrets** and any file-based secrets manager (Vault Agent, Kubernetes secrets mounted as files).
+
+| Environment variable | Effect |
+| :--- | :--- |
+| `ENCRYPTION_KEY_FILE=/run/secrets/enc_key` | Reads `ENCRYPTION_KEY` from the given file |
+| `BETTER_AUTH_SECRET_FILE=/run/secrets/auth_secret` | Reads `BETTER_AUTH_SECRET` from the given file |
+
+::: tip
+If both `ENCRYPTION_KEY` and `ENCRYPTION_KEY_FILE` are set, the `_FILE` value takes precedence.
+:::
+
+### Docker Swarm example
+
+```bash
+# Create the secrets once
+echo -n "$(openssl rand -hex 32)" | docker secret create encryption_key -
+echo -n "$(openssl rand -base64 32)" | docker secret create auth_secret -
+```
+
+```yaml
+# docker-compose.yml (Swarm mode)
+services:
+  dbackup:
+    image: skyfay/dbackup:latest
+    environment:
+      - ENCRYPTION_KEY_FILE=/run/secrets/encryption_key
+      - BETTER_AUTH_SECRET_FILE=/run/secrets/auth_secret
+      - BETTER_AUTH_URL=https://backup.example.com
+    secrets:
+      - encryption_key
+      - auth_secret
+    volumes:
+      - ./data:/data
+
+secrets:
+  encryption_key:
+    external: true
+  auth_secret:
+    external: true
+```
+
+### Docker Compose (non-Swarm) example
+
+```bash
+# Create secret files with restricted permissions
+mkdir -p ./secrets
+openssl rand -hex 32 > ./secrets/encryption_key.txt
+openssl rand -base64 32 > ./secrets/auth_secret.txt
+chmod 600 ./secrets/*.txt
+```
+
+```yaml
+# docker-compose.yml
+services:
+  dbackup:
+    image: skyfay/dbackup:latest
+    environment:
+      - ENCRYPTION_KEY_FILE=/run/secrets/encryption_key
+      - BETTER_AUTH_SECRET_FILE=/run/secrets/auth_secret
+      - BETTER_AUTH_URL=https://localhost:3000
+    secrets:
+      - encryption_key
+      - auth_secret
+    volumes:
+      - ./data:/data
+
+secrets:
+  encryption_key:
+    file: ./secrets/encryption_key.txt
+  auth_secret:
+    file: ./secrets/auth_secret.txt
+```
+
 ## Volume Mounts
 
 | Mount Point | Required | Purpose |
