@@ -11,6 +11,11 @@ All notable changes to DBackup are documented here.
 - **Telegram**: Added optional Topic/Thread ID field (`messageThreadId`) to the Telegram notification adapter, enabling notifications to be sent to a specific topic in Telegram forum groups. Leave the field empty to send to the main chat (fully backwards-compatible). ([#45](https://github.com/Skyfay/DBackup/issues/45))
 - **2FA**: The TOTP setup dialog now has a tab switcher between "QR Code" and "Manual Key". The secret key is hidden by default and can be revealed with the eye icon, supporting manual entry in authenticator apps even without clipboard access (e.g. over plain HTTP). ([#39](https://github.com/Skyfay/DBackup/issues/39))
 
+### 🔒 Security
+
+- **Dependencies**: Updated `webdav` to `5.10.0` to pull in `fast-xml-parser >= 5.7.0`, fixing an XML Comment/CDATA injection vulnerability (GHSA-gh4j-gqv2-49f6).
+- **Dependencies**: Added `pnpm overrides` to force `dompurify >= 3.4.0` (fixes 9 XSS/prototype-pollution CVEs in the `monaco-editor` transitive dependency) and `postcss >= 8.5.10` (fixes XSS via unescaped `</style>` in Next.js transitive dependency, GHSA-qx2v-qp2m-jg93).
+
 ### 🐳 Docker
 
 - **Image**: `skyfay/dbackup:vNEXT`
