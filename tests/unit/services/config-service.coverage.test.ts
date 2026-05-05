@@ -32,6 +32,7 @@ vi.mock('@/lib/logging/logger', () => ({
 // Helper: set up empty base mocks for the export function
 function setupEmptyExport() {
   prismaMock.systemSetting.findMany.mockResolvedValue([]);
+  prismaMock.credentialProfile.findMany.mockResolvedValue([]);
   prismaMock.adapterConfig.findMany.mockResolvedValue([]);
   prismaMock.job.findMany
     .mockResolvedValueOnce([]) // regular jobs query
@@ -49,6 +50,7 @@ function makeBackup(overrides: Record<string, any> = {}) {
   return {
     metadata: { version: '1.0.0', sourceType: 'SYSTEM', exportedAt: new Date().toISOString(), includeSecrets: false },
     settings: [],
+    credentialProfiles: [],
     adapters: [],
     jobs: [],
     jobDestinations: [],
@@ -85,6 +87,9 @@ function setupMinimalImport() {
   prismaMock.user.update.mockResolvedValue({} as any);
   prismaMock.account.upsert.mockResolvedValue({} as any);
   prismaMock.apiKey.upsert.mockResolvedValue({} as any);
+  prismaMock.credentialProfile.findUnique.mockResolvedValue(null);
+  prismaMock.credentialProfile.upsert.mockResolvedValue({} as any);
+  prismaMock.credentialProfile.update.mockResolvedValue({} as any);
   prismaMock.ssoProvider.findUnique.mockResolvedValue(null);
   prismaMock.ssoProvider.upsert.mockResolvedValue({} as any);
   prismaMock.ssoProvider.update.mockResolvedValue({} as any);

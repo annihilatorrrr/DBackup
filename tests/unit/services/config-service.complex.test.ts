@@ -40,6 +40,7 @@ vi.mock('@/services/backup/encryption-service', () => ({
 const { mockDb } = vi.hoisted(() => ({
     mockDb: {
         settings: new Map(),
+        credentials: new Map(),
         adapters: new Map(),
         jobs: new Map(),
         jobDestinations: new Map(),
@@ -109,6 +110,7 @@ vi.mock('@/lib/prisma', () => {
     return {
         default: {
             systemSetting: createPrismaDelegate(mockDb.settings, 'key'),
+            credentialProfile: createPrismaDelegate(mockDb.credentials, 'id'),
             adapterConfig: createPrismaDelegate(mockDb.adapters, 'id'),
             job: createPrismaDelegate(mockDb.jobs, 'id'),
             jobDestination: createPrismaDelegate(mockDb.jobDestinations, 'id'),
@@ -310,7 +312,7 @@ describe('ConfigService Lifecycle (Complex)', () => {
                  settings: [{ key: 'new.setting', value: '123' }],
                  users: [{ id: 'new-user', name: 'New Guy' }],
                  // fill other required arrays empty
-                 adapters: [], jobs: [], groups: [], ssoProviders: [], encryptionProfiles: []
+                 adapters: [], jobs: [], groups: [], ssoProviders: [], encryptionProfiles: [], credentialProfiles: []
              };
 
              // 3. Import with Options (Settings=True, Users=False)
@@ -335,6 +337,7 @@ describe('ConfigService Lifecycle (Complex)', () => {
             const backup: any = {
                 metadata: { version: '1.0.0' },
                 encryptionProfiles: [], // Empty profiles
+                credentialProfiles: [],
                 jobs: [{
                     id: 'broken-job',
                     name: 'Broken Job',
@@ -419,7 +422,7 @@ describe('ConfigService Lifecycle (Complex)', () => {
                      type: 'mysql',
                      config: '{ "host": "localhost", "port": ... BROKEN JSON ... }'
                  }],
-                 settings: [], jobs: [], users: [], groups: [], ssoProviders: [], encryptionProfiles: []
+                 settings: [], jobs: [], users: [], groups: [], ssoProviders: [], encryptionProfiles: [], credentialProfiles: []
              };
 
              // 2. Import should NOT throw
@@ -444,7 +447,7 @@ describe('ConfigService Lifecycle (Complex)', () => {
              const backup: any = {
                  metadata: { version: '1.0.0' },
                  settings: [{ key: 'site.url', value: 'http://new.com' }],
-                 adapters: [], jobs: [], users: [], groups: [], ssoProviders: [], encryptionProfiles: []
+                 adapters: [], jobs: [], users: [], groups: [], ssoProviders: [], encryptionProfiles: [], credentialProfiles: []
              };
 
              // 3. Import
