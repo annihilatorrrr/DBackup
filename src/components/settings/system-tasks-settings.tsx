@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Play, Loader2 } from "lucide-react";
+import { Play, Loader2, Clock, CalendarClock } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { DateDisplay } from "@/components/utils/date-display";
 
 interface SystemTask {
     id: string;
@@ -16,6 +17,9 @@ interface SystemTask {
     enabled: boolean;
     label: string;
     description: string;
+    lastRunAt: string | null;
+    nextRunAt: string | null;
+    timezone: string;
 }
 
 export function SystemTasksSettings() {
@@ -152,13 +156,30 @@ export function SystemTasksSettings() {
                 <div className="space-y-6">
                     {loading && <div>Loading...</div>}
                     {!loading && tasks.map(task => (
-                        <div key={task.id} className="flex items-center justify-between p-4 border rounded-lg">
-                            <div className="space-y-1 flex-1">
+                        <div key={task.id} className="flex items-start justify-between p-4 border rounded-lg gap-4">
+                            <div className="space-y-1 flex-1 min-w-0">
                                 <div className="flex items-center space-x-2">
                                     <h4 className="font-semibold">{task.label}</h4>
                                     {!task.enabled && <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded">Disabled</span>}
                                 </div>
                                 <p className="text-sm text-muted-foreground">{task.description}</p>
+                                <div className="flex items-center gap-4 pt-1">
+                                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                        <Clock className="h-3 w-3 shrink-0" />
+                                        <span className="text-muted-foreground/70">Last:</span>
+                                        {task.lastRunAt
+                                            ? <DateDisplay date={task.lastRunAt} format="Pp" timezone={task.timezone} className="tabular-nums" />
+                                            : <span>Never</span>
+                                        }
+                                    </span>
+                                    {task.enabled && task.nextRunAt && (
+                                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                            <CalendarClock className="h-3 w-3 shrink-0" />
+                                            <span className="text-muted-foreground/70">Next:</span>
+                                            <DateDisplay date={task.nextRunAt} format="Pp" timezone={task.timezone} className="tabular-nums" />
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                             <div className="flex items-center space-x-4">
                                 <div className="flex items-center space-x-2 border-r pr-4 mr-2">
