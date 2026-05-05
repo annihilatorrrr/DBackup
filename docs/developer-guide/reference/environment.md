@@ -72,10 +72,29 @@ DBackup validates all environment variables at startup using Zod schemas (`src/l
 - **Optional variables**: Invalid values (e.g., non-URL in `BETTER_AUTH_URL`, non-numeric `PORT`) are logged as warnings but don't prevent startup.
 - **Defaults**: Optional variables have sensible defaults applied automatically if not set.
 
+## Docker Secrets (`_FILE` convention)
+
+DBackup supports the `_FILE` convention for `ENCRYPTION_KEY` and `BETTER_AUTH_SECRET`. Set the corresponding `_FILE` variable to a file path and DBackup reads the secret value from that file at startup - the plaintext value never appears in the process environment or `docker inspect` output.
+
+| Variable | `_FILE` equivalent |
+| :--- | :--- |
+| `ENCRYPTION_KEY` | `ENCRYPTION_KEY_FILE` |
+| `BETTER_AUTH_SECRET` | `BETTER_AUTH_SECRET_FILE` |
+
+The file content is read by `docker-entrypoint.sh` before the Node.js process starts, so `validateEnvironment()` sees the resolved value and all existing validation rules (length, format) apply identically.
+
+**Error handling:**
+- File not readable - container exits with an error message
+- File is empty - container exits with an error message
+- `_FILE` not set - the corresponding plain env var is used as normal
+
+→ See **[Docker Secrets](/user-guide/installation#docker-secrets-_file-convention)** in the Installation Guide for full setup examples (Docker Swarm and Compose).
+
 ## Security Best Practices
 
 1. **Never commit secrets** - Use `.env` files excluded from git
-2. **Rotate secrets periodically** - Especially in production
-3. **Use strong random values** - Always use `openssl rand`
-4. **Restrict file permissions** - `.env` should be `chmod 600`
-5. **Backup your ENCRYPTION_KEY** - Without it, encrypted data cannot be recovered
+2. **Use Docker Secrets** - Prefer `_FILE` variables over plaintext env vars in production
+3. **Rotate secrets periodically** - Especially in production
+4. **Use strong random values** - Always use `openssl rand`
+5. **Restrict file permissions** - `.env` and secret files should be `chmod 600`
+6. **Backup your ENCRYPTION_KEY** - Without it, encrypted data cannot be recovered

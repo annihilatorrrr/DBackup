@@ -45,6 +45,7 @@ interface SchemaFieldProps {
     onLoadDbs?: () => void;
     isDbListOpen?: boolean;
     setIsDbListOpen?: (open: boolean) => void;
+    sshCredentialId?: string | null;
 }
 
 export function SchemaField({
@@ -58,6 +59,7 @@ export function SchemaField({
     onLoadDbs,
     isDbListOpen = false,
     setIsDbListOpen,
+    sshCredentialId,
 }: SchemaFieldProps) {
     const { control } = useFormContext();
 
@@ -224,6 +226,8 @@ export function SchemaField({
                                             selectionType={selectionType}
                                             title={remoteConfig ? `Select Remote ${label}` : `Select Local ${label}`}
                                             remoteConfig={remoteConfig}
+                                            remoteAdapterId={remoteConfig ? adapterId : undefined}
+                                            remoteSshCredentialId={remoteConfig ? sshCredentialId : undefined}
                                         />
                                     </>
                                 )}

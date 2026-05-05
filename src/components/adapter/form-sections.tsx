@@ -146,21 +146,14 @@ export function DatabaseFormContent({
         const toastId = toast.loading("Testing SSH connection...");
         try {
             const config = getValues("config");
-            // Map SQLite field names to the generic SSH field names expected by the API
-            const mappedConfig = {
-                ...config,
-                sshHost: config.host,
-                sshPort: config.port,
-                sshUsername: config.username,
-                sshAuthType: config.authType,
-                sshPassword: config.password,
-                sshPrivateKey: config.privateKey,
-                sshPassphrase: config.passphrase,
-            };
             const res = await fetch("/api/adapters/test-ssh", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ config: mappedConfig }),
+                body: JSON.stringify({
+                    config,
+                    adapterId: adapter.id,
+                    sshCredentialId: sshCredentialId ?? null,
+                }),
             });
             const result = await res.json();
             toast.dismiss(toastId);
@@ -254,8 +247,8 @@ export function DatabaseFormContent({
 
                         <TabsContent value="configuration" className="space-y-4 pt-4 mt-2">
                              <div className="space-y-4">
-                                <FieldList keys={['path']} adapter={adapter} />
-                                <FieldList keys={['sqliteBinaryPath']} adapter={adapter} />
+                                <FieldList keys={['path']} adapter={adapter} sshCredentialId={sshCredentialId} />
+                                <FieldList keys={['sqliteBinaryPath']} adapter={adapter} sshCredentialId={sshCredentialId} />
                              </div>
                              {onHealthNotificationsDisabledChange && (
                                  <HealthCheckNotificationSwitch
@@ -1021,7 +1014,8 @@ function FieldList({
     isLoadingDbs = false,
     onLoadDbs,
     isDbListOpen,
-    setIsDbListOpen
+    setIsDbListOpen,
+    sshCredentialId,
 }: {
     keys: string[];
     adapter: AdapterDefinition;
@@ -1031,6 +1025,7 @@ function FieldList({
     onLoadDbs?: () => void;
     isDbListOpen?: boolean;
     setIsDbListOpen?: (open: boolean) => void;
+    sshCredentialId?: string | null;
 }) {
     // Hide fields whose values are now sourced from a referenced credential profile.
     const hidden = getCredentialManagedKeys(adapter);
@@ -1055,6 +1050,7 @@ function FieldList({
                         onLoadDbs={onLoadDbs}
                         isDbListOpen={isDbListOpen}
                         setIsDbListOpen={setIsDbListOpen}
+                        sshCredentialId={sshCredentialId}
                     />
                 );
             })}
