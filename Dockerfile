@@ -1,35 +1,66 @@
-# Base Image: Node.js 24 on Alpine Linux (small & secure)
-FROM node:24-alpine AS base
+# Base Image: Node.js 24 on Debian Slim (bookworm)
+FROM node:24-slim AS base
 
-# Install necessary system tools for backups
-# mysql-client -> mysqldump
-# mongodb-tools -> mongodump
-# redis -> redis-cli (for Redis backups)
-# samba-client -> smbclient (for SMB/CIFS storage)
-# postgresql18-client -> pg_dump, pg_restore, psql (backward compatible with PG 12-18)
+# Install system tools for database backups
+# mariadb-client (Debian 12)       -> mysql, mysqldump, mariadb, mariadb-dump (libmariadb3 3.3.x supports caching_sha2_password)
+# postgresql-client-18 (PGDG)      -> pg_dump, pg_restore, psql (backward compatible with PG 12-18)
+# mongodb-database-tools (CDN)     -> mongodump, mongorestore (direct download - APT repo has no arm64 builds for Debian 12;
+#                                    MongoDB only ships debian12 x86_64 packages; arm64 uses ubuntu2204 package)
+# redis-tools                      -> redis-cli (for Redis backups)
+# smbclient                        -> SMB/CIFS storage
+# sqlite3                          -> SQLite backups
+# gosu                             -> privilege dropping (replaces Alpine su-exec)
 
-RUN apk update && \
-    apk add --no-cache \
-    mysql-client \
-    postgresql18-client \
+# Step 1: Install prerequisites for adding external APT repositories
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    gnupg \
+    ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Step 2: Configure external APT repositories
+RUN \
+    # PGDG: PostgreSQL 18 client
+    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg && \
+    echo "deb [signed-by=/etc/apt/trusted.gpg.d/pgdg.gpg] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+
+# Step 3: Install backup tools
+# mariadb-client on Debian 12 ships with libmariadb3 3.3.x, which supports caching_sha2_password natively.
+# It also provides mysql/mysqldump/mysqladmin as compatibility symlinks.
+ARG TARGETARCH
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    mariadb-client \
+    postgresql-client-18 \
+    redis-tools \
+    smbclient \
     lz4 \
     zstd \
-    mongodb-tools \
-    redis \
-    samba-client \
     rsync \
     sshpass \
     openssh-client \
     openssl \
     curl \
     zip \
-    su-exec
+    sqlite3 \
+    gosu && \
+    # Step 4: MongoDB database tools - direct CDN download for multi-arch support
+    # MongoDB ships debian12 packages for x86_64 only; arm64 uses the ubuntu2204 build (compatible on Debian bookworm)
+    case "${TARGETARCH:-amd64}" in \
+        amd64) MONGO_DEB="mongodb-database-tools-debian12-x86_64-100.16.1.deb" ;; \
+        arm64) MONGO_DEB="mongodb-database-tools-ubuntu2204-arm64-100.16.1.deb" ;; \
+        *) echo "Unsupported architecture: ${TARGETARCH}"; exit 1 ;; \
+    esac && \
+    curl -fsSL "https://fastdl.mongodb.org/tools/db/${MONGO_DEB}" -o /tmp/mongo-tools.deb && \
+    apt-get install -y --no-install-recommends /tmp/mongo-tools.deb && \
+    rm /tmp/mongo-tools.deb && \
+    rm -rf /var/lib/apt/lists/*
 
 # Enable corepack for pnpm support and symlink PostgreSQL 18 binaries
+# On Debian with PGDG, pg binaries live under /usr/lib/postgresql/18/bin/
 RUN corepack enable && corepack prepare pnpm@10.29.3 --activate && \
-    ln -sf /usr/libexec/postgresql18/pg_dump /usr/local/bin/pg_dump && \
-    ln -sf /usr/libexec/postgresql18/pg_restore /usr/local/bin/pg_restore && \
-    ln -sf /usr/libexec/postgresql18/psql /usr/local/bin/psql
+    ln -sf /usr/lib/postgresql/18/bin/pg_dump /usr/local/bin/pg_dump && \
+    ln -sf /usr/lib/postgresql/18/bin/pg_restore /usr/local/bin/pg_restore && \
+    ln -sf /usr/lib/postgresql/18/bin/psql /usr/local/bin/psql
 
 # Validate pg_dump version resolves correctly (fail-fast on broken symlinks/packages)
 RUN pg_dump --version | grep -q 'PostgreSQL) 18\.' || \
@@ -75,8 +106,8 @@ ENV LOG_LEVEL="info"
 ENV PUID=1001
 ENV PGID=1001
 
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+RUN groupadd --system --gid 1001 nodejs && \
+    useradd --system --uid 1001 --gid nodejs --no-create-home nextjs
 
 # Copy built files (--link for better layer caching)
 COPY --from=builder --link --chown=1001:1001 /app/public ./public
@@ -105,8 +136,9 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Health check: verify app + database are reachable
 # Uses --insecure for self-signed certs; falls back to http if DISABLE_HTTPS=true
+# PORT env var is respected - defaults to 3000 if not set
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -fk https://localhost:3000/api/health 2>/dev/null || curl -f http://localhost:3000/api/health || exit 1
+    CMD curl -fk https://localhost:${PORT:-3000}/api/health 2>/dev/null || curl -f http://localhost:${PORT:-3000}/api/health || exit 1
 
 EXPOSE 3000
 

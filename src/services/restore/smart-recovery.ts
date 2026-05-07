@@ -69,7 +69,7 @@ function checkKeyCandidate(
             const input = createReadStream(tempFile, { start: 0, end: 1023 });
 
             input.on('error', () => resolve(false));
-            input.on('data', (chunk: Buffer) => chunks.push(chunk));
+            input.on('data', (chunk: Buffer | string) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
             input.on('end', () => {
                 try {
                     const encrypted = Buffer.concat(chunks);

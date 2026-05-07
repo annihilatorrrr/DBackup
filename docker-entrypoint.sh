@@ -73,5 +73,5 @@ chmod 1777 /tmp
 
 # ─── Start application ───────────────────────────────────────
 # Run database migrations first, then exec node as PID 1 for proper signal handling
-su-exec "$PUID:$PGID" prisma migrate deploy
-exec su-exec "$PUID:$PGID" node custom-server.js
+gosu "$PUID:$PGID" prisma migrate deploy
+exec gosu "$PUID:$PGID" node custom-server.js

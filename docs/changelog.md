@@ -7,11 +7,18 @@ All notable changes to DBackup are documented here.
 
 ### 🐛 Bug Fixes
 
+- **MySQL `caching_sha2_password`**: Fixed authentication failure when connecting to MySQL 8 servers using the `caching_sha2_password` auth plugin. The Docker base image has been migrated from Alpine (`node:24-alpine`) to Debian Slim (`node:24-slim`). The Debian package `mariadb-client` ships with `libmariadb3 3.3.x`, which supports `caching_sha2_password` natively - the Alpine MariaDB client was too old to handle this auth method. ([#48](https://github.com/Skyfay/DBackup/issues/48))
+- **SQLite backups**: Fixed missing `sqlite3` CLI tools in the Docker image, which caused SQLite backup jobs to fail when the database was mounted locally inside the container. ([#62](https://github.com/Skyfay/DBackup/issues/62))
 - **Smart Recovery**: Fixed a bug where restoring after a key delete and re-import always failed, even when the correct key was available. The content heuristic incorrectly rejected uncompressed TAR archives (multi-DB backups) because their headers consist mostly of null-byte padding - Smart Recovery now also detects POSIX TAR magic bytes (`ustar` at offset 257). ([#58](https://github.com/Skyfay/DBackup/issues/58))
 
 ### 🗑️ Removed
 
 - **Telegram MarkdownV2**: Removed the `MarkdownV2` parse mode option from Telegram notification adapters. It caused silent delivery failures while the UI incorrectly reported success. Use `HTML` or `Markdown` instead. ([#57](https://github.com/Skyfay/DBackup/issues/57))
+
+### 🔧 CI/CD
+
+- **Docker base image**: Migrated from `node:24-alpine` to `node:24-slim` (Debian bookworm). The Debian package `mariadb-client` ships with `libmariadb3 3.3.x`, which supports the `caching_sha2_password` authentication plugin natively - fixing the Alpine limitation where the bundled MariaDB client was too old. `su-exec` replaced with `gosu`. MongoDB Database Tools bumped to `100.16.1` via direct CDN download (MongoDB ships no Debian 12 arm64 packages - arm64 uses the `ubuntu2204-arm64` build, which is compatible with Debian bookworm).
+- **Healthcheck**: Fixed healthcheck failing when the `PORT` environment variable was set to a non-default value. The check now uses `${PORT:-3000}` and correctly follows the configured port.
 
 ### 🐳 Docker
 
