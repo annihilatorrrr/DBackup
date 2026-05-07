@@ -26,6 +26,10 @@ model AdapterConfig {
   sshCredentialId     String?
   sshCredential       CredentialProfile? @relation("SshCredential", fields: [sshCredentialId], references: [id], onDelete: Restrict)
 
+  // Default retention policy for storage destinations (pre-fills job form when destination is added)
+  defaultRetentionPolicyId String?
+  defaultRetentionPolicy   RetentionPolicy? @relation(fields: [defaultRetentionPolicyId], references: [id], onDelete: SetNull)
+
   // Caching-Felder für schnelle UI-Anzeige ohne Joins
   lastHealthCheck      DateTime?
   lastStatus           String        @default("ONLINE") // ONLINE, DEGRADED, OFFLINE
@@ -58,6 +62,40 @@ model EncryptionProfile {
   updatedAt   DateTime @updatedAt
 }
 
+model RetentionPolicy {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String?
+  config      String           // JSON RetentionConfiguration (same format as legacy JobDestination.retention)
+  isDefault   Boolean          @default(false)
+  isSystem    Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  jobDestinations JobDestination[]
+  adapterConfigs  AdapterConfig[]
+}
+
+model NamingTemplate {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  pattern     String   // e.g. "{name}_yyyy-MM-dd_HH-mm-ss"
+  isDefault   Boolean  @default(false) // Only one can be true at a time
+  isSystem    Boolean  @default(false) // System templates are read-only in the UI
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  jobs        Job[]
+}
+
+model SchedulePreset {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  schedule    String   // Cron expression (5-part format)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model Job {
   id                  String             @id @default(uuid())
   name                String
@@ -69,6 +107,8 @@ model Job {
   encryptionProfile   EncryptionProfile? @relation(fields: [encryptionProfileId], references: [id])
   compression         String             @default("NONE")
   pgCompression       String             @default("") // PostgreSQL native dump compression: "" (legacy gzip-6), "NONE", "GZIP:6", "LZ4:1", "ZSTD:3"
+  namingTemplateId    String?            // References NamingTemplate; null = use system default at runtime
+  namingTemplate      NamingTemplate?    @relation(fields: [namingTemplateId], references: [id], onDelete: SetNull)
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
   executions          Execution[]
@@ -79,13 +119,15 @@ model Job {
 }
 
 model JobDestination {
-  id         String        @id @default(uuid())
-  jobId      String
-  configId   String
-  priority   Int           @default(0) // Upload order (ascending)
-  retention  String        @default("{}") // Stores RetentionPolicy as JSON per destination
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  id                   String           @id @default(uuid())
+  jobId                String
+  configId             String
+  priority             Int              @default(0) // Upload order (ascending)
+  retention            String           @default("{}") // Legacy: RetentionConfiguration JSON (kept for backward compat)
+  retentionPolicyId    String?          // References RetentionPolicy template; takes precedence over retention JSON
+  retentionPolicy      RetentionPolicy? @relation(fields: [retentionPolicyId], references: [id], onDelete: SetNull)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
 
   job        Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
   config     AdapterConfig @relation(fields: [configId], references: [id])

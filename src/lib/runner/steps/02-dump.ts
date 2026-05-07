@@ -22,12 +22,16 @@ export async function stepExecuteDump(ctx: RunnerContext) {
     ctx.log(`Starting Dump from ${job.source.name} (${job.source.type})...`);
 
     // 1. Prepare Settings (timezone and filename pattern)
-    const [tzSetting, patternSetting] = await Promise.all([
+    const [tzSetting, patternSetting, namingTemplate] = await Promise.all([
         prisma.systemSetting.findUnique({ where: { key: "system.timezone" } }),
         prisma.systemSetting.findUnique({ where: { key: "system.filenamePattern" } }),
+        job.namingTemplateId
+            ? prisma.namingTemplate.findUnique({ where: { id: job.namingTemplateId } })
+            : prisma.namingTemplate.findFirst({ where: { isDefault: true } }),
     ]);
     const timezone = tzSetting?.value || "UTC";
-    const pattern = patternSetting?.value || "{name}_yyyy-MM-dd_HH-mm-ss";
+    // Priority: job's naming template > system setting > built-in default
+    const pattern = namingTemplate?.pattern ?? patternSetting?.value ?? "{name}_yyyy-MM-dd_HH-mm-ss";
 
     // 2. Prepare Config & Metadata
     const sourceConfig = await resolveAdapterConfig(job.source) as any;

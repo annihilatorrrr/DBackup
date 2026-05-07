@@ -40,6 +40,7 @@ interface JobDestinationWithConfig {
     configId: string;
     priority: number;
     retention: string;
+    retentionPolicyId?: string | null;
     config: { id: string; name: string; adapterId: string };
 }
 
@@ -49,6 +50,7 @@ interface Job extends Omit<JobData, 'destinations'> {
     destinations: JobDestinationWithConfig[];
     createdAt: string;
     encryptionProfile?: { name: string };
+    namingTemplateId?: string | null;
 }
 
 interface JobsClientProps {
