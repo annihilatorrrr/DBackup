@@ -57,7 +57,7 @@ VALUES
 -- Seed: Built-in NamingTemplate (system default)
 INSERT INTO "NamingTemplate" ("id", "name", "description", "pattern", "isDefault", "isSystem", "createdAt", "updatedAt")
 VALUES
-  ('naming-standard', 'Standard', 'Default naming pattern: {name}_date_time', '{name}_yyyy-MM-dd_HH-mm-ss', true, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  ('naming-standard', 'Standard', 'Default naming pattern: {job_name}_date_time', '{job_name}_yyyy-MM-dd_HH-mm-ss', true, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- Seed: Built-in SchedulePresets
 INSERT INTO "SchedulePreset" ("id", "name", "description", "schedule", "createdAt", "updatedAt")

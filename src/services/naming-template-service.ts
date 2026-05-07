@@ -62,7 +62,7 @@ export async function updateNamingTemplate(
 ) {
   const template = await prisma.namingTemplate.findUnique({ where: { id } });
   if (!template) throw new NotFoundError("NamingTemplate", id);
-  if (template.isSystem) {
+  if (template.isSystem && (input.name !== undefined || input.pattern !== undefined || input.description !== undefined)) {
     throw new ServiceError("NamingTemplateService", "updateNamingTemplate", "System templates cannot be modified.");
   }
 
