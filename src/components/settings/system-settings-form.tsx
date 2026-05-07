@@ -75,16 +75,7 @@ export function SystemSettingsForm({ initialMaxConcurrentJobs, initialDisablePas
     })
 
     const filenamePatternValue = useWatch({ control: form.control, name: "filenamePattern" });
-    const previewFilename = useMemo(() => {
-        try {
-            const previewPattern = filenamePatternValue
-                .replace('{name}', "'JobName'")
-                .replace('{db_name}', "'mydb'");
-            return format(new Date(), previewPattern);
-        } catch {
-            return "Invalid pattern";
-        }
-    }, [filenamePatternValue]);
+    void filenamePatternValue; // retained for schema compatibility
 
     const handleAutoSave = async (field: keyof z.infer<typeof formSchema>, value: any) => {
         // Update local state immediately
@@ -374,55 +365,6 @@ export function SystemSettingsForm({ initialMaxConcurrentJobs, initialDisablePas
                                     </Popover>
                                     <FormDescription>
                                         Timestamps in logs are always stored in UTC regardless of this setting.
-                                    </FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center gap-2">
-                            <FileText className="h-5 w-5 text-muted-foreground" />
-                            <CardTitle>Backup File Naming</CardTitle>
-                        </div>
-                        <CardDescription>
-                            Customize how backup files are named. Use &quot;name&quot; for job name and &quot;db_name&quot; for database name.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <FormField
-                            control={form.control}
-                            name="filenamePattern"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Filename Pattern</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            {...field}
-                                            placeholder="{name}_yyyy-MM-dd_HH-mm-ss"
-                                            onBlur={(e) => handleAutoSave("filenamePattern", e.target.value)}
-                                        />
-                                    </FormControl>
-                                    <div className="flex flex-wrap gap-1 mt-2">
-                                        {filenameTokens.map(token => (
-                                            <Badge
-                                                key={token}
-                                                variant="outline"
-                                                className="cursor-pointer hover:bg-muted"
-                                                onClick={() => {
-                                                    const current = field.value || "";
-                                                    form.setValue("filenamePattern", current + token);
-                                                }}
-                                            >
-                                                {token}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                    <FormDescription>
-                                        Preview: <code className="bg-muted px-2 py-1 rounded text-xs">{previewFilename}.sql</code>
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>

@@ -49,8 +49,8 @@ const FILENAME_TOKENS = [
 function previewPattern(pattern: string): string {
   try {
     const p = pattern
-      .replace("{name}", "MyJob")
-      .replace("{db_name}", "mydb");
+      .replace("{name}", "'JobName'")
+      .replace("{db_name}", "'mydb'");
     return format(new Date(), p);
   } catch {
     return "Invalid pattern";
@@ -378,7 +378,7 @@ export function NamingTemplateDialog({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={isSaving || !name.trim() || !pattern.trim()}
+            disabled={isSaving || !name.trim() || !pattern.trim() || preview.startsWith("Invalid pattern")}
           >
             {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             {template ? "Save Changes" : "Create"}

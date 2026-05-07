@@ -116,16 +116,8 @@ export function RetentionPolicyList() {
   }
 
   function getModeBadgeVariant(
-    config: string
+    _config: string
   ): "default" | "secondary" | "outline" {
-    try {
-      const parsed = JSON.parse(config) as { mode: RetentionMode };
-      if (parsed.mode === "NONE") return "outline";
-      if (parsed.mode === "SIMPLE") return "secondary";
-      if (parsed.mode === "SMART") return "default";
-    } catch {
-      // ignore
-    }
     return "outline";
   }
 

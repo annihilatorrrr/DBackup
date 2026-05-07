@@ -87,7 +87,7 @@ export function NamingTemplatePicker({ value, onChange, placeholder, allowNone }
                 <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                 {selected.name}
                 {selected.isDefault && (
-                  <Badge variant="secondary" className="text-xs ml-1">
+                  <Badge variant="outline" className="text-xs ml-1 border-yellow-500 text-yellow-600">
                     Default
                   </Badge>
                 )}
@@ -125,12 +125,29 @@ export function NamingTemplatePicker({ value, onChange, placeholder, allowNone }
                     <span className="flex items-center gap-2">
                       {template.name}
                       {template.isDefault && (
-                        <Star className="h-3 w-3 text-muted-foreground" />
+                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
                       )}
                     </span>
                   </CommandItem>
                 ))}
               </CommandGroup>
+              {value && (
+                <>
+                  <CommandSeparator />
+                  <CommandGroup>
+                    <CommandItem
+                      value="__clear__"
+                      onSelect={() => {
+                        onChange(null);
+                        setOpen(false);
+                      }}
+                    >
+                      <Check className="mr-2 h-4 w-4 opacity-0" />
+                      <span className="text-muted-foreground">Use default template</span>
+                    </CommandItem>
+                  </CommandGroup>
+                </>
+              )}
               <CommandSeparator />
               <CommandGroup>
                 <CommandItem
