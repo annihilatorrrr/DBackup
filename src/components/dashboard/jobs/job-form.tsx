@@ -10,12 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Lock, History, ChevronsUpDown, Plus, Trash2, ChevronDown, ChevronRight, Database, Info, Loader2, FileText, CalendarClock } from "lucide-react";
+import { Lock, History, ChevronsUpDown, Plus, Trash2, ChevronDown, ChevronRight, Database, Info, Loader2, FileText, CalendarClock, Pencil } from "lucide-react";
 import { SchedulePicker } from "./schedule-picker";
 import { RetentionPolicyPicker, DEFAULT_RETENTION_SENTINEL } from "@/components/templates/retention-policy-picker";
 import { NamingTemplatePicker } from "@/components/templates/naming-template-picker";
 import { getSchedulePresets } from "@/app/actions/templates";
 import type { SchedulePreset } from "@prisma/client";
+import { SchedulePresetDialog } from "@/components/settings/templates/schedule-preset-list";
 import { AdapterIcon } from "@/components/adapter/adapter-icon";
 import { DatabasePicker } from "@/components/adapter/database-picker";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +31,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from "@/components/ui/command"
 import {
   Popover,
@@ -205,6 +207,9 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
     const [presetOpen, setPresetOpen] = useState(false);
     const [linkedPresetId, setLinkedPresetId] = useState<string | null>(initialData?.schedulePresetId ?? null);
     const [linkedPresetName, setLinkedPresetName] = useState<string | null>(initialData?.schedulePreset?.name ?? null);
+    const [presetCreateOpen, setPresetCreateOpen] = useState(false);
+    const [presetEditTarget, setPresetEditTarget] = useState<SchedulePreset | null>(null);
+    const [presetEditOpen, setPresetEditOpen] = useState(false);
 
     // Parse initial databases from JSON string
     const parseInitialDatabases = (): string[] => {
@@ -394,6 +399,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
     const usedDestIds = form.watch("destinations").map(d => d.configId).filter(Boolean);
 
     return (
+        <>
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 
@@ -592,6 +598,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                                                             <CommandItem
                                                                 key={preset.id}
                                                                 value={preset.name}
+                                                                className="group pr-1"
                                                                 onSelect={() => {
                                                                     field.onChange(preset.schedule);
                                                                     setLinkedPresetId(preset.id);
@@ -602,8 +609,34 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                                                             >
                                                                 <span className="flex-1">{preset.name}</span>
                                                                 <code className="ml-2 text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{preset.schedule}</code>
+                                                                <button
+                                                                    type="button"
+                                                                    className="opacity-0 group-hover:opacity-100 transition-opacity ml-1 rounded p-0.5 hover:bg-accent"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setPresetOpen(false);
+                                                                        setPresetEditTarget(preset);
+                                                                        setPresetEditOpen(true);
+                                                                    }}
+                                                                >
+                                                                    <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                </button>
                                                             </CommandItem>
                                                         ))}
+                                                    </CommandGroup>
+                                                    <CommandSeparator />
+                                                    <CommandGroup>
+                                                        <CommandItem
+                                                            value="__create__"
+                                                            onSelect={() => {
+                                                                setPresetOpen(false);
+                                                                setPresetCreateOpen(true);
+                                                            }}
+                                                            className="font-medium"
+                                                        >
+                                                            <Plus className="mr-2 h-3.5 w-3.5" />
+                                                            Create new preset...
+                                                        </CommandItem>
                                                     </CommandGroup>
                                                 </CommandList>
                                             </Command>
@@ -950,6 +983,35 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                 </div>
             </form>
         </Form>
+
+        <SchedulePresetDialog
+            open={presetCreateOpen}
+            onOpenChange={setPresetCreateOpen}
+            onSuccess={(preset) => {
+                setSchedulePresets((prev) => [...prev, preset].sort((a, b) => a.name.localeCompare(b.name)));
+                form.setValue("schedule", preset.schedule);
+                setLinkedPresetId(preset.id);
+                setLinkedPresetName(preset.name);
+                setUseSchedulePreset(false);
+                setPresetCreateOpen(false);
+            }}
+        />
+
+        <SchedulePresetDialog
+            open={presetEditOpen}
+            onOpenChange={(v) => { setPresetEditOpen(v); if (!v) setPresetEditTarget(null); }}
+            preset={presetEditTarget ?? undefined}
+            onSuccess={(preset) => {
+                setSchedulePresets((prev) => prev.map((p) => p.id === preset.id ? preset : p));
+                if (linkedPresetId === preset.id) {
+                    setLinkedPresetName(preset.name);
+                    form.setValue("schedule", preset.schedule);
+                }
+                setPresetEditTarget(null);
+                setPresetEditOpen(false);
+            }}
+        />
+        </>
     )
 }
 
