@@ -5,7 +5,7 @@ All notable changes to DBackup are documented here.
 ## v2.2.0 - Templates System, Docker Image Update and Bug Fixes
 *Released: May 7, 2026*
 
-> ⚠️ **Breaking:** All existing per-destination inline retention configurations have been migrated to "Keep All (Unlimited)". The new Templates System requires retention to be configured by assigning a named **Retention Policy** to each job destination. Existing retention rules must be re-configured via **Administration - Templates - Retention Policies**. You can also mark one policy as the system-wide default so it applies automatically to any destination that has no explicit policy assigned.
+> ⚠️ **Breaking:** All existing per-destination inline retention configurations have been migrated to "Keep All (Unlimited)". The new Templates System requires retention to be configured by assigning a named **Retention Policy** to each job destination. Existing retention rules must be re-configured via **Templates -> Retention Policies**. You can also mark one policy as the system-wide default so it applies automatically to any destination that has no explicit policy assigned.
 
 ### ✨ Features
 
