@@ -37,6 +37,7 @@ ALTER TABLE "JobDestination" ADD COLUMN "retentionPolicyId" TEXT;
 
 -- AlterTable: Add FK to Job
 ALTER TABLE "Job" ADD COLUMN "namingTemplateId" TEXT;
+ALTER TABLE "Job" ADD COLUMN "schedulePresetId" TEXT;
 
 -- AlterTable: Add FK to AdapterConfig (storage destinations)
 ALTER TABLE "AdapterConfig" ADD COLUMN "defaultRetentionPolicyId" TEXT;

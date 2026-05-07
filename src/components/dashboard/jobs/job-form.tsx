@@ -72,6 +72,8 @@ export interface JobData {
     pgCompression?: string;
     notificationEvents?: string;
     namingTemplateId?: string | null;
+    schedulePresetId?: string | null;
+    schedulePreset?: { id: string; name: string; schedule: string } | null;
     notifications: { id: string, name: string }[];
     destinations: {
         configId: string;
@@ -159,6 +161,8 @@ interface JobFormProps {
         pgCompression?: string;
         notificationEvents?: string;
         namingTemplateId?: string | null;
+        schedulePresetId?: string | null;
+        schedulePreset?: { id: string; name: string; schedule: string } | null;
         notifications: { id: string; name: string }[];
         destinations: { configId: string; priority: number; retention: string; retentionPolicyId?: string | null }[];
     } | null;
@@ -187,6 +191,8 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
     const [useSchedulePreset, setUseSchedulePreset] = useState(false);
     const [schedulePresets, setSchedulePresets] = useState<SchedulePreset[]>([]);
     const [presetOpen, setPresetOpen] = useState(false);
+    const [linkedPresetId, setLinkedPresetId] = useState<string | null>(initialData?.schedulePresetId ?? null);
+    const [linkedPresetName, setLinkedPresetName] = useState<string | null>(initialData?.schedulePreset?.name ?? null);
 
     // Parse initial databases from JSON string
     const parseInitialDatabases = (): string[] => {
@@ -344,6 +350,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                 pgCompression,
                 encryptionProfileId: data.encryptionProfileId === "no-encryption" ? "" : data.encryptionProfileId,
                 namingTemplateId: data.namingTemplateId || null,
+                schedulePresetId: linkedPresetId ?? null,
                 databases: data.databases || [],
                 destinations: data.destinations.map((d, i) => ({
                     configId: d.configId,
@@ -504,30 +511,59 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                                 <div className="flex items-center justify-between mb-1">
                                     <FormLabel>Schedule</FormLabel>
                                     <div className="flex items-center gap-1.5">
-                                        <button
-                                            type="button"
-                                            onClick={() => setUseSchedulePreset(false)}
-                                            className={cn("text-xs px-2 py-0.5 rounded transition-colors", !useSchedulePreset ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
-                                        >
-                                            Custom
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setUseSchedulePreset(true)}
-                                            className={cn("text-xs px-2 py-0.5 rounded transition-colors flex items-center gap-1", useSchedulePreset ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
-                                        >
-                                            <CalendarClock className="h-3 w-3" />
-                                            Preset
-                                        </button>
+                                        {!linkedPresetId && (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setUseSchedulePreset(false)}
+                                                    className={cn("text-xs px-2 py-0.5 rounded transition-colors", !useSchedulePreset ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                                                >
+                                                    Custom
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setUseSchedulePreset(true)}
+                                                    className={cn("text-xs px-2 py-0.5 rounded transition-colors flex items-center gap-1", useSchedulePreset ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                                                >
+                                                    <CalendarClock className="h-3 w-3" />
+                                                    Link Preset
+                                                </button>
+                                            </>
+                                        )}
+                                        {linkedPresetId && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setLinkedPresetId(null);
+                                                    setLinkedPresetName(null);
+                                                }}
+                                                className="text-xs px-2 py-0.5 rounded transition-colors text-muted-foreground hover:text-foreground flex items-center gap-1"
+                                            >
+                                                Unlink
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
-                                {useSchedulePreset ? (
+                                {linkedPresetId ? (
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+                                            <CalendarClock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                            <span className="flex-1 font-medium">{linkedPresetName}</span>
+                                            <code className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                                                {schedulePresets.find(p => p.id === linkedPresetId)?.schedule ?? field.value}
+                                            </code>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Schedule is controlled by this preset. Changes to the preset apply to this job automatically.
+                                        </p>
+                                    </div>
+                                ) : useSchedulePreset ? (
                                     <Popover open={presetOpen} onOpenChange={setPresetOpen}>
                                         <PopoverTrigger asChild>
                                             <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
                                                 <span className="flex items-center gap-2 text-muted-foreground">
                                                     <CalendarClock className="h-3.5 w-3.5" />
-                                                    Select a preset to fill schedule...
+                                                    Select a preset to link...
                                                 </span>
                                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                             </Button>
@@ -544,6 +580,8 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                                                                 value={preset.name}
                                                                 onSelect={() => {
                                                                     field.onChange(preset.schedule);
+                                                                    setLinkedPresetId(preset.id);
+                                                                    setLinkedPresetName(preset.name);
                                                                     setPresetOpen(false);
                                                                     setUseSchedulePreset(false);
                                                                 }}

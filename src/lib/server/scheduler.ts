@@ -64,23 +64,26 @@ export class BackupScheduler {
         try {
             // 1. User Jobs
             const jobs = await prisma.job.findMany({
-                where: { enabled: true }
+                where: { enabled: true },
+                include: { schedulePreset: true }
             });
 
             log.info("Found enabled jobs", { count: jobs.length });
 
             for (const job of jobs) {
-                if (cron.validate(job.schedule)) {
-                    log.debug("Scheduling job", { jobName: job.name, jobId: job.id, schedule: job.schedule, timezone });
+                // Use the live-linked preset schedule if one is set, otherwise fall back to job.schedule
+                const effectiveSchedule = job.schedulePreset?.schedule ?? job.schedule;
+                if (cron.validate(effectiveSchedule)) {
+                    log.debug("Scheduling job", { jobName: job.name, jobId: job.id, schedule: effectiveSchedule, presetLinked: !!job.schedulePreset, timezone });
 
-                    const task = cron.schedule(job.schedule, () => {
+                    const task = cron.schedule(effectiveSchedule, () => {
                         log.debug("Triggering job", { jobName: job.name });
                         runJob(job.id).catch((e) => log.error("Job failed", { jobId: job.id }, wrapError(e)));
                     }, { timezone });
 
                     this.tasks.set(job.id, task);
                 } else {
-                    log.error("Invalid cron schedule for job", { jobId: job.id, schedule: job.schedule });
+                    log.error("Invalid cron schedule for job", { jobId: job.id, schedule: effectiveSchedule });
                 }
             }
 

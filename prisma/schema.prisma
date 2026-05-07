@@ -94,6 +94,7 @@ model SchedulePreset {
   schedule    String   // Cron expression (5-part format)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  jobs        Job[]
 }
 
 model Job {
@@ -109,6 +110,8 @@ model Job {
   pgCompression       String             @default("") // PostgreSQL native dump compression: "" (legacy gzip-6), "NONE", "GZIP:6", "LZ4:1", "ZSTD:3"
   namingTemplateId    String?            // References NamingTemplate; null = use system default at runtime
   namingTemplate      NamingTemplate?    @relation(fields: [namingTemplateId], references: [id], onDelete: SetNull)
+  schedulePresetId    String?            // Live-link to a SchedulePreset; scheduler uses preset.schedule when set
+  schedulePreset      SchedulePreset?    @relation(fields: [schedulePresetId], references: [id], onDelete: SetNull)
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
   executions          Execution[]

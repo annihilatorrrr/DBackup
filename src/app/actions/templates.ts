@@ -8,6 +8,8 @@ import * as retentionPolicyService from "@/services/retention-policy-service";
 import * as namingTemplateService from "@/services/naming-template-service";
 import * as schedulePresetService from "@/services/schedule-preset-service";
 import { revalidatePath } from "next/cache";
+import { scheduler } from "@/lib/server/scheduler";
+import { logger } from "@/lib/logging/logger";
 import { auditService } from "@/services/audit-service";
 import { AUDIT_ACTIONS, AUDIT_RESOURCES } from "@/lib/core/audit-types";
 import { getErrorMessage } from "@/lib/logging/errors";
@@ -374,6 +376,9 @@ export async function updateSchedulePreset(
     }
     revalidatePath("/dashboard/vault");
     revalidatePath("/dashboard/jobs");
+    // Trigger scheduler refresh so all jobs linked to this preset pick up the new schedule immediately
+    const log = logger.child({ action: "updateSchedulePreset" });
+    scheduler.refresh().catch((e) => log.error("Scheduler refresh failed after preset update", { presetId: id }, e));
     return { success: true as const, data: preset };
   } catch (e: unknown) {
     return { success: false as const, error: getErrorMessage(e) };

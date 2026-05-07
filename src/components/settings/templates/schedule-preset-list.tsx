@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2, Pencil, CalendarClock } from "lucide-react";
 import { SchedulePreset } from "@prisma/client";
+import { SchedulePicker } from "@/components/dashboard/jobs/schedule-picker";
 import {
   getSchedulePresets,
   createSchedulePreset,
@@ -245,7 +246,7 @@ export function SchedulePresetDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
             {preset ? "Edit Schedule Preset" : "New Schedule Preset"}
@@ -276,17 +277,8 @@ export function SchedulePresetDialog({
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="sp-schedule">Cron Expression</Label>
-            <Input
-              id="sp-schedule"
-              value={schedule}
-              onChange={(e) => setSchedule(e.target.value)}
-              placeholder="0 3 * * *"
-              className="font-mono"
-            />
-            <p className="text-xs text-muted-foreground">
-              5-part cron format: minute hour day month weekday
-            </p>
+            <Label>Schedule</Label>
+            <SchedulePicker value={schedule} onChange={setSchedule} />
           </div>
         </div>
         <DialogFooter>

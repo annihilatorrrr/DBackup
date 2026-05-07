@@ -25,6 +25,7 @@ export interface CreateJobInput {
     enabled?: boolean;
     notificationEvents?: string;
     namingTemplateId?: string | null;
+    schedulePresetId?: string | null;
 }
 
 export interface UpdateJobInput {
@@ -40,6 +41,7 @@ export interface UpdateJobInput {
     enabled?: boolean;
     notificationEvents?: string;
     namingTemplateId?: string | null;
+    schedulePresetId?: string | null;
 }
 
 const jobInclude = {
@@ -49,7 +51,8 @@ const jobInclude = {
         orderBy: { priority: 'asc' as const }
     },
     notifications: true,
-    encryptionProfile: { select: { id: true, name: true } }
+    encryptionProfile: { select: { id: true, name: true } },
+    schedulePreset: { select: { id: true, name: true, schedule: true } }
 };
 
 export class JobService {
@@ -93,6 +96,7 @@ export class JobService {
                 enabled: enabled !== undefined ? enabled : true,
                 encryptionProfileId: encryptionProfileId || null,
                 namingTemplateId: input.namingTemplateId ?? null,
+                schedulePresetId: input.schedulePresetId ?? null,
                 compression: compression || "NONE",
                 pgCompression: pgCompression ?? "",
                 notificationEvents: notificationEvents || "ALWAYS",
@@ -156,6 +160,7 @@ export class JobService {
                     pgCompression,
                     notificationEvents,
                     namingTemplateId: namingTemplateId !== undefined ? (namingTemplateId ?? null) : undefined,
+                    schedulePresetId: input.schedulePresetId !== undefined ? (input.schedulePresetId ?? null) : undefined,
                     encryptionProfileId: encryptionProfileId === "" ? null : encryptionProfileId,
                     notifications: {
                         set: [],
@@ -214,6 +219,7 @@ export class JobService {
                 compression: original.compression,
                 pgCompression: original.pgCompression,
                 notificationEvents: original.notificationEvents,
+                schedulePresetId: original.schedulePresetId ?? null,
                 notifications: {
                     connect: original.notifications.map((n) => ({ id: n.id }))
                 },
