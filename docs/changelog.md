@@ -5,9 +5,7 @@ All notable changes to DBackup are documented here.
 ## vNEXT
 *Release: In Progress*
 
-### ⚠️ Breaking Changes
-
-- **Retention Configuration Reset**: All existing per-destination inline retention configurations have been migrated to "Keep All (Unlimited)". The new Templates System requires retention to be configured by assigning a named **Retention Policy** to each job destination. Existing retention rules must be re-configured via **Security Vault - Templates - Retention Policies**. You can also mark one policy as the system-wide default so it applies automatically to any destination that has no explicit policy assigned.
+> ⚠️ **Breaking:** All existing per-destination inline retention configurations have been migrated to "Keep All (Unlimited)". The new Templates System requires retention to be configured by assigning a named **Retention Policy** to each job destination. Existing retention rules must be re-configured via **Security Vault - Templates - Retention Policies**. You can also mark one policy as the system-wide default so it applies automatically to any destination that has no explicit policy assigned.
 
 ### ✨ Features
 
