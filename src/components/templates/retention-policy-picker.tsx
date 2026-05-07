@@ -23,11 +23,14 @@ import { RetentionPolicy } from "@prisma/client";
 import { getRetentionPolicies, createRetentionPolicy } from "@/app/actions/templates";
 import { RetentionPolicyDialog } from "@/components/settings/templates/retention-policy-list";
 
+export const DEFAULT_RETENTION_SENTINEL = "__DEFAULT__";
+
 interface Props {
   value: string | null | undefined;
   onChange: (id: string | null) => void;
   placeholder?: string;
   allowNone?: boolean;
+  allowDefault?: boolean;
 }
 
 export function RetentionPolicyPicker({
@@ -35,6 +38,7 @@ export function RetentionPolicyPicker({
   onChange,
   placeholder = "Select retention policy...",
   allowNone = false,
+  allowDefault = false,
 }: Props) {
   const [policies, setPolicies] = useState<RetentionPolicy[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +46,8 @@ export function RetentionPolicyPicker({
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<RetentionPolicy | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+
+  const defaultPolicy = policies.find((p) => p.isDefault);
 
   const fetchPolicies = useCallback(async () => {
     setLoading(true);
@@ -58,7 +64,8 @@ export function RetentionPolicyPicker({
     fetchPolicies();
   }, [fetchPolicies]);
 
-  const selected = policies.find((p) => p.id === value);
+  const selected = policies.find((p) => p.id === value && value !== DEFAULT_RETENTION_SENTINEL);
+  const isDefault = value === DEFAULT_RETENTION_SENTINEL;
 
   return (
     <>
@@ -75,6 +82,11 @@ export function RetentionPolicyPicker({
               <span className="flex items-center gap-2 text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 Loading...
+              </span>
+            ) : isDefault ? (
+              <span className="flex items-center gap-2">
+                <Timer className="h-3.5 w-3.5 text-muted-foreground" />
+                Default{defaultPolicy ? ` (${defaultPolicy.name})` : ""}
               </span>
             ) : selected ? (
               <span className="flex items-center gap-2">
@@ -96,6 +108,28 @@ export function RetentionPolicyPicker({
             <CommandList>
               <CommandEmpty>No policies found.</CommandEmpty>
               <CommandGroup>
+                {allowDefault && (
+                  <CommandItem
+                    value="__default__"
+                    onSelect={() => {
+                      onChange(DEFAULT_RETENTION_SENTINEL);
+                      setOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        isDefault ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    <span className="flex flex-col gap-0.5">
+                      <span>Default</span>
+                      <span className="text-xs text-muted-foreground">
+                        {defaultPolicy ? defaultPolicy.name : "No default set - keeps all"}
+                      </span>
+                    </span>
+                  </CommandItem>
+                )}
                 {allowNone && (
                   <CommandItem
                     value="__none__"
@@ -107,10 +141,10 @@ export function RetentionPolicyPicker({
                     <Check
                       className={cn(
                         "mr-2 h-4 w-4",
-                        !value ? "opacity-100" : "opacity-0"
+                        !value && !isDefault ? "opacity-100" : "opacity-0"
                       )}
                     />
-                    <span className="text-muted-foreground">None</span>
+                    <span className="text-muted-foreground">No policy (keep all)</span>
                   </CommandItem>
                 )}
                 {policies.map((policy) => (

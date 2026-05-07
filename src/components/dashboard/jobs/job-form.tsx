@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Lock, History, ChevronsUpDown, Plus, Trash2, ChevronDown, ChevronRight, Database, Info, Loader2, FileText, CalendarClock } from "lucide-react";
 import { SchedulePicker } from "./schedule-picker";
-import { RetentionPolicyPicker } from "@/components/templates/retention-policy-picker";
+import { RetentionPolicyPicker, DEFAULT_RETENTION_SENTINEL } from "@/components/templates/retention-policy-picker";
 import { NamingTemplatePicker } from "@/components/templates/naming-template-picker";
 import { getSchedulePresets } from "@/app/actions/templates";
 import type { SchedulePreset } from "@prisma/client";
@@ -181,6 +181,18 @@ function parseRetention(retentionStr: string) {
     }
 }
 
+/**
+ * Resolves the initial retentionPolicyId for a destination loaded from the DB.
+ * - Explicit policy ID → return that ID
+ * - null + empty retention (retention = '{}') → return DEFAULT_RETENTION_SENTINEL (use system default)
+ * - null + explicit mode (e.g. NONE) in retention → return undefined (no policy)
+ */
+function resolveInitialRetentionPolicyId(d: { retentionPolicyId?: string | null; retention: string }): string | undefined {
+    if (d.retentionPolicyId) return d.retentionPolicyId;
+    if (!d.retention || d.retention === "{}") return DEFAULT_RETENTION_SENTINEL;
+    return undefined;
+}
+
 export function JobForm({ sources, destinations, notifications, encryptionProfiles, initialData, onSuccess }: JobFormProps) {
     const [sourceOpen, setSourceOpen] = useState(false);
     const [notifyOpen, setNotifyOpen] = useState(false);
@@ -207,9 +219,9 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
         ? initialData.destinations.map(d => ({
             configId: d.configId,
             retention: parseRetention(d.retention),
-            retentionPolicyId: d.retentionPolicyId ?? undefined,
+            retentionPolicyId: resolveInitialRetentionPolicyId(d),
         }))
-        : [{ configId: "", retention: { ...defaultRetentionValue }, retentionPolicyId: undefined }];
+        : [{ configId: "", retention: { ...defaultRetentionValue }, retentionPolicyId: DEFAULT_RETENTION_SENTINEL }];
 
     const form = useForm({
         resolver: zodResolver(jobSchema),
@@ -355,8 +367,10 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                 destinations: data.destinations.map((d, i) => ({
                     configId: d.configId,
                     priority: i,
-                    retention: d.retention,
-                    retentionPolicyId: d.retentionPolicyId || null,
+                    // DEFAULT_RETENTION_SENTINEL means "use system default": save empty retention + null policyId
+                    // so 01-initialize.ts falls through to the system default lookup.
+                    retention: d.retentionPolicyId === DEFAULT_RETENTION_SENTINEL ? {} : d.retention,
+                    retentionPolicyId: d.retentionPolicyId === DEFAULT_RETENTION_SENTINEL ? null : (d.retentionPolicyId || null),
                 }))
             };
 
@@ -617,7 +631,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                                         variant="outline"
                                         size="sm"
                                         onClick={() => {
-                                            append({ configId: "", retention: { ...defaultRetentionValue } });
+                                            append({ configId: "", retention: { ...defaultRetentionValue }, retentionPolicyId: DEFAULT_RETENTION_SENTINEL });
                                         }}
                                         disabled={usedDestIds.length >= destinations.length}
                                     >
@@ -1051,7 +1065,7 @@ function DestinationRow({ index, form, destinations, usedDestIds, isExpanded, on
                         <RetentionPolicyPicker
                             value={form.watch(`destinations.${index}.retentionPolicyId`) ?? null}
                             onChange={(id) => form.setValue(`destinations.${index}.retentionPolicyId`, id ?? undefined, { shouldValidate: true })}
-                            allowNone
+                            allowDefault
                             placeholder="No policy (keep all)"
                         />
                         <p className="text-xs text-muted-foreground">
