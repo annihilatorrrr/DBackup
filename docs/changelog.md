@@ -5,6 +5,11 @@ All notable changes to DBackup are documented here.
 ## vNEXT
 *Release: In Progress*
 
+### ✨ Features
+
+- **Jobs - Browse Backups action**: Added a "Browse Backups" button (`FolderOpen` icon) to the Actions column in the Jobs table, positioned after the Run button. It navigates directly to the Storage Explorer with the destination pre-selected and the job name filter automatically applied (if backups for that job exist). When a job has multiple destinations, a dropdown appears to select which one to open. ([#59](https://github.com/Skyfay/DBackup/issues/59))
+- **Storage Explorer - Default sort**: The file list in the Storage Explorer now defaults to sorting by "Last Modified" in descending order so the latest backups are always shown first. ([#59](https://github.com/Skyfay/DBackup/issues/59))
+
 ### 🐛 Bug Fixes
 
 - **MySQL `caching_sha2_password`**: Fixed authentication failure when connecting to MySQL 8 servers using the `caching_sha2_password` auth plugin. The Docker base image has been migrated from Alpine (`node:24-alpine`) to Debian Slim (`node:24-slim`). The Debian package `mariadb-client` ships with `libmariadb3 3.3.x`, which supports `caching_sha2_password` natively - the Alpine MariaDB client was too old to handle this auth method. ([#48](https://github.com/Skyfay/DBackup/issues/48))

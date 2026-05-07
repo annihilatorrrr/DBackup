@@ -14,7 +14,13 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Edit, Play, Trash2, Clock, Lock, Webhook, Copy } from "lucide-react";
+import { Edit, Play, Trash2, Clock, Lock, Webhook, Copy, FolderOpen } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuTrigger,
+    DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { JobForm, JobData, AdapterOption, EncryptionOption } from "@/components/dashboard/jobs/job-form";
 import { ApiTriggerDialog } from "@/components/dashboard/jobs/api-trigger-dialog";
@@ -237,33 +243,67 @@ export function JobsClient({ canManage, canExecute }: JobsClientProps) {
         {
             id: "actions",
             header: () => <div className="text-right">Actions</div>,
-            cell: ({ row }) => (
-                <div className="flex justify-end gap-1">
-                     {canExecute && (
-                        <Button variant="ghost" size="icon" onClick={() => runJob(row.original.id)} title="Run Now">
-                            <Play className="h-4 w-4 text-green-500" />
-                        </Button>
-                    )}
-                    {canExecute && (
-                        <Button variant="ghost" size="icon" onClick={() => setApiTriggerJob({ id: row.original.id, name: row.original.name })} title="API Trigger">
-                            <Webhook className="h-4 w-4" />
-                        </Button>
-                    )}
-                    {canManage && (
-                        <>
-                            <Button variant="ghost" size="icon" onClick={() => cloneJob(row.original.id)} disabled={cloningJobId === row.original.id} title="Clone Job">
-                                <Copy className="h-4 w-4" />
+            cell: ({ row }) => {
+                const dests = row.original.destinations || [];
+                const backupsButton = dests.length === 0 ? null : dests.length === 1 ? (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        title={`Browse Backups: ${dests[0].config?.name}`}
+                        onClick={() => router.push(`/dashboard/storage?destination=${dests[0].configId}&job=${encodeURIComponent(row.original.name)}`)}
+                    >
+                        <FolderOpen className="h-4 w-4" />
+                    </Button>
+                ) : (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" title="Browse Backups">
+                                <FolderOpen className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => { setEditingJob(row.original); setIsDialogOpen(true); }}>
-                                <Edit className="h-4 w-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            {dests.map((d, i) => (
+                                <DropdownMenuItem
+                                    key={d.configId || i}
+                                    onClick={() => router.push(`/dashboard/storage?destination=${d.configId}&job=${encodeURIComponent(row.original.name)}`)}
+                                >
+                                    <AdapterIcon adapterId={d.config?.adapterId ?? ""} className="h-4 w-4 mr-2" />
+                                    {d.config?.name || d.configId}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                );
+
+                return (
+                    <div className="flex justify-end gap-1">
+                        {canExecute && (
+                            <Button variant="ghost" size="icon" onClick={() => runJob(row.original.id)} title="Run Now">
+                                <Play className="h-4 w-4 text-green-500" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(row.original.id)}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
+                        )}
+                        {backupsButton}
+                        {canExecute && (
+                            <Button variant="ghost" size="icon" onClick={() => setApiTriggerJob({ id: row.original.id, name: row.original.name })} title="API Trigger">
+                                <Webhook className="h-4 w-4" />
                             </Button>
-                        </>
-                    )}
-                </div>
-            )
+                        )}
+                        {canManage && (
+                            <>
+                                <Button variant="ghost" size="icon" onClick={() => cloneJob(row.original.id)} disabled={cloningJobId === row.original.id} title="Clone Job">
+                                    <Copy className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => { setEditingJob(row.original); setIsDialogOpen(true); }}>
+                                    <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => handleDelete(row.original.id)}>
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                );
+            }
         }
     ], [canManage, canExecute, runJob, cloneJob, cloningJobId]);
 
