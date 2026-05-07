@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, Plus, KeyRound, ChevronsUpDown, Check } from "lucide-react";
+import { Loader2, Plus, KeyRound, ChevronsUpDown, Check, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +57,8 @@ export function CredentialPicker({
     const [loading, setLoading] = useState(true);
     const [open, setOpen] = useState(false);
     const [createOpen, setCreateOpen] = useState(false);
+    const [editTarget, setEditTarget] = useState<CredentialProfileSummary | null>(null);
+    const [editOpen, setEditOpen] = useState(false);
 
     const fetchProfiles = useCallback(async () => {
         setLoading(true);
@@ -144,13 +146,26 @@ export function CredentialPicker({
                                     <CommandItem
                                         key={p.id}
                                         value={p.name}
+                                        className="group pr-1"
                                         onSelect={() => {
                                             onChange(p.id);
                                             setOpen(false);
                                         }}
                                     >
                                         <Check className={cn("mr-2 h-4 w-4", value === p.id ? "opacity-100" : "opacity-0")} />
-                                        {p.name}
+                                        <span className="flex-1">{p.name}</span>
+                                        <button
+                                            type="button"
+                                            className="opacity-0 group-hover:opacity-100 transition-opacity ml-1 rounded p-0.5 hover:bg-accent"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setOpen(false);
+                                                setEditTarget(p);
+                                                setEditOpen(true);
+                                            }}
+                                        >
+                                            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                                        </button>
                                     </CommandItem>
                                 ))}
                             </CommandGroup>
@@ -193,6 +208,17 @@ export function CredentialPicker({
                 onOpenChange={setCreateOpen}
                 forcedType={requiredType}
                 onSaved={onCreated}
+            />
+            <CredentialProfileDialog
+                open={editOpen}
+                onOpenChange={(v) => { setEditOpen(v); if (!v) setEditTarget(null); }}
+                editProfile={editTarget}
+                forcedType={requiredType}
+                onSaved={(profile) => {
+                    setProfiles((prev) => prev.map((x) => x.id === profile.id ? profile : x));
+                    setEditTarget(null);
+                    setEditOpen(false);
+                }}
             />
         </div>
     );

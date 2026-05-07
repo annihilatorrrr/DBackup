@@ -1,0 +1,175 @@
+import { describe, it, expect } from "vitest";
+import {
+  applyNamingPattern,
+  previewPattern,
+  NAMING_TOKEN_GROUPS,
+} from "@/lib/templates/naming-template-engine";
+
+describe("naming-template-engine", () => {
+  describe("NAMING_TOKEN_GROUPS", () => {
+    it("should export token groups with job, date and time groups", () => {
+      const groupNames = NAMING_TOKEN_GROUPS.map((g) => g.group);
+      expect(groupNames).toContain("Job Info");
+      expect(groupNames).toContain("Date");
+      expect(groupNames).toContain("Time");
+    });
+  });
+
+  describe("applyNamingPattern", () => {
+    const fixedDate = new Date("2026-05-07T14:30:45Z");
+
+    it("replaces {job_name} and {db_name} tokens", () => {
+      const result = applyNamingPattern(
+        "{job_name}_{db_name}",
+        "MyJob",
+        "mydb",
+        fixedDate,
+        "UTC"
+      );
+      expect(result).toBe("MyJob_mydb");
+    });
+
+    it("replaces date tokens correctly in UTC", () => {
+      const result = applyNamingPattern(
+        "backup_yyyy-MM-dd",
+        "job",
+        "db",
+        fixedDate,
+        "UTC"
+      );
+      expect(result).toBe("backup_2026-05-07");
+    });
+
+    it("replaces time tokens correctly in UTC", () => {
+      const result = applyNamingPattern(
+        "HH-mm-ss",
+        "job",
+        "db",
+        fixedDate,
+        "UTC"
+      );
+      expect(result).toBe("14-30-45");
+    });
+
+    it("replaces MMMM (full month name) before MM to avoid partial matches", () => {
+      const result = applyNamingPattern(
+        "MMMM",
+        "job",
+        "db",
+        fixedDate,
+        "UTC"
+      );
+      expect(result).toBe("May");
+    });
+
+    it("replaces MMM (short month name)", () => {
+      const result = applyNamingPattern("MMM", "job", "db", fixedDate, "UTC");
+      expect(result).toBe("May");
+    });
+
+    it("replaces all tokens in a complex pattern", () => {
+      const result = applyNamingPattern(
+        "{job_name}_{db_name}_yyyy-MM-dd_HH-mm-ss",
+        "ProdJob",
+        "users",
+        fixedDate,
+        "UTC"
+      );
+      expect(result).toBe("ProdJob_users_2026-05-07_14-30-45");
+    });
+
+    it("defaults to UTC when no timezone is provided", () => {
+      const result = applyNamingPattern(
+        "yyyy",
+        "job",
+        "db",
+        fixedDate
+      );
+      expect(result).toBe("2026");
+    });
+
+    it("applies timezone offset when timezone is provided", () => {
+      // UTC+9 (Asia/Tokyo) - 14:30 UTC becomes 23:30 JST
+      const result = applyNamingPattern(
+        "HH",
+        "job",
+        "db",
+        fixedDate,
+        "Asia/Tokyo"
+      );
+      expect(result).toBe("23");
+    });
+
+    it("handles multiple occurrences of the same token", () => {
+      const result = applyNamingPattern(
+        "{job_name}-{job_name}",
+        "job",
+        "db",
+        fixedDate,
+        "UTC"
+      );
+      expect(result).toBe("job-job");
+    });
+
+    it("returns an empty string for an empty pattern", () => {
+      const result = applyNamingPattern("", "job", "db", fixedDate, "UTC");
+      expect(result).toBe("");
+    });
+
+    it("passes plain text through unchanged when no tokens are present", () => {
+      const result = applyNamingPattern("static-backup", "job", "db", fixedDate, "UTC");
+      expect(result).toBe("static-backup");
+    });
+
+    it("expands date tokens that appear inside a job name (documented edge case)", () => {
+      // If the job name itself contains a date token (e.g. 'yyyy'), it will be
+      // expanded because token substitution runs over the entire string.
+      const result = applyNamingPattern(
+        "{job_name}",
+        "backup_yyyy",
+        "db",
+        fixedDate,
+        "UTC"
+      );
+      expect(result).toBe("backup_2026");
+    });
+
+    it("shifts date correctly across day boundary in negative UTC offset", () => {
+      // 2026-05-07T01:30:00Z = 2026-05-06 21:30 in America/New_York (UTC-4 EDT)
+      const earlyUTC = new Date("2026-05-07T01:30:00Z");
+      const result = applyNamingPattern(
+        "yyyy-MM-dd",
+        "job",
+        "db",
+        earlyUTC,
+        "America/New_York"
+      );
+      expect(result).toBe("2026-05-06");
+    });
+  });
+
+  describe("previewPattern", () => {
+    it("returns a non-empty string for a valid pattern", () => {
+      const result = previewPattern("{job_name}_{db_name}_yyyy-MM-dd");
+      expect(result).toBeTruthy();
+      expect(result).toContain("JobName");
+      expect(result).toContain("mydb");
+    });
+
+    it("returns 'Invalid pattern' when pattern processing throws", () => {
+      // Force an error by passing a pattern that causes String.replace to fail
+      // via a broken RegExp in a monkey-patched environment is hard, so we
+      // pass a value that triggers the catch via mocking String.prototype.replace.
+      const original = String.prototype.replace;
+      String.prototype.replace = () => {
+        throw new Error("forced error");
+      };
+      try {
+        const result = previewPattern("any-pattern");
+        expect(result).toBe("Invalid pattern");
+      } finally {
+        String.prototype.replace = original;
+      }
+    });
+  });
+});

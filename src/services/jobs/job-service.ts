@@ -9,6 +9,7 @@ export interface DestinationInput {
     configId: string;
     priority: number;
     retention: string; // JSON RetentionConfiguration
+    retentionPolicyId?: string | null;
 }
 
 export interface CreateJobInput {
@@ -23,6 +24,8 @@ export interface CreateJobInput {
     pgCompression?: string;
     enabled?: boolean;
     notificationEvents?: string;
+    namingTemplateId?: string | null;
+    schedulePresetId?: string | null;
 }
 
 export interface UpdateJobInput {
@@ -37,6 +40,8 @@ export interface UpdateJobInput {
     pgCompression?: string;
     enabled?: boolean;
     notificationEvents?: string;
+    namingTemplateId?: string | null;
+    schedulePresetId?: string | null;
 }
 
 const jobInclude = {
@@ -46,7 +51,8 @@ const jobInclude = {
         orderBy: { priority: 'asc' as const }
     },
     notifications: true,
-    encryptionProfile: { select: { id: true, name: true } }
+    encryptionProfile: { select: { id: true, name: true } },
+    schedulePreset: { select: { id: true, name: true, schedule: true } }
 };
 
 export class JobService {
@@ -89,6 +95,8 @@ export class JobService {
                 databases: JSON.stringify(databases || []),
                 enabled: enabled !== undefined ? enabled : true,
                 encryptionProfileId: encryptionProfileId || null,
+                namingTemplateId: input.namingTemplateId ?? null,
+                schedulePresetId: input.schedulePresetId ?? null,
                 compression: compression || "NONE",
                 pgCompression: pgCompression ?? "",
                 notificationEvents: notificationEvents || "ALWAYS",
@@ -99,7 +107,8 @@ export class JobService {
                     create: destinations.map((d) => ({
                         configId: d.configId,
                         priority: d.priority,
-                        retention: d.retention || "{}"
+                        retention: d.retention || "{}",
+                        retentionPolicyId: d.retentionPolicyId ?? null,
                     }))
                 }
             },
@@ -112,7 +121,7 @@ export class JobService {
     }
 
     async updateJob(id: string, input: UpdateJobInput) {
-        const { name, schedule, sourceId, databases, destinations, notificationIds, enabled, encryptionProfileId, compression, pgCompression, notificationEvents } = input;
+        const { name, schedule, sourceId, databases, destinations, notificationIds, enabled, encryptionProfileId, compression, pgCompression, notificationEvents, namingTemplateId } = input;
 
         // Check name uniqueness (excluding current job)
         if (name) {
@@ -133,7 +142,8 @@ export class JobService {
                         jobId: id,
                         configId: d.configId,
                         priority: d.priority,
-                        retention: d.retention || "{}"
+                        retention: d.retention || "{}",
+                        retentionPolicyId: d.retentionPolicyId ?? null,
                     }))
                 });
             }
@@ -149,6 +159,8 @@ export class JobService {
                     compression,
                     pgCompression,
                     notificationEvents,
+                    namingTemplateId: namingTemplateId !== undefined ? (namingTemplateId ?? null) : undefined,
+                    schedulePresetId: input.schedulePresetId !== undefined ? (input.schedulePresetId ?? null) : undefined,
                     encryptionProfileId: encryptionProfileId === "" ? null : encryptionProfileId,
                     notifications: {
                         set: [],
@@ -207,6 +219,7 @@ export class JobService {
                 compression: original.compression,
                 pgCompression: original.pgCompression,
                 notificationEvents: original.notificationEvents,
+                schedulePresetId: original.schedulePresetId ?? null,
                 notifications: {
                     connect: original.notifications.map((n) => ({ id: n.id }))
                 },

@@ -38,7 +38,7 @@ export async function PUT(
     const params = await props.params;
     try {
         const body = await req.json();
-        const { name, schedule, sourceId, databases, destinations, notificationIds, enabled, encryptionProfileId, compression, pgCompression, notificationEvents } = body;
+        const { name, schedule, sourceId, databases, destinations, notificationIds, enabled, encryptionProfileId, compression, pgCompression, notificationEvents, namingTemplateId, schedulePresetId } = body;
 
         const updatedJob = await jobService.updateJob(params.id, {
             name,
@@ -46,16 +46,19 @@ export async function PUT(
             enabled,
             sourceId,
             databases: Array.isArray(databases) ? databases : undefined,
-            destinations: destinations ? destinations.map((d: { configId: string; priority?: number; retention?: any }, i: number) => ({
+            destinations: destinations ? destinations.map((d: { configId: string; priority?: number; retention?: any; retentionPolicyId?: string | null }, i: number) => ({
                 configId: d.configId,
                 priority: d.priority ?? i,
-                retention: d.retention ? JSON.stringify(d.retention) : "{}"
+                retention: d.retention ? JSON.stringify(d.retention) : "{}",
+                retentionPolicyId: d.retentionPolicyId ?? null,
             })) : undefined,
             notificationIds,
             encryptionProfileId,
             compression,
             pgCompression,
-            notificationEvents
+            notificationEvents,
+            namingTemplateId: namingTemplateId !== undefined ? (namingTemplateId ?? null) : undefined,
+            schedulePresetId: schedulePresetId !== undefined ? (schedulePresetId ?? null) : undefined,
         });
 
         return NextResponse.json(updatedJob);

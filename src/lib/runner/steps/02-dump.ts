@@ -9,7 +9,7 @@ import { wrapError } from "@/lib/logging/errors";
 import { getBackupFileExtension } from "@/lib/backup-extensions";
 import { formatBytes } from "@/lib/utils";
 import prisma from "@/lib/prisma";
-import { formatInTimeZone } from "date-fns-tz";
+import { applyNamingPattern } from "@/lib/templates/naming-template-engine";
 
 const log = logger.child({ step: "02-dump" });
 
@@ -22,12 +22,16 @@ export async function stepExecuteDump(ctx: RunnerContext) {
     ctx.log(`Starting Dump from ${job.source.name} (${job.source.type})...`);
 
     // 1. Prepare Settings (timezone and filename pattern)
-    const [tzSetting, patternSetting] = await Promise.all([
+    const [tzSetting, patternSetting, namingTemplate] = await Promise.all([
         prisma.systemSetting.findUnique({ where: { key: "system.timezone" } }),
         prisma.systemSetting.findUnique({ where: { key: "system.filenamePattern" } }),
+        job.namingTemplateId
+            ? prisma.namingTemplate.findUnique({ where: { id: job.namingTemplateId } })
+            : prisma.namingTemplate.findFirst({ where: { isDefault: true } }),
     ]);
     const timezone = tzSetting?.value || "UTC";
-    const pattern = patternSetting?.value || "{name}_yyyy-MM-dd_HH-mm-ss";
+    // Priority: job's naming template > system setting > built-in default
+    const pattern = namingTemplate?.pattern ?? patternSetting?.value ?? "{job_name}_yyyy-MM-dd_HH-mm-ss";
 
     // 2. Prepare Config & Metadata
     const sourceConfig = await resolveAdapterConfig(job.source) as any;
@@ -50,13 +54,9 @@ export async function stepExecuteDump(ctx: RunnerContext) {
         : jobDatabases.map(db => db.replace(/[^a-z0-9]/gi, '_')).join('_');
 
     const sanitizedName = job.name.replace(/[^a-z0-9]/gi, '_');
-    const escapeName = (text: string) => text.replace(/'/g, "''");
-    const datePattern = pattern
-        .replace('{name}', `'${escapeName(sanitizedName)}'`)
-        .replace('{db_name}', `'${escapeName(dbNameRaw)}'`);
 
     const ext = getBackupFileExtension(job.source.adapterId);
-    const fileName = formatInTimeZone(new Date(), timezone, datePattern) + `.${ext}`;
+    const fileName = applyNamingPattern(pattern, sanitizedName, dbNameRaw, new Date(), timezone) + `.${ext}`;
     const tempDir = getTempDir();
     const tempFile = path.join(tempDir, fileName);
 

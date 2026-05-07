@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
         checkPermissionWithContext(ctx, PERMISSIONS.JOBS.WRITE);
 
         const body = await req.json();
-        const { name, schedule, sourceId, databases, destinations, notificationIds, enabled, encryptionProfileId, compression, pgCompression, notificationEvents } = body;
+        const { name, schedule, sourceId, databases, destinations, notificationIds, enabled, encryptionProfileId, compression, pgCompression, notificationEvents, namingTemplateId, schedulePresetId } = body;
 
         if (!name || !schedule || !sourceId || !destinations || !Array.isArray(destinations) || destinations.length === 0) {
             return NextResponse.json({ error: "Missing required fields (name, schedule, sourceId, destinations)" }, { status: 400 });
@@ -45,17 +45,20 @@ export async function POST(req: NextRequest) {
             schedule,
             sourceId,
             databases: Array.isArray(databases) ? databases : [],
-            destinations: destinations.map((d: { configId: string; priority?: number; retention?: any }, i: number) => ({
+            destinations: destinations.map((d: { configId: string; priority?: number; retention?: any; retentionPolicyId?: string | null }, i: number) => ({
                 configId: d.configId,
                 priority: d.priority ?? i,
-                retention: d.retention ? JSON.stringify(d.retention) : "{}"
+                retention: d.retention ? JSON.stringify(d.retention) : "{}",
+                retentionPolicyId: d.retentionPolicyId ?? null,
             })),
             notificationIds,
             enabled,
             encryptionProfileId,
             compression,
             pgCompression,
-            notificationEvents
+            notificationEvents,
+            namingTemplateId: namingTemplateId ?? null,
+            schedulePresetId: schedulePresetId ?? null,
         });
 
         return NextResponse.json(newJob, { status: 201 });

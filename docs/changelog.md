@@ -5,9 +5,16 @@ All notable changes to DBackup are documented here.
 ## vNEXT
 *Release: In Progress*
 
+> ⚠️ **Breaking:** All existing per-destination inline retention configurations have been migrated to "Keep All (Unlimited)". The new Templates System requires retention to be configured by assigning a named **Retention Policy** to each job destination. Existing retention rules must be re-configured via **Administration - Templates - Retention Policies**. You can also mark one policy as the system-wide default so it applies automatically to any destination that has no explicit policy assigned.
+
 ### ✨ Features
 
+- **Templates System**: Added a dedicated **Templates** page under Administration (`/dashboard/templates`) with three tabs: **Retention Policies** (reusable named retention rules assignable per destination, with a "Set as Default" option - the default policy is used automatically when no policy is assigned to a destination), **Naming Templates** (custom backup file name patterns with token insertion, one can be set as system default), and **Schedule Presets** (named cron expressions usable as quick-fill presets or as live-linked schedules that automatically apply to all linked jobs when updated). ([#61](https://github.com/Skyfay/DBackup/issues/61))
+- **Jobs - Retention Policy Picker**: Destinations in the Job form now use a Retention Policy picker (instead of inline retention config tabs) to assign a named retention policy per destination. Legacy per-destination retention JSON is still respected as a fallback.
+- **Jobs - Naming Template Picker**: The Advanced tab of the Job form now includes a Naming Template picker to override the system default file name pattern for that specific job.
+- **Jobs - Schedule Presets**: The Schedule field in the Job form now includes a Preset toggle that opens a searchable dropdown of saved Schedule Presets, selecting one auto-fills the cron expression.
 - **Jobs - Browse Backups action**: Added a "Browse Backups" button (`FolderOpen` icon) to the Actions column in the Jobs table, positioned after the Run button. It navigates directly to the Storage Explorer with the destination pre-selected and the job name filter automatically applied (if backups for that job exist). When a job has multiple destinations, a dropdown appears to select which one to open. ([#59](https://github.com/Skyfay/DBackup/issues/59))
+- **Naming Templates - Extended Token Set**: Added `{job_name}` as the canonical job-name token (replaces `{name}`, which remains supported for backward compatibility). Added `MMM` (short month name, e.g. `Jan`) and `MMMM` (full month name, e.g. `January`) date tokens. Arbitrary literal text can now be used freely in any pattern without escaping (e.g. `prod_{db_name}-yyyy-MM-dd`). The template engine was rewritten to perform direct token substitution instead of delegating the full pattern string to `date-fns` format, eliminating silent misinterpretation of literal characters as format tokens. Token chips in the dialog now insert at the current cursor position, are grouped by category (Job Info, Date, Time), and show a tooltip with a description on hover.
 - **Storage Explorer - Default sort**: The file list in the Storage Explorer now defaults to sorting by "Last Modified" in descending order so the latest backups are always shown first. ([#59](https://github.com/Skyfay/DBackup/issues/59))
 
 ### 🐛 Bug Fixes
@@ -19,6 +26,12 @@ All notable changes to DBackup are documented here.
 ### 🗑️ Removed
 
 - **Telegram MarkdownV2**: Removed the `MarkdownV2` parse mode option from Telegram notification adapters. It caused silent delivery failures while the UI incorrectly reported success. Use `HTML` or `Markdown` instead. ([#57](https://github.com/Skyfay/DBackup/issues/57))
+
+### 🧪 Tests
+
+- Improved unit test coverage across multiple services and adapters.
+- **Naming Template Engine**: Added missing test cases - empty pattern, plain-text passthrough, date-token-in-job-name edge case (documented behavior), and timezone day-boundary shift. Total engine tests: 16.
+- **Naming Template Service**: Test for `getNamingTemplate` updated to verify the returned value (was only checking the call, not the result).
 
 ### 🔧 CI/CD
 

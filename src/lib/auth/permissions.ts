@@ -62,6 +62,10 @@ export const PERMISSIONS = {
     READ: "api-keys:read",
     WRITE: "api-keys:write",
   },
+  TEMPLATES: {
+    READ: "templates:read",
+    WRITE: "templates:write",
+  },
 } as const;
 
 export type Permission =
@@ -98,7 +102,9 @@ export type Permission =
   | typeof PERMISSIONS.SETTINGS.READ
   | typeof PERMISSIONS.SETTINGS.WRITE
   | typeof PERMISSIONS.API_KEYS.READ
-  | typeof PERMISSIONS.API_KEYS.WRITE;
+  | typeof PERMISSIONS.API_KEYS.WRITE
+  | typeof PERMISSIONS.TEMPLATES.READ
+  | typeof PERMISSIONS.TEMPLATES.WRITE;
 
 export const AVAILABLE_PERMISSIONS = [
   // Users & Groups
@@ -154,4 +160,8 @@ export const AVAILABLE_PERMISSIONS = [
   // API Keys
   { id: PERMISSIONS.API_KEYS.READ, label: "View API Keys", category: "API Keys" },
   { id: PERMISSIONS.API_KEYS.WRITE, label: "Manage API Keys (Create/Delete/Rotate)", category: "API Keys" },
+
+  // Templates
+  { id: PERMISSIONS.TEMPLATES.READ, label: "View Templates", category: "Templates" },
+  { id: PERMISSIONS.TEMPLATES.WRITE, label: "Manage Templates (Create/Edit/Delete)", category: "Templates" },
 ];

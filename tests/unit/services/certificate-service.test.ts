@@ -457,4 +457,64 @@ describe("CertificateService", () => {
       expect(opensslCall?.[0]).toContain('subjectAltName=DNS:localhost,IP:127.0.0.1"');
     });
   });
+
+  // ── Branch coverage: missing openssl output fields ─────────
+
+  describe("getCertificateInfo - missing fields fallback", () => {
+    it("should return 'Unknown' for subject and issuer when not present in openssl output", () => {
+      mockExistsSync.mockReturnValue(true);
+      // Output has no subject= or issuer= lines
+      mockExecSync.mockReturnValue("notBefore=Jan  1 00:00:00 2024 GMT\nnotAfter=Jan  1 00:00:00 2025 GMT");
+
+      const info = getCertificateInfo();
+
+      expect(info.subject).toBe("Unknown");
+      expect(info.issuer).toBe("Unknown");
+    });
+
+    it("should return empty fingerprint when no SHA256 fingerprint line is present", () => {
+      mockExistsSync.mockReturnValue(true);
+      // Output has subject/issuer but no fingerprint
+      mockExecSync.mockReturnValue(
+        "subject=CN = Test\nissuer=CN = Test\nnotBefore=Jan  1 00:00:00 2024 GMT\nnotAfter=Jan  1 00:00:00 2025 GMT\nserial=AABB"
+      );
+
+      const info = getCertificateInfo();
+
+      expect(info.fingerprint).toBe("");
+    });
+
+    it("should return empty validFrom/validTo when notBefore/notAfter are absent", () => {
+      mockExistsSync.mockReturnValue(true);
+      mockExecSync.mockReturnValue("subject=CN = Test\nissuer=CN = Test\nserial=AABB");
+
+      const info = getCertificateInfo();
+
+      expect(info.validFrom).toBe("");
+      expect(info.validTo).toBe("");
+      expect(info.daysRemaining).toBe(0);
+    });
+  });
+
+  // ── Branch coverage: cleanup with non-existent temp files ──
+
+  describe("uploadCertificate - cleanup when temp files do not exist", () => {
+    it("should not call unlinkSync when temp files are absent during error cleanup", () => {
+      mockExistsSync.mockImplementation((p: string) => {
+        // CERTS_DIR exists but temp files do NOT exist
+        if (typeof p === "string" && p.includes(".tmp")) return false;
+        return true;
+      });
+      mockWriteFileSync.mockImplementationOnce(() => {
+        throw new Error("Disk full");
+      });
+
+      const validCert = "-----BEGIN CERTIFICATE-----\ndata\n-----END CERTIFICATE-----";
+      const validKey = "-----BEGIN PRIVATE KEY-----\ndata\n-----END PRIVATE KEY-----";
+
+      expect(() => uploadCertificate(validCert, validKey)).toThrow("Disk full");
+      // existsSync returned false for .tmp files, so unlinkSync is never called
+      expect(mockUnlinkSync).not.toHaveBeenCalled();
+    });
+  });
 });
