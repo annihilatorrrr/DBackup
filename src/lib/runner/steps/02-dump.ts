@@ -9,7 +9,7 @@ import { wrapError } from "@/lib/logging/errors";
 import { getBackupFileExtension } from "@/lib/backup-extensions";
 import { formatBytes } from "@/lib/utils";
 import prisma from "@/lib/prisma";
-import { formatInTimeZone } from "date-fns-tz";
+import { applyNamingPattern } from "@/lib/naming-template-engine";
 
 const log = logger.child({ step: "02-dump" });
 
@@ -31,7 +31,7 @@ export async function stepExecuteDump(ctx: RunnerContext) {
     ]);
     const timezone = tzSetting?.value || "UTC";
     // Priority: job's naming template > system setting > built-in default
-    const pattern = namingTemplate?.pattern ?? patternSetting?.value ?? "{name}_yyyy-MM-dd_HH-mm-ss";
+    const pattern = namingTemplate?.pattern ?? patternSetting?.value ?? "{job_name}_yyyy-MM-dd_HH-mm-ss";
 
     // 2. Prepare Config & Metadata
     const sourceConfig = await resolveAdapterConfig(job.source) as any;
@@ -54,13 +54,9 @@ export async function stepExecuteDump(ctx: RunnerContext) {
         : jobDatabases.map(db => db.replace(/[^a-z0-9]/gi, '_')).join('_');
 
     const sanitizedName = job.name.replace(/[^a-z0-9]/gi, '_');
-    const escapeName = (text: string) => text.replace(/'/g, "''");
-    const datePattern = pattern
-        .replace('{name}', `'${escapeName(sanitizedName)}'`)
-        .replace('{db_name}', `'${escapeName(dbNameRaw)}'`);
 
     const ext = getBackupFileExtension(job.source.adapterId);
-    const fileName = formatInTimeZone(new Date(), timezone, datePattern) + `.${ext}`;
+    const fileName = applyNamingPattern(pattern, sanitizedName, dbNameRaw, new Date(), timezone) + `.${ext}`;
     const tempDir = getTempDir();
     const tempFile = path.join(tempDir, fileName);
 

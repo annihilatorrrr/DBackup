@@ -1,11 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -33,29 +38,10 @@ import {
 import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { DateDisplay } from "@/components/utils/date-display";
-import { format } from "date-fns";
-
-const FILENAME_TOKENS = [
-  "{name}",
-  "{db_name}",
-  "yyyy",
-  "MM",
-  "dd",
-  "HH",
-  "mm",
-  "ss",
-];
-
-function previewPattern(pattern: string): string {
-  try {
-    const p = pattern
-      .replace("{name}", "'JobName'")
-      .replace("{db_name}", "'mydb'");
-    return format(new Date(), p);
-  } catch {
-    return "Invalid pattern";
-  }
-}
+import {
+  NAMING_TOKEN_GROUPS,
+  previewPattern,
+} from "@/lib/naming-template-engine";
 
 export function NamingTemplateList() {
   const [templates, setTemplates] = useState<NamingTemplate[]>([]);
@@ -276,9 +262,10 @@ export function NamingTemplateDialog({
   const [name, setName] = useState(template?.name ?? "");
   const [description, setDescription] = useState(template?.description ?? "");
   const [pattern, setPattern] = useState(
-    template?.pattern ?? "{name}_yyyy-MM-dd_HH-mm-ss"
+    template?.pattern ?? "{job_name}_yyyy-MM-dd_HH-mm-ss"
   );
   const [isSaving, setIsSaving] = useState(false);
+  const patternInputRef = useRef<HTMLInputElement>(null);
 
   const preview = useMemo(() => `${previewPattern(pattern)}.sql`, [pattern]);
 
@@ -286,12 +273,24 @@ export function NamingTemplateDialog({
     if (open) {
       setName(template?.name ?? "");
       setDescription(template?.description ?? "");
-      setPattern(template?.pattern ?? "{name}_yyyy-MM-dd_HH-mm-ss");
+      setPattern(template?.pattern ?? "{job_name}_yyyy-MM-dd_HH-mm-ss");
     }
   }, [open, template]);
 
   const insertToken = (token: string) => {
-    setPattern((prev) => prev + token);
+    const input = patternInputRef.current;
+    if (!input) {
+      setPattern((prev) => prev + token);
+      return;
+    }
+    const start = input.selectionStart ?? pattern.length;
+    const end = input.selectionEnd ?? pattern.length;
+    const newPattern = pattern.slice(0, start) + token + pattern.slice(end);
+    setPattern(newPattern);
+    requestAnimationFrame(() => {
+      input.focus();
+      input.setSelectionRange(start + token.length, start + token.length);
+    });
   };
 
   const handleSave = async () => {
@@ -349,27 +348,44 @@ export function NamingTemplateDialog({
           <div className="space-y-1.5">
             <Label htmlFor="nt-pattern">Pattern</Label>
             <Input
+              ref={patternInputRef}
               id="nt-pattern"
               value={pattern}
               onChange={(e) => setPattern(e.target.value)}
-              placeholder="{name}_yyyy-MM-dd_HH-mm-ss"
+              placeholder="{job_name}_yyyy-MM-dd_HH-mm-ss"
+              className="font-mono"
             />
-            <div className="flex flex-wrap gap-1 mt-1">
-              {FILENAME_TOKENS.map((token) => (
-                <Badge
-                  key={token}
-                  variant="outline"
-                  className="cursor-pointer hover:bg-muted text-xs"
-                  onClick={() => insertToken(token)}
-                >
-                  {token}
-                </Badge>
+            <div className="space-y-1 mt-1">
+              {NAMING_TOKEN_GROUPS.map((group) => (
+                <div key={group.group} className="flex flex-wrap items-center gap-1">
+                  <span className="text-xs text-muted-foreground w-10 shrink-0">
+                    {group.group}
+                  </span>
+                  {group.tokens.map((info) => (
+                    <Tooltip key={info.token}>
+                      <TooltipTrigger asChild>
+                        <Badge
+                          variant="outline"
+                          className="cursor-pointer hover:bg-muted text-xs font-mono"
+                          onClick={() => insertToken(info.token)}
+                        >
+                          {info.token}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p>{info.description}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+                </div>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Preview:{" "}
-              <code className="bg-muted px-1.5 py-0.5 rounded">{preview}</code>
-            </p>
+            <div className="space-y-1.5 mt-2">
+              <Label>Preview</Label>
+              <div className="flex items-center h-9 w-full rounded-md border border-input bg-muted/40 px-3 text-sm font-mono text-muted-foreground">
+                <span className="truncate">{preview}</span>
+              </div>
+            </div>
           </div>
         </div>
         <DialogFooter>
