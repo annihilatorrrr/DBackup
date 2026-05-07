@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   applyNamingPattern,
   previewPattern,
@@ -125,7 +125,6 @@ describe("naming-template-engine", () => {
       // via a broken RegExp in a monkey-patched environment is hard, so we
       // pass a value that triggers the catch via mocking String.prototype.replace.
       const original = String.prototype.replace;
-      // @ts-expect-error intentional override for testing
       String.prototype.replace = () => {
         throw new Error("forced error");
       };

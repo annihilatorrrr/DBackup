@@ -336,7 +336,7 @@ export function SystemSettingsForm({ initialMaxConcurrentJobs, initialDisablePas
                                                 </Button>
                                             </FormControl>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-[300px] p-0">
+                                        <PopoverContent className="w-75 p-0">
                                             <Command>
                                                 <CommandInput placeholder="Search timezone..." />
                                                 <CommandList>
