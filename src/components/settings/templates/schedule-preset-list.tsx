@@ -55,6 +55,7 @@ export function SchedulePresetList() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPresets();
   }, [fetchPresets]);
 
@@ -221,6 +222,7 @@ export function SchedulePresetDialog({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(preset?.name ?? "");
       setDescription(preset?.description ?? "");
       setSchedule(preset?.schedule ?? "0 3 * * *");

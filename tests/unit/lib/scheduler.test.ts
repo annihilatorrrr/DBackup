@@ -71,7 +71,7 @@ describe('BackupScheduler', () => {
         systemTaskService.getTaskEnabled.mockResolvedValue(true);
 
         await scheduler.init();
-        expect(prisma.job.findMany).toHaveBeenCalledWith({ where: { enabled: true } });
+        expect(prisma.job.findMany).toHaveBeenCalledWith({ where: { enabled: true }, include: { schedulePreset: true } });
         expect(systemTaskService.getTaskConfig).toHaveBeenCalled();
     });
 

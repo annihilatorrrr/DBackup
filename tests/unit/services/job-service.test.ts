@@ -54,6 +54,8 @@ describe('JobService', () => {
                     databases: "[]",
                     enabled: input.enabled,
                     encryptionProfileId: null,
+                    namingTemplateId: null,
+                    schedulePresetId: null,
                     compression: "NONE",
                     pgCompression: "",
                     notificationEvents: "ALWAYS",
@@ -61,7 +63,7 @@ describe('JobService', () => {
                         connect: [{ id: 'notif-1' }]
                     },
                     destinations: {
-                        create: [{ configId: 'dest-1', priority: 0, retention: '{}' }]
+                        create: [{ configId: 'dest-1', priority: 0, retention: '{}', retentionPolicyId: null }]
                     }
                 },
                 include: expect.objectContaining({
@@ -95,9 +97,10 @@ describe('JobService', () => {
                         compression: 'NONE',
                         notificationEvents: 'ALWAYS',
                         encryptionProfileId: null,
+                        namingTemplateId: null,
                         notifications: { connect: [] },
                         destinations: {
-                            create: [{ configId: 'd-1', priority: 1, retention: '{}' }],
+                            create: [{ configId: 'd-1', priority: 1, retention: '{}', retentionPolicyId: null }],
                         },
                     }),
                 })

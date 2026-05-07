@@ -20,7 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { RetentionPolicy } from "@prisma/client";
-import { getRetentionPolicies, createRetentionPolicy } from "@/app/actions/templates";
+import { getRetentionPolicies } from "@/app/actions/templates";
 import { RetentionPolicyDialog } from "@/components/settings/templates/retention-policy-list";
 
 export const DEFAULT_RETENTION_SENTINEL = "__DEFAULT__";
@@ -61,6 +61,7 @@ export function RetentionPolicyPicker({
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPolicies();
   }, [fetchPolicies]);
 

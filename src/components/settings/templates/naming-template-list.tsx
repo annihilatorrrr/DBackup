@@ -65,6 +65,7 @@ export function NamingTemplateList() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTemplates();
   }, [fetchTemplates]);
 
@@ -271,6 +272,7 @@ export function NamingTemplateDialog({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(template?.name ?? "");
       setDescription(template?.description ?? "");
       setPattern(template?.pattern ?? "{job_name}_yyyy-MM-dd_HH-mm-ss");

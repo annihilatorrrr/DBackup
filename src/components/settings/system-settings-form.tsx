@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm, useWatch } from "react-hook-form"
 import * as z from "zod"
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import {
     Form,
     FormControl,
@@ -16,16 +16,14 @@ import {
 import { toast } from "sonner"
 import { updateSystemSettings } from "@/app/actions/settings/settings"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Shield, Cpu, Rocket, Database, ScrollText, HardDrive, Bell, Globe, Check, ChevronsUpDown, FileText } from "lucide-react"
+import { Shield, Cpu, Rocket, Database, ScrollText, HardDrive, Bell, Globe, Check, ChevronsUpDown } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
+
 import { cn } from "@/lib/utils"
-import { format } from "date-fns"
 
 const formSchema = z.object({
     maxConcurrentJobs: z.coerce.number().min(1).max(10),
@@ -56,8 +54,6 @@ interface SystemSettingsFormProps {
 export function SystemSettingsForm({ initialMaxConcurrentJobs, initialDisablePasskeyLogin, initialSessionDuration = 604800, initialAuditLogRetentionDays = 90, initialStorageSnapshotRetentionDays = 90, initialNotificationLogRetentionDays = 90, initialCheckForUpdates = true, initialShowQuickSetup = false, initialSystemTimezone = "UTC", initialFilenamePattern = "{name}_yyyy-MM-dd_HH-mm-ss" }: SystemSettingsFormProps) {
     const [openTimezone, setOpenTimezone] = useState(false);
     const timezones = Intl.supportedValuesOf('timeZone');
-    const filenameTokens = ['{name}', '{db_name}', 'yyyy', 'MM', 'dd', 'HH', 'mm', 'ss'];
-
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema) as any,
         defaultValues: {

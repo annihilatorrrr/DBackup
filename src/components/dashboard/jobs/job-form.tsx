@@ -1080,7 +1080,7 @@ function DestinationRow({ index, form, destinations, usedDestIds, isExpanded, on
 
 // --- Retention Config Component (reusable per destination) ---
 
-function RetentionConfig({ form, prefix }: { form: any; prefix: string }) {
+function _RetentionConfig({ form, prefix }: { form: any; prefix: string }) {
     const mode = form.watch(`${prefix}.mode`);
 
     return (

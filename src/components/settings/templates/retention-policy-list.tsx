@@ -32,7 +32,7 @@ import {
   setDefaultRetentionPolicy,
   unsetDefaultRetentionPolicy,
 } from "@/app/actions/templates";
-import { RetentionConfiguration, RetentionMode } from "@/lib/core/retention";
+import { RetentionConfiguration } from "@/lib/core/retention";
 import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { DateDisplay } from "@/components/utils/date-display";
@@ -60,6 +60,7 @@ export function RetentionPolicyList() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPolicies();
   }, [fetchPolicies]);
 
@@ -304,6 +305,7 @@ export function RetentionPolicyDialog({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(policy?.name ?? "");
       setDescription(policy?.description ?? "");
       setConfig(
