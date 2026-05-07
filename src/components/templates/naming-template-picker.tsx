@@ -94,6 +94,14 @@ export function NamingTemplatePicker({ value, onChange, placeholder, allowNone }
                   </Badge>
                 )}
               </span>
+            ) : defaultTemplate ? (
+              <span className="flex items-center gap-2">
+                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-muted-foreground">{defaultTemplate.name}</span>
+                <Badge variant="outline" className="text-xs ml-1 border-yellow-500/50 text-yellow-600/70">
+                  Default
+                </Badge>
+              </span>
             ) : (
               <span className="text-muted-foreground">{displayPlaceholder}</span>
             )}
