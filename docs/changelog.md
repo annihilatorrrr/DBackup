@@ -2,6 +2,49 @@
 
 All notable changes to DBackup are documented here.
 
+## v2.2.0 - Templates System, Docker Image Update and Bug Fixes
+*Released: May 7, 2026*
+
+> ⚠️ **Breaking:** All existing per-destination inline retention configurations have been migrated to "Keep All (Unlimited)". The new Templates System requires retention to be configured by assigning a named **Retention Policy** to each job destination. Existing retention rules must be re-configured via **Administration - Templates - Retention Policies**. You can also mark one policy as the system-wide default so it applies automatically to any destination that has no explicit policy assigned.
+
+### ✨ Features
+
+- **Templates System**: Added a dedicated **Templates** page under Administration (`/dashboard/templates`) with three tabs: **Retention Policies** (reusable named retention rules assignable per destination, with a "Set as Default" option - the default policy is used automatically when no policy is assigned to a destination), **Naming Templates** (custom backup file name patterns with token insertion, one can be set as system default), and **Schedule Presets** (named cron expressions usable as quick-fill presets or as live-linked schedules that automatically apply to all linked jobs when updated). ([#61](https://github.com/Skyfay/DBackup/issues/61))
+- **Jobs**: Destinations in the Job form now use a Retention Policy picker (instead of inline retention config tabs) to assign a named retention policy per destination. Legacy per-destination retention JSON is still respected as a fallback.
+- **Jobs**: The Advanced tab of the Job form now includes a Naming Template picker to override the system default file name pattern for that specific job.
+- **Jobs**: The Schedule field in the Job form now includes a Preset toggle that opens a searchable dropdown of saved Schedule Presets, selecting one auto-fills the cron expression.
+- **Jobs**: Added a "Browse Backups" button (`FolderOpen` icon) to the Actions column in the Jobs table, positioned after the Run button. It navigates directly to the Storage Explorer with the destination pre-selected and the job name filter automatically applied (if backups for that job exist). When a job has multiple destinations, a dropdown appears to select which one to open. ([#59](https://github.com/Skyfay/DBackup/issues/59))
+- **Naming Templates - Extended Token Set**: Added `{job_name}` as the canonical job-name token (replaces `{name}`, which remains supported for backward compatibility). Added `MMM` (short month name, e.g. `Jan`) and `MMMM` (full month name, e.g. `January`) date tokens. Arbitrary literal text can now be used freely in any pattern without escaping (e.g. `prod_{db_name}-yyyy-MM-dd`). The template engine was rewritten to perform direct token substitution instead of delegating the full pattern string to `date-fns` format, eliminating silent misinterpretation of literal characters as format tokens. Token chips in the dialog now insert at the current cursor position, are grouped by category (Job Info, Date, Time), and show a tooltip with a description on hover.
+- **Storage Explorer - Default sort**: The file list in the Storage Explorer now defaults to sorting by "Last Modified" in descending order so the latest backups are always shown first. ([#59](https://github.com/Skyfay/DBackup/issues/59))
+
+### 🐛 Bug Fixes
+
+- **MySQL `caching_sha2_password`**: Fixed authentication failure when connecting to MySQL 8 servers using the `caching_sha2_password` auth plugin. The Docker base image has been migrated from Alpine (`node:24-alpine`) to Debian Slim (`node:24-slim`). The Debian package `mariadb-client` ships with `libmariadb3 3.3.x`, which supports `caching_sha2_password` natively - the Alpine MariaDB client was too old to handle this auth method. ([#48](https://github.com/Skyfay/DBackup/issues/48))
+- **SQLite backups**: Fixed missing `sqlite3` CLI tools in the Docker image, which caused SQLite backup jobs to fail when the database was mounted locally inside the container. ([#62](https://github.com/Skyfay/DBackup/issues/62))
+- **Smart Recovery**: Fixed a bug where restoring after a key delete and re-import always failed, even when the correct key was available. The content heuristic incorrectly rejected uncompressed TAR archives (multi-DB backups) because their headers consist mostly of null-byte padding - Smart Recovery now also detects POSIX TAR magic bytes (`ustar` at offset 257). ([#58](https://github.com/Skyfay/DBackup/issues/58))
+
+### 🗑️ Removed
+
+- **Telegram MarkdownV2**: Removed the `MarkdownV2` parse mode option from Telegram notification adapters. It caused silent delivery failures while the UI incorrectly reported success. Use `HTML` or `Markdown` instead. ([#57](https://github.com/Skyfay/DBackup/issues/57))
+
+### 🧪 Tests
+
+- Improved unit test coverage across multiple services and adapters.
+- **Naming Template Engine**: Added missing test cases - empty pattern, plain-text passthrough, date-token-in-job-name edge case (documented behavior), and timezone day-boundary shift. Total engine tests: 16.
+- **Naming Template Service**: Test for `getNamingTemplate` updated to verify the returned value (was only checking the call, not the result).
+
+### 🔧 CI/CD
+
+- **Docker base image**: Migrated from `node:24-alpine` to `node:24-slim` (Debian bookworm). The Debian package `mariadb-client` ships with `libmariadb3 3.3.x`, which supports the `caching_sha2_password` authentication plugin natively - fixing the Alpine limitation where the bundled MariaDB client was too old. `su-exec` replaced with `gosu`. MongoDB Database Tools bumped to `100.16.1` via direct CDN download (MongoDB ships no Debian 12 arm64 packages - arm64 uses the `ubuntu2204-arm64` build, which is compatible with Debian bookworm).
+- **Healthcheck**: Fixed healthcheck failing when the `PORT` environment variable was set to a non-default value. The check now uses `${PORT:-3000}` and correctly follows the configured port.
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v2.2.0`
+- **Also tagged as**: `latest`, `v2`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v2.1.1 - Docker Secrets support and SSH Credential Profile fixes
 *Released: May 5, 2026*
 

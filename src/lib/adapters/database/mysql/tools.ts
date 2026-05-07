@@ -42,15 +42,15 @@ async function initCommands(): Promise<void> {
 
 export function getMysqlCommand(): string {
     // Return cached value or fallback - initCommands() should be called before first use
-    return cachedMysqlCmd ?? 'mysql';
+    return cachedMysqlCmd ?? 'mariadb';
 }
 
 export function getMysqldumpCommand(): string {
-    return cachedMysqldumpCmd ?? 'mysqldump';
+    return cachedMysqldumpCmd ?? 'mariadb-dump';
 }
 
 export function getMysqladminCommand(): string {
-    return cachedMysqladminCmd ?? 'mysqladmin';
+    return cachedMysqladminCmd ?? 'mariadb-admin';
 }
 
 /** Call once during startup or before first adapter use to detect available commands */

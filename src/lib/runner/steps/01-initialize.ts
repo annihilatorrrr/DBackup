@@ -68,8 +68,20 @@ export async function stepInitialize(ctx: RunnerContext) {
 
         let retention: RetentionConfiguration = { mode: 'NONE' };
         try {
-            if (dest.retention && dest.retention !== '{}') {
+            if (dest.retentionPolicyId) {
+                // Policy template takes priority over the legacy per-destination retention JSON
+                const policy = await prisma.retentionPolicy.findUnique({ where: { id: dest.retentionPolicyId } });
+                if (policy?.config) {
+                    retention = JSON.parse(policy.config as string);
+                }
+            } else if (dest.retention && dest.retention !== '{}') {
                 retention = JSON.parse(dest.retention);
+            } else {
+                // No per-destination policy and no legacy config - fall back to the system default retention policy
+                const defaultPolicy = await prisma.retentionPolicy.findFirst({ where: { isDefault: true } });
+                if (defaultPolicy?.config) {
+                    retention = JSON.parse(defaultPolicy.config as string);
+                }
             }
         } catch {
             ctx.log(`Warning: Failed to parse retention config for destination '${dest.config.name}'. Using NONE.`, 'warning');

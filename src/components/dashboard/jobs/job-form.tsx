@@ -10,8 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Lock, History, ChevronsUpDown, Plus, Trash2, ChevronDown, ChevronRight, Database, Info, Loader2 } from "lucide-react";
+import { Lock, History, ChevronsUpDown, Plus, Trash2, ChevronDown, ChevronRight, Database, Info, Loader2, FileText, CalendarClock, Pencil } from "lucide-react";
 import { SchedulePicker } from "./schedule-picker";
+import { RetentionPolicyPicker, DEFAULT_RETENTION_SENTINEL } from "@/components/templates/retention-policy-picker";
+import { NamingTemplatePicker } from "@/components/templates/naming-template-picker";
+import { getSchedulePresets } from "@/app/actions/templates";
+import type { SchedulePreset } from "@prisma/client";
+import { SchedulePresetDialog } from "@/components/settings/templates/schedule-preset-list";
 import { AdapterIcon } from "@/components/adapter/adapter-icon";
 import { DatabasePicker } from "@/components/adapter/database-picker";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +31,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from "@/components/ui/command"
 import {
   Popover,
@@ -53,6 +59,7 @@ const retentionSchema = z.object({
 const destinationSchema = z.object({
     configId: z.string().min(1, "Destination is required"),
     retention: retentionSchema,
+    retentionPolicyId: z.string().optional(),
 });
 
 export interface JobData {
@@ -66,11 +73,15 @@ export interface JobData {
     compression: string;
     pgCompression?: string;
     notificationEvents?: string;
+    namingTemplateId?: string | null;
+    schedulePresetId?: string | null;
+    schedulePreset?: { id: string; name: string; schedule: string } | null;
     notifications: { id: string, name: string }[];
     destinations: {
         configId: string;
         priority: number;
         retention: string;
+        retentionPolicyId?: string | null;
     }[];
 }
 
@@ -124,6 +135,7 @@ const jobSchema = z.object({
     databases: z.array(z.string()).default([]),
     destinations: z.array(destinationSchema).min(1, "At least one destination is required"),
     encryptionProfileId: z.string().optional(),
+    namingTemplateId: z.string().optional(),
     compression: z.enum(["NONE", "GZIP", "BROTLI"]).default("NONE"),
     pgCompressionAlgo: z.enum(["LEGACY", "NONE", "GZIP", "LZ4", "ZSTD"]).default("LEGACY"),
     pgCompressionLevel: z.coerce.number().int().min(0).max(22).default(6),
@@ -150,8 +162,11 @@ interface JobFormProps {
         compression: string;
         pgCompression?: string;
         notificationEvents?: string;
+        namingTemplateId?: string | null;
+        schedulePresetId?: string | null;
+        schedulePreset?: { id: string; name: string; schedule: string } | null;
         notifications: { id: string; name: string }[];
-        destinations: { configId: string; priority: number; retention: string }[];
+        destinations: { configId: string; priority: number; retention: string; retentionPolicyId?: string | null }[];
     } | null;
     onSuccess: () => void;
 }
@@ -168,6 +183,18 @@ function parseRetention(retentionStr: string) {
     }
 }
 
+/**
+ * Resolves the initial retentionPolicyId for a destination loaded from the DB.
+ * - Explicit policy ID → return that ID
+ * - null + empty retention (retention = '{}') → return DEFAULT_RETENTION_SENTINEL (use system default)
+ * - null + explicit mode (e.g. NONE) in retention → return undefined (no policy)
+ */
+function resolveInitialRetentionPolicyId(d: { retentionPolicyId?: string | null; retention: string }): string | undefined {
+    if (d.retentionPolicyId) return d.retentionPolicyId;
+    if (!d.retention || d.retention === "{}") return DEFAULT_RETENTION_SENTINEL;
+    return undefined;
+}
+
 export function JobForm({ sources, destinations, notifications, encryptionProfiles, initialData, onSuccess }: JobFormProps) {
     const [sourceOpen, setSourceOpen] = useState(false);
     const [notifyOpen, setNotifyOpen] = useState(false);
@@ -175,6 +202,14 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
     const [availableDatabases, setAvailableDatabases] = useState<string[]>([]);
     const [isLoadingDbs, setIsLoadingDbs] = useState(false);
     const [isDbListOpen, setIsDbListOpen] = useState(false);
+    const [useSchedulePreset, setUseSchedulePreset] = useState(false);
+    const [schedulePresets, setSchedulePresets] = useState<SchedulePreset[]>([]);
+    const [presetOpen, setPresetOpen] = useState(false);
+    const [linkedPresetId, setLinkedPresetId] = useState<string | null>(initialData?.schedulePresetId ?? null);
+    const [linkedPresetName, setLinkedPresetName] = useState<string | null>(initialData?.schedulePreset?.name ?? null);
+    const [presetCreateOpen, setPresetCreateOpen] = useState(false);
+    const [presetEditTarget, setPresetEditTarget] = useState<SchedulePreset | null>(null);
+    const [presetEditOpen, setPresetEditOpen] = useState(false);
 
     // Parse initial databases from JSON string
     const parseInitialDatabases = (): string[] => {
@@ -189,8 +224,9 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
         ? initialData.destinations.map(d => ({
             configId: d.configId,
             retention: parseRetention(d.retention),
+            retentionPolicyId: resolveInitialRetentionPolicyId(d),
         }))
-        : [{ configId: "", retention: { ...defaultRetentionValue } }];
+        : [{ configId: "", retention: { ...defaultRetentionValue }, retentionPolicyId: DEFAULT_RETENTION_SENTINEL }];
 
     const form = useForm({
         resolver: zodResolver(jobSchema),
@@ -204,6 +240,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
             compression: (initialData?.compression as "NONE" | "GZIP" | "BROTLI") || "NONE",
             pgCompressionAlgo: parsePgCompression(initialData?.pgCompression).algo,
             pgCompressionLevel: parsePgCompression(initialData?.pgCompression).level,
+            namingTemplateId: initialData?.namingTemplateId || undefined,
             notificationIds: initialData?.notifications?.map((n) => n.id) || [],
             notificationEvents: (initialData?.notificationEvents as "ALWAYS" | "FAILURE_ONLY" | "SUCCESS_ONLY") || "ALWAYS",
             enabled: initialData?.enabled ?? true,
@@ -223,6 +260,13 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
             return next;
         });
     };
+
+    // Load schedule presets on mount
+    useEffect(() => {
+        getSchedulePresets().then((res) => {
+            if (res.success && res.data) setSchedulePresets(res.data);
+        });
+    }, []);
 
     // Determine whether to show database picker based on selected source adapter
     const selectedSourceId = form.watch("sourceId");
@@ -322,11 +366,16 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                 ...rest,
                 pgCompression,
                 encryptionProfileId: data.encryptionProfileId === "no-encryption" ? "" : data.encryptionProfileId,
+                namingTemplateId: data.namingTemplateId || null,
+                schedulePresetId: linkedPresetId ?? null,
                 databases: data.databases || [],
                 destinations: data.destinations.map((d, i) => ({
                     configId: d.configId,
                     priority: i,
-                    retention: d.retention,
+                    // DEFAULT_RETENTION_SENTINEL means "use system default": save empty retention + null policyId
+                    // so 01-initialize.ts falls through to the system default lookup.
+                    retention: d.retentionPolicyId === DEFAULT_RETENTION_SENTINEL ? {} : d.retention,
+                    retentionPolicyId: d.retentionPolicyId === DEFAULT_RETENTION_SENTINEL ? null : (d.retentionPolicyId || null),
                 }))
             };
 
@@ -350,6 +399,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
     const usedDestIds = form.watch("destinations").map(d => d.configId).filter(Boolean);
 
     return (
+        <>
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 
@@ -478,10 +528,125 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
 
                         <FormField control={form.control} name="schedule" render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Schedule</FormLabel>
-                                <FormControl>
-                                    <SchedulePicker value={field.value} onChange={field.onChange} />
-                                </FormControl>
+                                <div className="flex items-center justify-between mb-1">
+                                    <FormLabel>Schedule</FormLabel>
+                                    <div className="flex items-center gap-1.5">
+                                        {!linkedPresetId && (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setUseSchedulePreset(false)}
+                                                    className={cn("text-xs px-2 py-0.5 rounded transition-colors", !useSchedulePreset ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                                                >
+                                                    Custom
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setUseSchedulePreset(true)}
+                                                    className={cn("text-xs px-2 py-0.5 rounded transition-colors flex items-center gap-1", useSchedulePreset ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                                                >
+                                                    <CalendarClock className="h-3 w-3" />
+                                                    Link Preset
+                                                </button>
+                                            </>
+                                        )}
+                                        {linkedPresetId && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setLinkedPresetId(null);
+                                                    setLinkedPresetName(null);
+                                                }}
+                                                className="text-xs px-2 py-0.5 rounded transition-colors text-muted-foreground hover:text-foreground flex items-center gap-1"
+                                            >
+                                                Unlink
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                {linkedPresetId ? (
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+                                            <CalendarClock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                            <span className="flex-1 font-medium">{linkedPresetName}</span>
+                                            <code className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                                                {schedulePresets.find(p => p.id === linkedPresetId)?.schedule ?? field.value}
+                                            </code>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Schedule is controlled by this preset. Changes to the preset apply to this job automatically.
+                                        </p>
+                                    </div>
+                                ) : useSchedulePreset ? (
+                                    <Popover open={presetOpen} onOpenChange={setPresetOpen}>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                                                <span className="flex items-center gap-2 text-muted-foreground">
+                                                    <CalendarClock className="h-3.5 w-3.5" />
+                                                    Select a preset to link...
+                                                </span>
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                            <Command>
+                                                <CommandInput placeholder="Search presets..." />
+                                                <CommandList>
+                                                    <CommandEmpty>No presets found.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {schedulePresets.map((preset) => (
+                                                            <CommandItem
+                                                                key={preset.id}
+                                                                value={preset.name}
+                                                                className="group pr-1"
+                                                                onSelect={() => {
+                                                                    field.onChange(preset.schedule);
+                                                                    setLinkedPresetId(preset.id);
+                                                                    setLinkedPresetName(preset.name);
+                                                                    setPresetOpen(false);
+                                                                    setUseSchedulePreset(false);
+                                                                }}
+                                                            >
+                                                                <span className="flex-1">{preset.name}</span>
+                                                                <code className="ml-2 text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{preset.schedule}</code>
+                                                                <button
+                                                                    type="button"
+                                                                    className="opacity-0 group-hover:opacity-100 transition-opacity ml-1 rounded p-0.5 hover:bg-accent"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setPresetOpen(false);
+                                                                        setPresetEditTarget(preset);
+                                                                        setPresetEditOpen(true);
+                                                                    }}
+                                                                >
+                                                                    <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                </button>
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                    <CommandSeparator />
+                                                    <CommandGroup>
+                                                        <CommandItem
+                                                            value="__create__"
+                                                            onSelect={() => {
+                                                                setPresetOpen(false);
+                                                                setPresetCreateOpen(true);
+                                                            }}
+                                                            className="font-medium"
+                                                        >
+                                                            <Plus className="mr-2 h-3.5 w-3.5" />
+                                                            Create new preset...
+                                                        </CommandItem>
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                ) : (
+                                    <FormControl>
+                                        <SchedulePicker value={field.value} onChange={field.onChange} />
+                                    </FormControl>
+                                )}
                                 <FormMessage />
                             </FormItem>
                         )} />
@@ -499,7 +664,7 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                                         variant="outline"
                                         size="sm"
                                         onClick={() => {
-                                            append({ configId: "", retention: { ...defaultRetentionValue } });
+                                            append({ configId: "", retention: { ...defaultRetentionValue }, retentionPolicyId: DEFAULT_RETENTION_SENTINEL });
                                         }}
                                         disabled={usedDestIds.length >= destinations.length}
                                     >
@@ -555,6 +720,26 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
 
                     {/* TAB 3: ADVANCED (Compression & Encryption) */}
                     <TabsContent value="advanced" className="space-y-4 pt-4">
+                        <FormField control={form.control} name="namingTemplateId" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="flex items-center gap-2">
+                                    <FileText className="h-3 w-3" />
+                                    Naming Template
+                                </FormLabel>
+                                <FormControl>
+                                    <NamingTemplatePicker
+                                        value={field.value || null}
+                                        onChange={(id) => field.onChange(id || undefined)}
+                                        allowNone
+                                        placeholder="Use default template"
+                                    />
+                                </FormControl>
+                                <FormDescription>
+                                    Controls the backup file name format. Leave blank to use the system default.
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField control={form.control} name="encryptionProfileId" render={({ field }) => (
                                 <FormItem>
@@ -798,6 +983,35 @@ export function JobForm({ sources, destinations, notifications, encryptionProfil
                 </div>
             </form>
         </Form>
+
+        <SchedulePresetDialog
+            open={presetCreateOpen}
+            onOpenChange={setPresetCreateOpen}
+            onSuccess={(preset) => {
+                setSchedulePresets((prev) => [...prev, preset].sort((a, b) => a.name.localeCompare(b.name)));
+                form.setValue("schedule", preset.schedule);
+                setLinkedPresetId(preset.id);
+                setLinkedPresetName(preset.name);
+                setUseSchedulePreset(false);
+                setPresetCreateOpen(false);
+            }}
+        />
+
+        <SchedulePresetDialog
+            open={presetEditOpen}
+            onOpenChange={(v) => { setPresetEditOpen(v); if (!v) setPresetEditTarget(null); }}
+            preset={presetEditTarget ?? undefined}
+            onSuccess={(preset) => {
+                setSchedulePresets((prev) => prev.map((p) => p.id === preset.id ? preset : p));
+                if (linkedPresetId === preset.id) {
+                    setLinkedPresetName(preset.name);
+                    form.setValue("schedule", preset.schedule);
+                }
+                setPresetEditTarget(null);
+                setPresetEditOpen(false);
+            }}
+        />
+        </>
     )
 }
 
@@ -905,12 +1119,20 @@ function DestinationRow({ index, form, destinations, usedDestIds, isExpanded, on
             {/* Inline Retention Config */}
             <Collapsible open={isExpanded}>
                 <CollapsibleContent>
-                    <div className="border-t px-3 py-3 bg-muted/30">
-                        <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                    <div className="border-t px-3 py-3 bg-muted/30 space-y-2">
+                        <div className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                             <History className="h-3 w-3" />
                             Retention for {currentDest?.name || `Destination #${index + 1}`}
                         </div>
-                        <RetentionConfig form={form} prefix={`destinations.${index}.retention`} />
+                        <RetentionPolicyPicker
+                            value={form.watch(`destinations.${index}.retentionPolicyId`) ?? null}
+                            onChange={(id) => form.setValue(`destinations.${index}.retentionPolicyId`, id ?? undefined, { shouldValidate: true })}
+                            allowDefault
+                            placeholder="No policy (keep all)"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Select a retention policy to automatically clean up old backups at this destination.
+                        </p>
                     </div>
                 </CollapsibleContent>
             </Collapsible>
@@ -920,7 +1142,7 @@ function DestinationRow({ index, form, destinations, usedDestIds, isExpanded, on
 
 // --- Retention Config Component (reusable per destination) ---
 
-function RetentionConfig({ form, prefix }: { form: any; prefix: string }) {
+function _RetentionConfig({ form, prefix }: { form: any; prefix: string }) {
     const mode = form.watch(`${prefix}.mode`);
 
     return (

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, Database, HardDrive, FolderOpen, CalendarClock, History, Settings, Bell, ChevronsUpDown, LogOut, Moon, Sun, Monitor, Users, User, Lock, BookOpen, SearchCode, Rocket, ArrowUpCircle, FileCode2, Globe } from "lucide-react"
+import { LayoutDashboard, Database, HardDrive, FolderOpen, CalendarClock, History, Settings, Bell, ChevronsUpDown, LogOut, Moon, Sun, Monitor, Users, User, Lock, BookOpen, SearchCode, Rocket, ArrowUpCircle, FileCode2, Globe, LayoutTemplate } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useSession, signOut } from "@/lib/auth/client"
@@ -72,6 +72,7 @@ const sidebarGroups: SidebarGroup[] = [
         label: "Administration",
         items: [
             { icon: Lock, label: "Vault", href: "/dashboard/vault", permission: PERMISSIONS.VAULT.READ },
+            { icon: LayoutTemplate, label: "Templates", href: "/dashboard/templates", permission: PERMISSIONS.TEMPLATES.READ },
             { icon: Users, label: "Users & Groups", href: "/dashboard/users", permission: [PERMISSIONS.USERS.READ, PERMISSIONS.GROUPS.READ, PERMISSIONS.AUDIT.READ, PERMISSIONS.API_KEYS.READ] },
             { icon: Settings, label: "Settings", href: "/dashboard/settings", permission: PERMISSIONS.SETTINGS.READ },
         ],

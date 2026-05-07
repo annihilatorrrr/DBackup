@@ -43,7 +43,7 @@ export const TelegramSchema = z.object({
     botToken: z.string().min(1, "Bot Token is required").describe("Telegram Bot API token (from @BotFather)"),
     chatId: z.string().min(1, "Chat ID is required").describe("Chat, group, or channel ID"),
     messageThreadId: z.coerce.number().optional().describe("Topic/Thread ID for Telegram forum groups (leave empty for main chat)"),
-    parseMode: z.enum(["MarkdownV2", "HTML", "Markdown"]).default("HTML").describe("Message parse mode"),
+    parseMode: z.enum(["HTML", "Markdown"]).default("HTML").describe("Message parse mode"),
     disableNotification: z.boolean().default(false).describe("Send silently (no notification sound)"),
 });
 

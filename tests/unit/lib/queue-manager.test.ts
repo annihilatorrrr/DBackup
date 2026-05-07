@@ -23,6 +23,23 @@ vi.mock('@/lib/runner', () => ({
     performExecution: (...args: any[]) => mockPerformExecution(...args)
 }));
 
+const mockIsShutdownRequested = vi.fn().mockReturnValue(false);
+
+vi.mock('@/lib/server/shutdown', () => ({
+    isShutdownRequested: () => mockIsShutdownRequested()
+}));
+
+vi.mock('@/lib/logging/logger', () => ({
+    logger: {
+        child: () => ({
+            info: vi.fn(),
+            warn: vi.fn(),
+            error: vi.fn(),
+            debug: vi.fn(),
+        }),
+    },
+}));
+
 // 2. Import System Under Test
 import { processQueue } from '@/lib/execution/queue-manager';
 
@@ -90,5 +107,49 @@ describe('Queue Manager Concurrency', () => {
         await processQueue();
 
         expect(mockPerformExecution).toHaveBeenCalledWith('exec-1', 'job-1');
+    });
+
+    it('should skip processing and return early when shutdown is requested', async () => {
+        mockIsShutdownRequested.mockReturnValue(true);
+
+        await processQueue();
+
+        // Prisma should never be queried during shutdown
+        expect(vi.mocked(prisma.systemSetting.findUnique)).not.toHaveBeenCalled();
+        expect(mockPerformExecution).not.toHaveBeenCalled();
+    });
+
+    it('should return early when no pending jobs are found', async () => {
+        mockIsShutdownRequested.mockReturnValue(false);
+        vi.mocked(prisma.systemSetting.findUnique).mockResolvedValue({
+            key: 'maxConcurrentJobs',
+            value: '3',
+            description: null,
+            updatedAt: new Date()
+        });
+        vi.mocked(prisma.execution.count).mockResolvedValue(0); // slots available
+        vi.mocked(prisma.execution.findMany).mockResolvedValue([]); // nothing pending
+
+        await processQueue();
+
+        expect(mockPerformExecution).not.toHaveBeenCalled();
+    });
+
+    it('should return early when running count equals maxJobs (saturation)', async () => {
+        mockIsShutdownRequested.mockReturnValue(false);
+        vi.mocked(prisma.systemSetting.findUnique).mockResolvedValue({
+            key: 'maxConcurrentJobs',
+            value: '2',
+            description: null,
+            updatedAt: new Date()
+        });
+        // running == max, so availableSlots = 0
+        vi.mocked(prisma.execution.count).mockResolvedValue(2);
+
+        await processQueue();
+
+        // Should bail out before querying pending jobs
+        expect(vi.mocked(prisma.execution.findMany)).not.toHaveBeenCalled();
+        expect(mockPerformExecution).not.toHaveBeenCalled();
     });
 });

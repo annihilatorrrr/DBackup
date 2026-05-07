@@ -466,6 +466,137 @@ describe('SystemTaskService', () => {
         });
     });
 
+    describe('getTaskEnabled() - CONFIG_BACKUP fallback', () => {
+        it('returns default value when no legacy setting exists for CONFIG_BACKUP', async () => {
+            prismaMock.systemSetting.findUnique.mockResolvedValue(null);
+
+            const result = await service.getTaskEnabled(SYSTEM_TASKS.CONFIG_BACKUP);
+
+            expect(result).toBe(DEFAULT_TASK_CONFIG[SYSTEM_TASKS.CONFIG_BACKUP].enabled);
+        });
+    });
+
+    describe('getTaskConfig() - CONFIG_BACKUP legacy schedule', () => {
+        it('returns legacy schedule value for CONFIG_BACKUP when set', async () => {
+            prismaMock.systemSetting.findUnique.mockResolvedValue({
+                key: 'config.backup.schedule',
+                value: '0 4 * * *',
+            } as any);
+
+            const result = await service.getTaskConfig(SYSTEM_TASKS.CONFIG_BACKUP);
+
+            expect(result).toBe('0 4 * * *');
+        });
+    });
+
+    describe('setTaskRunOnStartup()', () => {
+        it('upserts runOnStartup setting', async () => {
+            prismaMock.systemSetting.upsert.mockResolvedValue({} as any);
+
+            await service.setTaskRunOnStartup(SYSTEM_TASKS.UPDATE_DB_VERSIONS, true);
+
+            expect(prismaMock.systemSetting.upsert).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: { key: `task.${SYSTEM_TASKS.UPDATE_DB_VERSIONS}.runOnStartup` },
+                    update: { value: 'true' },
+                })
+            );
+        });
+
+        it('upserts runOnStartup to false', async () => {
+            prismaMock.systemSetting.upsert.mockResolvedValue({} as any);
+
+            await service.setTaskRunOnStartup(SYSTEM_TASKS.HEALTH_CHECK, false);
+
+            expect(prismaMock.systemSetting.upsert).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    update: { value: 'false' },
+                })
+            );
+        });
+    });
+
+    describe('runTask() - additional edge cases', () => {
+        it('logs warning for unknown task id', async () => {
+            prismaMock.systemSetting.upsert.mockResolvedValue({} as any);
+
+            await expect(service.runTask('system.unknown_task')).resolves.toBeUndefined();
+        });
+
+        it('handles auditService.cleanOldLogs failure gracefully', async () => {
+            const { auditService } = await import('@/services/audit-service');
+            vi.mocked(auditService.cleanOldLogs).mockRejectedValueOnce(new Error('DB error'));
+            prismaMock.systemSetting.findUnique.mockResolvedValue(null);
+            prismaMock.notificationLog.deleteMany.mockResolvedValue({ count: 0 });
+
+            await expect(service.runTask(SYSTEM_TASKS.CLEAN_OLD_LOGS)).resolves.toBeUndefined();
+        });
+
+        it('handles cleanupOldSnapshots failure gracefully', async () => {
+            const { cleanupOldSnapshots } = await import('@/services/dashboard-service');
+            vi.mocked(cleanupOldSnapshots).mockRejectedValueOnce(new Error('Storage error'));
+            prismaMock.systemSetting.findUnique.mockResolvedValue(null);
+            prismaMock.notificationLog.deleteMany.mockResolvedValue({ count: 0 });
+
+            await expect(service.runTask(SYSTEM_TASKS.CLEAN_OLD_LOGS)).resolves.toBeUndefined();
+        });
+
+        it('handles notificationLog.deleteMany failure gracefully', async () => {
+            prismaMock.systemSetting.findUnique.mockResolvedValue(null);
+            prismaMock.notificationLog.deleteMany.mockRejectedValueOnce(new Error('DB write failed'));
+
+            await expect(service.runTask(SYSTEM_TASKS.CLEAN_OLD_LOGS)).resolves.toBeUndefined();
+        });
+
+        it('notifies with non-zero reminderIntervalHours for update_available event', async () => {
+            const { updateService } = await import('@/services/system/update-service');
+            const { notify, getNotificationConfig } = await import('@/services/notifications/system-notification-service');
+            const { getEventDefinition } = await import('@/lib/notifications/events');
+            vi.mocked(updateService.checkForUpdates).mockResolvedValue({
+                updateAvailable: true,
+                latestVersion: 'v5.0.0',
+                currentVersion: '2.0.0',
+            });
+            vi.mocked(getNotificationConfig).mockResolvedValue({
+                events: { update_available: { reminderIntervalHours: 48 } }
+            } as any);
+            vi.mocked(getEventDefinition).mockReturnValue({ supportsReminder: true } as any);
+            // No existing notification state - first time notifying
+            prismaMock.systemSetting.findUnique.mockResolvedValue(null);
+            prismaMock.systemSetting.upsert.mockResolvedValue({} as any);
+
+            await service.runTask(SYSTEM_TASKS.CHECK_FOR_UPDATES);
+
+            expect(notify).toHaveBeenCalledWith(expect.objectContaining({
+                eventType: 'update_available',
+            }));
+        });
+
+        it('handles adapter.test() promise rejection during UPDATE_DB_VERSIONS', async () => {
+            const { registry: reg } = await import('@/lib/core/registry');
+            const { resolveAdapterConfig } = await import('@/lib/adapters/config-resolver');
+            prismaMock.adapterConfig.findMany.mockResolvedValue([
+                { id: 'src1', name: 'TestDB', adapterId: 'mysql', type: 'database', metadata: '{}' }
+            ] as any);
+            vi.mocked(reg.get).mockReturnValue({
+                test: vi.fn().mockRejectedValue(new Error('timeout'))
+            } as any);
+            vi.mocked(resolveAdapterConfig).mockResolvedValue({} as any);
+            prismaMock.adapterConfig.update.mockResolvedValue({} as any);
+
+            await expect(service.runTask(SYSTEM_TASKS.UPDATE_DB_VERSIONS)).resolves.toBeUndefined();
+        });
+
+        it('logs when no SuperAdmin group is found during SYNC_PERMISSIONS', async () => {
+            prismaMock.group.updateMany.mockResolvedValue({ count: 0 });
+
+            await service.runTask(SYSTEM_TASKS.SYNC_PERMISSIONS);
+
+            // No assertion on log output - just verify it runs without error
+            expect(prismaMock.group.updateMany).toHaveBeenCalled();
+        });
+    });
+
     describe('getTaskLastRunAt()', () => {
         it('returns ISO timestamp string from DB when set', async () => {
             const ts = new Date().toISOString();

@@ -24,19 +24,19 @@ describe("MySQL Tools", () => {
     // Pre-init fallback values
     // -------------------------------------------------------------------------
 
-    it("getMysqlCommand returns 'mysql' before initialisation", async () => {
+    it("getMysqlCommand returns 'mariadb' before initialisation", async () => {
         const { getMysqlCommand } = await import("@/lib/adapters/database/mysql/tools");
-        expect(getMysqlCommand()).toBe("mysql");
+        expect(getMysqlCommand()).toBe("mariadb");
     });
 
-    it("getMysqldumpCommand returns 'mysqldump' before initialisation", async () => {
+    it("getMysqldumpCommand returns 'mariadb-dump' before initialisation", async () => {
         const { getMysqldumpCommand } = await import("@/lib/adapters/database/mysql/tools");
-        expect(getMysqldumpCommand()).toBe("mysqldump");
+        expect(getMysqldumpCommand()).toBe("mariadb-dump");
     });
 
-    it("getMysqladminCommand returns 'mysqladmin' before initialisation", async () => {
+    it("getMysqladminCommand returns 'mariadb-admin' before initialisation", async () => {
         const { getMysqladminCommand } = await import("@/lib/adapters/database/mysql/tools");
-        expect(getMysqladminCommand()).toBe("mysqladmin");
+        expect(getMysqladminCommand()).toBe("mariadb-admin");
     });
 
     // -------------------------------------------------------------------------

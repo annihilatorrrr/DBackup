@@ -120,6 +120,7 @@ function makeDbConfig(overrides?: Record<string, any>) {
         lastError: null,
         primaryCredentialId: null,
         sshCredentialId: null,
+        defaultRetentionPolicyId: null,
         ...overrides,
     };
 }
@@ -200,6 +201,7 @@ describe('StorageService', () => {
                 lastError: null,
                 primaryCredentialId: null,
                 sshCredentialId: null,
+                defaultRetentionPolicyId: null,
             };
 
             // Prisma Mock
@@ -241,6 +243,7 @@ describe('StorageService', () => {
                 lastError: null,
                 primaryCredentialId: null,
                 sshCredentialId: null,
+                defaultRetentionPolicyId: null,
             });
 
             await expect(service.listFiles('db-conf'))
@@ -263,6 +266,7 @@ describe('StorageService', () => {
                 lastError: null,
                 primaryCredentialId: null,
                 sshCredentialId: null,
+                defaultRetentionPolicyId: null,
             });
 
             vi.mocked(registry.get).mockReturnValue(undefined);

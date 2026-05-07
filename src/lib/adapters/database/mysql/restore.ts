@@ -7,6 +7,7 @@ import { getMysqlCommand } from "./tools";
 import { spawn } from "child_process";
 import { createReadStream } from "fs";
 import fs from "fs/promises";
+import { Transform } from "stream";
 import { randomUUID } from "crypto";
 import path from "path";
 import { waitForProcess } from "@/lib/adapters/process";
@@ -36,7 +37,55 @@ type MySQLRestoreConfig = (MySQLConfig | MariaDBConfig) & {
     privilegedAuth?: { user: string; password: string };
     databaseMapping?: { originalName: string; targetName: string; selected: boolean }[];
     selectedDatabases?: string[];
+    originalDatabase?: string;
 };
+
+/**
+ * Returns a Transform stream that rewrites database-name references in a mysqldump
+ * SQL stream when restoring to a different name.
+ *
+ * mysqldump always emits `USE \`originalDb\`;` and
+ * `CREATE DATABASE ... \`originalDb\`` lines that would override the target
+ * database specified on the mysql CLI.  This transform replaces those lines so
+ * the entire dump lands in `targetDb`.
+ */
+function createDatabaseRenameStream(originalDb: string, targetDb: string): Transform {
+    let buffer = '';
+    const escaped = originalDb.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    return new Transform({
+        transform(chunk, _encoding, callback) {
+            buffer += chunk.toString('utf8');
+            const lines = buffer.split('\n');
+            buffer = lines.pop() ?? '';
+
+            const out = lines.map(line => {
+                // USE `originalDb`;
+                if (line === `USE \`${originalDb}\`;`) return `USE \`${targetDb}\`;`;
+                // CREATE DATABASE ... `originalDb` ...
+                if (/^CREATE DATABASE\b/.test(line) && line.includes(`\`${originalDb}\``)) {
+                    return line.replace(new RegExp(`\\\`${escaped}\\\``, 'g'), `\`${targetDb}\``);
+                }
+                // ALTER DATABASE `originalDb` ...
+                if (/^ALTER DATABASE\b/.test(line) && line.includes(`\`${originalDb}\``)) {
+                    return line.replace(new RegExp(`\\\`${escaped}\\\``, 'g'), `\`${targetDb}\``);
+                }
+                return line;
+            });
+
+            callback(null, out.join('\n') + '\n');
+        },
+        flush(callback) {
+            if (!buffer) { callback(); return; }
+            let line = buffer;
+            if (line === `USE \`${originalDb}\`;`) line = `USE \`${targetDb}\`;`;
+            if (/^CREATE DATABASE\b/.test(line) && line.includes(`\`${originalDb}\``)) {
+                line = line.replace(new RegExp(`\\\`${escaped}\\\``, 'g'), `\`${targetDb}\``);
+            }
+            callback(null, line);
+        }
+    });
+}
 
 const MAX_STDERR_LOG_LINES = 50;
 const MAX_STDERR_LINE_LENGTH = 500;
@@ -128,17 +177,20 @@ export async function prepareRestore(config: MySQLRestoreConfig, databases: stri
 }
 
 /**
- * Restore a single SQL file to a specific database
+ * Restore a single SQL file to a specific database.
+ * Pass `originalDb` when the target name differs from the name embedded in the
+ * dump - the function will rewrite `USE` / `CREATE DATABASE` references inline.
  */
 async function restoreSingleFile(
     config: MySQLRestoreConfig,
     sourcePath: string,
     targetDb: string,
     onLog: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void,
-    onProgress?: (percentage: number, detail?: string) => void
+    onProgress?: (percentage: number, detail?: string) => void,
+    originalDb?: string
 ): Promise<void> {
     if (isSSHMode(config)) {
-        return restoreSingleFileSSH(config, sourcePath, targetDb, onLog, onProgress);
+        return restoreSingleFileSSH(config, sourcePath, targetDb, onLog, onProgress, originalDb);
     }
 
     const stats = await fs.stat(sourcePath);
@@ -171,7 +223,14 @@ async function restoreSingleFile(
     fileStream.on('error', () => mysqlProc.kill());
     mysqlProc.stdin.on('error', () => { /* ignore broken pipe */ });
 
-    fileStream.pipe(mysqlProc.stdin);
+    const needsRename = originalDb && originalDb !== targetDb;
+    if (needsRename) {
+        fileStream
+            .pipe(createDatabaseRenameStream(originalDb!, targetDb))
+            .pipe(mysqlProc.stdin);
+    } else {
+        fileStream.pipe(mysqlProc.stdin);
+    }
 
     const stderr = createStderrHandler(onLog);
     await waitForProcess(mysqlProc, 'mysql', (d) => {
@@ -189,7 +248,8 @@ async function restoreSingleFileSSH(
     sourcePath: string,
     targetDb: string,
     onLog: (msg: string, level?: LogLevel, type?: LogType, details?: string) => void,
-    onProgress?: (percentage: number, detail?: string) => void
+    onProgress?: (percentage: number, detail?: string) => void,
+    originalDb?: string
 ): Promise<void> {
     const stats = await fs.stat(sourcePath);
     const totalSize = stats.size;
@@ -249,9 +309,29 @@ async function restoreSingleFileSSH(
             // stat command failed - non-critical
         }
 
-        // 2. Run mysql restore on the remote server from the uploaded file
+        // 2. Run mysql restore on the remote server from the uploaded file.
+        // When restoring to a different name, rewrite USE/CREATE DATABASE refs via sed
+        // so the dump lands in targetDb regardless of what mysqldump embedded.
+        const needsRename = originalDb && originalDb !== targetDb;
+        let catPart: string;
+        if (needsRename) {
+            // Escape single quotes for embedding inside single-quoted sed patterns.
+            // MySQL identifiers cannot contain '/', '\' or '&' in practice, but
+            // we escape single quotes defensively.
+            const orig = originalDb!.replace(/'/g, "'\\''");
+            const tgt = targetDb.replace(/'/g, "'\\''");
+            catPart = [
+                `sed`,
+                `-e '/^USE /s/\`${orig}\`/\`${tgt}\`/g'`,
+                `-e '/^CREATE DATABASE /s/\`${orig}\`/\`${tgt}\`/g'`,
+                `-e '/^ALTER DATABASE /s/\`${orig}\`/\`${tgt}\`/g'`,
+                `${shellEscape(remoteTempFile)}`,
+            ].join(' ');
+        } else {
+            catPart = `cat ${shellEscape(remoteTempFile)}`;
+        }
         const restoreCmd = remoteEnv(env,
-            `cat ${shellEscape(remoteTempFile)} | ${mysqlBin} ${args.join(" ")}`
+            `${catPart} | ${mysqlBin} ${args.join(" ")}`
         );
         onLog(`Restoring to database (SSH): ${targetDb}`, 'info', 'command', `${mysqlBin} ${args.join(" ")}`);
         onProgress?.(95, 'Executing restore command...');
@@ -369,7 +449,7 @@ export async function restore(config: MySQLRestoreConfig, sourcePath: string, on
                     await ensureDatabase(config, targetDb, creationUser, creationPass, usePrivileged, logs);
 
                     // Restore this database
-                    await restoreSingleFile(config, dbFile, targetDb, log, onProgress);
+                    await restoreSingleFile(config, dbFile, targetDb, log, onProgress, dbEntry.name);
                     log(`Restored database: ${dbEntry.name} → ${targetDb}`);
                     restoredCount++;
                 }
@@ -384,22 +464,25 @@ export async function restore(config: MySQLRestoreConfig, sourcePath: string, on
 
         // Single-DB restore (regular SQL file)
         let targetDb: string;
+        let originalDb: string | undefined;
 
         if (dbMapping && dbMapping.length > 0) {
             const selected = dbMapping.filter(m => m.selected);
             if (selected.length === 0) {
                 throw new Error("No databases selected for restore");
             }
-            targetDb = selected[0].targetName || selected[0].originalName;
+            originalDb = selected[0].originalName;
+            targetDb = selected[0].targetName || originalDb;
             await ensureDatabase(config, targetDb, creationUser, creationPass, usePrivileged, logs);
         } else if (config.database) {
             targetDb = Array.isArray(config.database) ? config.database[0] : config.database;
+            originalDb = config.originalDatabase;
             await ensureDatabase(config, targetDb, creationUser, creationPass, usePrivileged, logs);
         } else {
             throw new Error("No target database specified for restore");
         }
 
-        await restoreSingleFile(config, sourcePath, targetDb, log, onProgress);
+        await restoreSingleFile(config, sourcePath, targetDb, log, onProgress, originalDb);
 
         return { success: true, logs, startedAt, completedAt: new Date() };
 

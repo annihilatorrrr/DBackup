@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { SortingState, ColumnFiltersState } from "@tanstack/react-table";
 import { ChevronsUpDown, HardDrive, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AdapterIcon } from "@/components/adapter/adapter-icon";
@@ -66,6 +67,10 @@ export function StorageClient({ canDownload, canRestore, canDelete }: StorageCli
     // Filter State
     const [showSystemConfigs, setShowSystemConfigs] = useState(false);
 
+    const [sorting, setSorting] = useState<SortingState>([{ id: "lastModified", desc: true }]);
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+    const pendingJobFilter = useRef<string | null>(searchParams.get("job"));
+
     const [files, setFiles] = useState<FileInfo[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -112,7 +117,16 @@ export function StorageClient({ canDownload, canRestore, canDelete }: StorageCli
             const typeFilter = showSystem ? "SYSTEM" : "BACKUP";
             const res = await fetch(`/api/storage/${destId}/files?typeFilter=${typeFilter}`);
             if (res.ok) {
-                setFiles(await res.json());
+                const fetchedFiles: FileInfo[] = await res.json();
+                setFiles(fetchedFiles);
+                if (pendingJobFilter.current) {
+                    const job = pendingJobFilter.current;
+                    const exists = fetchedFiles.some(f => f.jobName === job);
+                    if (exists) {
+                        setColumnFilters([{ id: "jobName", value: [job] }]);
+                    }
+                    pendingJobFilter.current = null;
+                }
             } else {
                  const data = await res.json();
                  toast.error(data.error || "Failed to fetch files");
@@ -383,6 +397,10 @@ export function StorageClient({ canDownload, canRestore, canDelete }: StorageCli
                                         columns={columns}
                                         data={files}
                                         filterableColumns={filterableColumns}
+                                        sorting={sorting}
+                                        onSortingChange={setSorting}
+                                        columnFilters={columnFilters}
+                                        onColumnFiltersChange={setColumnFilters}
                                         onRefresh={() => selectedDestination && fetchFiles(selectedDestination, showSystemConfigs)}
                                     />
                                 )}

@@ -61,7 +61,7 @@ async function dumpSingleDatabase(
 
     dumpProcess.stderr.on('data', (data) => {
         const msg = data.toString().trim();
-        // Filter benign warnings from MariaDB tools on Alpine
+        // Filter benign warnings from MariaDB tools
         if (msg.includes("Using a password") || msg.includes("Deprecated program name")) return;
         onLog(msg);
     });
