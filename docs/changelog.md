@@ -32,6 +32,10 @@ All notable changes to DBackup are documented here.
 
 - **Telegram MarkdownV2**: Removed the `MarkdownV2` parse mode option from Telegram notification adapters. It caused silent delivery failures while the UI incorrectly reported success. Use `HTML` or `Markdown` instead. ([#57](https://github.com/Skyfay/DBackup/issues/57))
 
+### 🧪 Tests
+
+- Improved unit test coverage across multiple services and adapters.
+
 ### 🔧 CI/CD
 
 - **Docker base image**: Migrated from `node:24-alpine` to `node:24-slim` (Debian bookworm). The Debian package `mariadb-client` ships with `libmariadb3 3.3.x`, which supports the `caching_sha2_password` authentication plugin natively - fixing the Alpine limitation where the bundled MariaDB client was too old. `su-exec` replaced with `gosu`. MongoDB Database Tools bumped to `100.16.1` via direct CDN download (MongoDB ships no Debian 12 arm64 packages - arm64 uses the `ubuntu2204-arm64` build, which is compatible with Debian bookworm).

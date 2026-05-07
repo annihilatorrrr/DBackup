@@ -202,6 +202,28 @@ describe("resolveAdapterConfig", () => {
         expect(result.password).toBe("smtp-pw");
     });
 
+    it("throws ConfigurationError when config JSON is malformed", async () => {
+        await expect(
+            resolveAdapterConfig({
+                id: "ac-1",
+                adapterId: "mysql",
+                config: "{ invalid json }",
+                primaryCredentialId: "cred-1",
+                sshCredentialId: null,
+            })
+        ).rejects.toBeInstanceOf(ConfigurationError);
+    });
+
+    it("throws ConfigurationError when loadAndValidate fails to fetch credential", async () => {
+        (getDecryptedCredentialData as any).mockRejectedValueOnce(new Error("Credential not found in vault"));
+
+        await expect(
+            resolveAdapterConfig(
+                buildRow({ adapterId: "mysql", primaryCredentialId: "cred-missing" })
+            )
+        ).rejects.toBeInstanceOf(ConfigurationError);
+    });
+
     it("ignores ssh credential when adapter does not declare an ssh slot", async () => {
         (getDecryptedCredentialData as any).mockResolvedValue({
             accessKeyId: "AKIA",

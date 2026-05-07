@@ -217,4 +217,18 @@ describe('updateService.checkForUpdates()', () => {
         expect(result.updateAvailable).toBe(false);
         expect(result.error).toBe('Failed to check for updates');
     });
+
+    // ── Unknown prerelease type (rc, alpha, etc.) ─────────────
+
+    it('filters out rc prerelease tag for stable user - hits getStability return 0 path', async () => {
+        globalFetch.mockResolvedValue({
+            ok: true,
+            json: async () => makeTags('v3.0.0-rc.1', 'v3.0.0-rc', `v${CURRENT_VERSION}`),
+        });
+
+        const result = await updateService.checkForUpdates();
+
+        // rc tags (stability 0) are filtered out for a stable user (stability 3)
+        expect(result.updateAvailable).toBe(false);
+    });
 });

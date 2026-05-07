@@ -31,7 +31,6 @@ export async function processQueue() {
     }
 
     const availableSlots = maxJobs - runningCount;
-    if (availableSlots <= 0) return;
 
     // 3. Get pending jobs (FIFO)
     const pendingJobs = await prisma.execution.findMany({
