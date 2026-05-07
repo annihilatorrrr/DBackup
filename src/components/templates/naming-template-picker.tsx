@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, Plus, FileText, ChevronsUpDown, Check, Star } from "lucide-react";
+import { Loader2, Plus, FileText, ChevronsUpDown, Check, Star, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -36,6 +36,8 @@ export function NamingTemplatePicker({ value, onChange, placeholder, allowNone }
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<NamingTemplate | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
@@ -111,6 +113,7 @@ export function NamingTemplatePicker({ value, onChange, placeholder, allowNone }
                   <CommandItem
                     key={template.id}
                     value={template.name}
+                    className="group pr-1"
                     onSelect={() => {
                       onChange(template.id);
                       setOpen(false);
@@ -122,12 +125,26 @@ export function NamingTemplatePicker({ value, onChange, placeholder, allowNone }
                         value === template.id ? "opacity-100" : "opacity-0"
                       )}
                     />
-                    <span className="flex items-center gap-2">
+                    <span className="flex flex-1 items-center gap-2">
                       {template.name}
                       {template.isDefault && (
                         <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
                       )}
                     </span>
+                    {!template.isSystem && (
+                      <button
+                        type="button"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity ml-1 rounded p-0.5 hover:bg-accent"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpen(false);
+                          setEditTarget(template);
+                          setEditOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                    )}
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -178,6 +195,17 @@ export function NamingTemplatePicker({ value, onChange, placeholder, allowNone }
           );
           onChange(template.id);
           setCreateOpen(false);
+        }}
+      />
+
+      <NamingTemplateDialog
+        open={editOpen}
+        onOpenChange={(v) => { setEditOpen(v); if (!v) setEditTarget(null); }}
+        template={editTarget ?? undefined}
+        onSuccess={(template) => {
+          setTemplates((prev) => prev.map((t) => t.id === template.id ? template : t));
+          setEditTarget(null);
+          setEditOpen(false);
         }}
       />
     </>

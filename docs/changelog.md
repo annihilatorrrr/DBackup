@@ -17,6 +17,7 @@ All notable changes to DBackup are documented here.
 - **Jobs - Schedule Presets**: The Schedule field in the Job form now includes a Preset toggle that opens a searchable dropdown of saved Schedule Presets, selecting one auto-fills the cron expression.
 - **Jobs - Browse Backups action**: Added a "Browse Backups" button (`FolderOpen` icon) to the Actions column in the Jobs table, positioned after the Run button. It navigates directly to the Storage Explorer with the destination pre-selected and the job name filter automatically applied (if backups for that job exist). When a job has multiple destinations, a dropdown appears to select which one to open. ([#59](https://github.com/Skyfay/DBackup/issues/59))
 - **Storage Explorer - Default sort**: The file list in the Storage Explorer now defaults to sorting by "Last Modified" in descending order so the latest backups are always shown first. ([#59](https://github.com/Skyfay/DBackup/issues/59))
+- **Picker Dropdowns - Inline Edit**: The Credential Profile, Retention Policy, and Naming Template pickers now show a pencil icon (on hover) next to each list entry. Clicking it opens the existing edit dialog directly without leaving the current form, so items can be corrected on the fly without interrupting the job configuration workflow.
 
 ### 🐛 Bug Fixes
 

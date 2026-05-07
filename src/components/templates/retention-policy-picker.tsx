@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, Plus, Timer, ChevronsUpDown, Check } from "lucide-react";
+import { Loader2, Plus, Timer, ChevronsUpDown, Check, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -40,6 +40,8 @@ export function RetentionPolicyPicker({
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<RetentionPolicy | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const fetchPolicies = useCallback(async () => {
     setLoading(true);
@@ -115,6 +117,7 @@ export function RetentionPolicyPicker({
                   <CommandItem
                     key={policy.id}
                     value={policy.name}
+                    className="group pr-1"
                     onSelect={() => {
                       onChange(policy.id);
                       setOpen(false);
@@ -126,7 +129,21 @@ export function RetentionPolicyPicker({
                         value === policy.id ? "opacity-100" : "opacity-0"
                       )}
                     />
-                    {policy.name}
+                    <span className="flex-1">{policy.name}</span>
+                    {!policy.isSystem && (
+                      <button
+                        type="button"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity ml-1 rounded p-0.5 hover:bg-accent"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpen(false);
+                          setEditTarget(policy);
+                          setEditOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                    )}
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -159,6 +176,17 @@ export function RetentionPolicyPicker({
           ].sort((a, b) => a.name.localeCompare(b.name)));
           onChange(policy.id);
           setCreateOpen(false);
+        }}
+      />
+
+      <RetentionPolicyDialog
+        open={editOpen}
+        onOpenChange={(v) => { setEditOpen(v); if (!v) setEditTarget(null); }}
+        policy={editTarget ?? undefined}
+        onSuccess={(policy) => {
+          setPolicies((prev) => prev.map((p) => p.id === policy.id ? policy : p));
+          setEditTarget(null);
+          setEditOpen(false);
         }}
       />
     </>
