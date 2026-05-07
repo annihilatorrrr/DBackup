@@ -21,7 +21,7 @@ import {
   unsetDefaultRetentionPolicy,
   deleteRetentionPolicy,
   parseRetentionPolicyConfig,
-} from "@/services/retention-policy-service";
+} from "@/services/templates/retention-policy-service";
 import { NotFoundError, ServiceError } from "@/lib/logging/errors";
 import type { RetentionConfiguration } from "@/lib/core/retention";
 

@@ -18,7 +18,7 @@ import {
   createSchedulePreset,
   updateSchedulePreset,
   deleteSchedulePreset,
-} from "@/services/schedule-preset-service";
+} from "@/services/templates/schedule-preset-service";
 import { NotFoundError, ServiceError } from "@/lib/logging/errors";
 
 const makePreset = (overrides: object = {}) => ({

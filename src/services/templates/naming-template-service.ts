@@ -11,6 +11,7 @@ export async function getNamingTemplates() {
 export async function getNamingTemplate(id: string) {
   const template = await prisma.namingTemplate.findUnique({ where: { id } });
   if (!template) throw new NotFoundError("NamingTemplate", id);
+  return template;
 }
 
 export async function getDefaultNamingTemplate() {

@@ -41,7 +41,7 @@ import { DateDisplay } from "@/components/utils/date-display";
 import {
   NAMING_TOKEN_GROUPS,
   previewPattern,
-} from "@/lib/naming-template-engine";
+} from "@/lib/templates/naming-template-engine";
 
 export function NamingTemplateList() {
   const [templates, setTemplates] = useState<NamingTemplate[]>([]);

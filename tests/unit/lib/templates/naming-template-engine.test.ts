@@ -3,7 +3,7 @@ import {
   applyNamingPattern,
   previewPattern,
   NAMING_TOKEN_GROUPS,
-} from "@/lib/naming-template-engine";
+} from "@/lib/templates/naming-template-engine";
 
 describe("naming-template-engine", () => {
   describe("NAMING_TOKEN_GROUPS", () => {
@@ -109,6 +109,42 @@ describe("naming-template-engine", () => {
         "UTC"
       );
       expect(result).toBe("job-job");
+    });
+
+    it("returns an empty string for an empty pattern", () => {
+      const result = applyNamingPattern("", "job", "db", fixedDate, "UTC");
+      expect(result).toBe("");
+    });
+
+    it("passes plain text through unchanged when no tokens are present", () => {
+      const result = applyNamingPattern("static-backup", "job", "db", fixedDate, "UTC");
+      expect(result).toBe("static-backup");
+    });
+
+    it("expands date tokens that appear inside a job name (documented edge case)", () => {
+      // If the job name itself contains a date token (e.g. 'yyyy'), it will be
+      // expanded because token substitution runs over the entire string.
+      const result = applyNamingPattern(
+        "{job_name}",
+        "backup_yyyy",
+        "db",
+        fixedDate,
+        "UTC"
+      );
+      expect(result).toBe("backup_2026");
+    });
+
+    it("shifts date correctly across day boundary in negative UTC offset", () => {
+      // 2026-05-07T01:30:00Z = 2026-05-06 21:30 in America/New_York (UTC-4 EDT)
+      const earlyUTC = new Date("2026-05-07T01:30:00Z");
+      const result = applyNamingPattern(
+        "yyyy-MM-dd",
+        "job",
+        "db",
+        earlyUTC,
+        "America/New_York"
+      );
+      expect(result).toBe("2026-05-06");
     });
   });
 

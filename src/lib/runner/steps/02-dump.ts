@@ -9,7 +9,7 @@ import { wrapError } from "@/lib/logging/errors";
 import { getBackupFileExtension } from "@/lib/backup-extensions";
 import { formatBytes } from "@/lib/utils";
 import prisma from "@/lib/prisma";
-import { applyNamingPattern } from "@/lib/naming-template-engine";
+import { applyNamingPattern } from "@/lib/templates/naming-template-engine";
 
 const log = logger.child({ step: "02-dump" });
 

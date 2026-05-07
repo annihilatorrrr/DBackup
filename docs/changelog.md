@@ -22,8 +22,13 @@ All notable changes to DBackup are documented here.
 - **Schedule Presets - Simple Mode**: The Schedule Preset create/edit dialog now uses the same `SchedulePicker` component as the Job form, offering both a Simple mode (Hourly/Daily/Weekly/Monthly with dropdowns) and a raw Cron mode. The value is always stored as a 5-part cron expression.
 - **Schedule Presets - Live Link**: Jobs can now be linked to a Schedule Preset instead of storing a static cron copy. When linked, the scheduler resolves the preset's current schedule at runtime - updating a preset automatically applies to all linked jobs without manual re-saves. The Job form shows the preset name and a cron badge when linked, with an Unlink button to break the connection and return to a custom schedule.
 
+### 🎨 Improvements
+
+- **Templates - Code organisation**: Moved `naming-template-engine` from `src/lib/` to `src/lib/templates/` and the three template services (`naming-template-service`, `retention-policy-service`, `schedule-preset-service`) from `src/services/` to `src/services/templates/`. All related test files were moved to matching subdirectories. All internal imports updated accordingly.
+
 ### 🐛 Bug Fixes
 
+- **Templates - `getNamingTemplate` missing return**: `getNamingTemplate()` in `naming-template-service` did not return the found record on success (only `throw`-ing on not-found). The function now correctly returns the template. Test updated to assert the return value.
 - **MySQL `caching_sha2_password`**: Fixed authentication failure when connecting to MySQL 8 servers using the `caching_sha2_password` auth plugin. The Docker base image has been migrated from Alpine (`node:24-alpine`) to Debian Slim (`node:24-slim`). The Debian package `mariadb-client` ships with `libmariadb3 3.3.x`, which supports `caching_sha2_password` natively - the Alpine MariaDB client was too old to handle this auth method. ([#48](https://github.com/Skyfay/DBackup/issues/48))
 - **SQLite backups**: Fixed missing `sqlite3` CLI tools in the Docker image, which caused SQLite backup jobs to fail when the database was mounted locally inside the container. ([#62](https://github.com/Skyfay/DBackup/issues/62))
 - **Smart Recovery**: Fixed a bug where restoring after a key delete and re-import always failed, even when the correct key was available. The content heuristic incorrectly rejected uncompressed TAR archives (multi-DB backups) because their headers consist mostly of null-byte padding - Smart Recovery now also detects POSIX TAR magic bytes (`ustar` at offset 257). ([#58](https://github.com/Skyfay/DBackup/issues/58))
@@ -35,6 +40,8 @@ All notable changes to DBackup are documented here.
 ### 🧪 Tests
 
 - Improved unit test coverage across multiple services and adapters.
+- **Naming Template Engine**: Added missing test cases - empty pattern, plain-text passthrough, date-token-in-job-name edge case (documented behavior), and timezone day-boundary shift. Total engine tests: 16.
+- **Naming Template Service**: Test for `getNamingTemplate` updated to verify the returned value (was only checking the call, not the result).
 
 ### 🔧 CI/CD
 

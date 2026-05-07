@@ -19,7 +19,7 @@ import {
   createNamingTemplate,
   updateNamingTemplate,
   deleteNamingTemplate,
-} from "@/services/naming-template-service";
+} from "@/services/templates/naming-template-service";
 import { NotFoundError, ServiceError } from "@/lib/logging/errors";
 
 const makeTemplate = (overrides: object = {}) => ({
@@ -61,11 +61,12 @@ describe("NamingTemplateService", () => {
       const tpl = makeTemplate();
       prismaMock.namingTemplate.findUnique.mockResolvedValue(tpl as any);
 
-      await getNamingTemplate("tpl-1");
+      const result = await getNamingTemplate("tpl-1");
 
       expect(prismaMock.namingTemplate.findUnique).toHaveBeenCalledWith({
         where: { id: "tpl-1" },
       });
+      expect(result).toBe(tpl);
     });
 
     it("throws NotFoundError when template does not exist", async () => {
