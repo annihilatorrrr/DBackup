@@ -67,33 +67,18 @@ async function restoreLocal(config: SQLiteConfig, sourcePath: string, log: (msg:
         fs.unlinkSync(dbPath);
     }
 
-    log(`Executing: ${binaryPath} "${dbPath}" < ${sourcePath}`);
-
-    // Setup generic read stream with progress
-    const totalSize = (await fs.promises.stat(sourcePath)).size;
-    let processed = 0;
-    const readStream = fs.createReadStream(sourcePath);
-
-    if (onProgress) {
-        readStream.on('data', (chunk) => {
-            processed += chunk.length;
-            const percent = Math.round((processed / totalSize) * 100);
-            onProgress(percent);
-        });
-    }
+    log(`Executing: ${binaryPath} "${dbPath}" ".restore ${sourcePath}"`);
 
     return new Promise((resolve, reject) => {
-        const child = spawn(binaryPath, [dbPath]);
-
-        readStream.pipe(child.stdin);
+        const child = spawn(binaryPath, [dbPath, `.restore ${sourcePath}`]);
 
         child.stderr.on("data", (data) => {
-             // Ignore "locked" errors if possible, or log them
             log(`[SQLite Stderr]: ${data.toString()}`);
         });
 
         child.on("close", (code) => {
             if (code === 0) {
+                if (onProgress) onProgress(100);
                 log("Restore completed successfully.");
                 resolve({ success: true });
             } else {
@@ -117,7 +102,7 @@ async function restoreSsh(config: SQLiteConfig, sourcePath: string, log: (msg: s
     await client.connect(sshConfig);
     log("SSH connection established.");
 
-    const remoteTempFile = `/tmp/dbackup_sqlite_restore_${randomUUID()}.sql`;
+    const remoteTempFile = `/tmp/dbackup_sqlite_restore_${randomUUID()}.db`;
 
     try {
         // Create remote backup and delete original
@@ -145,33 +130,19 @@ async function restoreSsh(config: SQLiteConfig, sourcePath: string, log: (msg: s
 
         if (onProgress) onProgress(50);
 
-        // 2. Run sqlite3 on the remote server with the uploaded file
-        const command = `${shellEscape(binaryPath)} ${escapedPath} < ${shellEscape(remoteTempFile)}`;
+        // 2. Restore the binary backup on the remote server via .restore
+        const command = `${shellEscape(binaryPath)} ${escapedPath} ".restore ${remoteTempFile}"`;
         log(`Executing remote command: ${binaryPath} ${dbPath}`);
+        const result = await client.exec(command);
+        if (result.code !== 0) {
+            throw new Error(`Remote restore failed (code ${result.code}): ${result.stderr.trim()}`);
+        }
+        if (result.stderr) {
+            log(`[Remote Stderr]: ${result.stderr}`);
+        }
 
-        await new Promise<void>((resolve, reject) => {
-            client.execStream(command, (err, stream) => {
-                if (err) return reject(err);
-
-                stream.on('data', () => {});
-
-                stream.stderr.on("data", (data: any) => {
-                    log(`[Remote Stderr]: ${data.toString()}`);
-                });
-
-                stream.on("exit", (code: number | null, signal?: string) => {
-                    if (code === 0) {
-                        if (onProgress) onProgress(100);
-                        log("Remote restore completed successfully.");
-                        resolve();
-                    } else {
-                        reject(new Error(`Remote process exited with code ${code ?? 'null'}${signal ? ` (signal: ${signal})` : ''}`));
-                    }
-                });
-
-                stream.on('error', (err: Error) => reject(err));
-            });
-        });
+        if (onProgress) onProgress(100);
+        log("Remote restore completed successfully.");
 
         return { success: true };
     } finally {

@@ -2,6 +2,20 @@
 
 All notable changes to DBackup are documented here.
 
+## vNEXT
+*Release: In Progress*
+
+### 🐛 Bug Fixes
+
+- **SQLite dump format**: Fixed a silent data-loss bug where SQLite backup jobs produced SQL text files (`.dump` output) instead of valid binary SQLite databases. The dump command has been changed from `.dump` (SQL text) to `.backup` (SQLite Online Backup API), which produces a proper binary `.db` file that can be opened directly with the `sqlite3` CLI. This also fixes WAL-mode databases that previously produced near-empty 132-byte output files. The restore pipeline has been updated accordingly, replacing the SQL-via-stdin approach with `.restore`.
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:vNEXT`
+- **Also tagged as**: `latest`, `vNEXT`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v2.2.0 - Templates System, Docker Image Update and Bug Fixes
 *Released: May 7, 2026*
 
