@@ -27,7 +27,13 @@ api_request() {
     curl_args+=(--insecure)
   fi
 
-  http_code=$(curl "${curl_args[@]}" -sS -o "${response_file}" -w "%{http_code}" -X "${method}" "${url}" \
+  http_code=$(curl "${curl_args[@]}" \
+    --connect-timeout 10 \
+    --max-time 60 \
+    --retry 3 \
+    --retry-delay 2 \
+    --retry-all-errors \
+    -sS -o "${response_file}" -w "%{http_code}" -X "${method}" "${url}" \
     -H "Authorization: Bearer ${DBACKUP_API_KEY}")
   curl_exit=$?
 

@@ -8,5 +8,4 @@ RUN apt-get update \
     ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-COPY ./execute.sh /backup/execute.sh
-RUN chmod +x /backup/execute.sh
+COPY --chmod=0555 ./execute.sh /backup/execute.sh
