@@ -2,8 +2,8 @@
 
 All notable changes to DBackup are documented here.
 
-## v2.2.1
-*Release: In Progress*
+## v2.2.1 - Scheduler Timezone Fixes, Smart Recovery Improvements, and more Bug Fixes
+*Released: May 9, 2026*
 
 ### ✨ Features
 
