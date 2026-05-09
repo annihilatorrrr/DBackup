@@ -22,7 +22,7 @@ export interface Execution {
     metadata?: string;
 }
 
-export const createColumns = (onViewLogs: (execution: Execution) => void, systemTimezone: string = "UTC"): ColumnDef<Execution>[] => [
+export const createColumns = (onViewLogs: (execution: Execution) => void): ColumnDef<Execution>[] => [
     {
         id: "jobName",
         accessorFn: (row) => row.job?.name || "Manual Action",
@@ -96,7 +96,7 @@ export const createColumns = (onViewLogs: (execution: Execution) => void, system
         accessorKey: "startedAt",
         header: "Started At",
         cell: ({ row }) => {
-             return <DateDisplay date={row.getValue("startedAt")} format="PPpp" timezone={systemTimezone} />;
+             return <DateDisplay date={row.getValue("startedAt")} format="PPpp" />;
         }
     },
     {

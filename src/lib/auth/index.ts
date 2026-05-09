@@ -157,7 +157,7 @@ export const auth = betterAuth({
             timezone: {
                 type: "string",
                 required: false,
-                defaultValue: "UTC"
+                defaultValue: ""
             },
             dateFormat: {
                 type: "string",

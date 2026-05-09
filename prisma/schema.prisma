@@ -158,7 +158,7 @@ model User {
   email            String     @unique
   emailVerified    Boolean
   image            String?
-  timezone         String     @default("UTC")
+  timezone         String     @default("")
   dateFormat       String     @default("P")
   timeFormat       String     @default("p")
   autoRedirectOnJobStart Boolean @default(true)

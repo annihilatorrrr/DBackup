@@ -5,9 +5,22 @@ All notable changes to DBackup are documented here.
 ## vNEXT
 *Release: In Progress*
 
+### ✨ Features
+
+- **profile**: Added an "Auto (Browser Timezone)" option to the timezone selector in Profile. New users now default to Auto instead of UTC - timestamps automatically follow the browser's detected timezone without any manual configuration.
+
 ### 🐛 Bug Fixes
 
-- **SQLite dump format**: Fixed a silent data-loss bug where SQLite backup jobs produced SQL text files (`.dump` output) instead of valid binary SQLite databases. The dump command has been changed from `.dump` (SQL text) to `.backup` (SQLite Online Backup API), which produces a proper binary `.db` file that can be opened directly with the `sqlite3` CLI. This also fixes WAL-mode databases that previously produced near-empty 132-byte output files. The restore pipeline has been updated accordingly, replacing the SQL-via-stdin approach with `.restore`.
+- **SQLite**: Fixed a silent data-loss bug where backup jobs produced SQL text files instead of valid binary databases. The dump command now uses the SQLite Online Backup API (`.backup`) producing a proper `.db` file, fixing WAL-mode databases that previously produced near-empty output. The restore pipeline now uses `.restore` instead of SQL-via-stdin.
+- **Timezone**: Schedule picker preview now shows the correct time in the Scheduler Timezone (from Settings - General). The timezone name is appended to the description (e.g. `Runs every day at 03:00 (Europe/Berlin)`). ([#66](https://github.com/Skyfay/DBackup/issues/66))
+- **Timezone**: Dashboard activity chart now groups executions by day using the Scheduler Timezone. Jobs running near midnight are now assigned to the correct day. ([#65](https://github.com/Skyfay/DBackup/issues/65))
+- **Timezone**: History table "Started At" column now displays timestamps in each user's own profile timezone instead of forcing the scheduler timezone on everyone.
+- **Timezone**: Health history tooltip now uses the user's profile timezone for timestamps.
+
+### 📝 Documentation
+
+- **Timezones guide**: Added a new [Timezones](https://docs.dbackup.app/user-guide/features/timezones) page explaining the two-timezone model (Scheduler Timezone vs. User Display Timezone), configuration, and troubleshooting.
+- **Scheduling guide**: Updated the Time Zone section to refer to the Scheduler Timezone UI setting instead of the `TZ` environment variable.
 
 ### 🐳 Docker
 

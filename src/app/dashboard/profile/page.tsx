@@ -60,7 +60,7 @@ export default async function ProfilePage() {
                     <ProfileForm
                         user={{
                             ...session.user,
-                            timezone: session.user.timezone || "UTC",
+                            timezone: session.user.timezone || "",
                             dateFormat: session.user.dateFormat || "P",
                             timeFormat: session.user.timeFormat || "p",
                             passkeyTwoFactor: session.user.passkeyTwoFactor || false,

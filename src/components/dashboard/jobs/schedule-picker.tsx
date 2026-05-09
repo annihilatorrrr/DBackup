@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -90,19 +90,20 @@ function parseCron(cron: string): { mode: "simple"; schedule: SimpleSchedule } |
   return { mode: "cron" };
 }
 
-function describeSchedule(schedule: SimpleSchedule, formatTime: (hour: number, minute: number) => string): string {
+function describeSchedule(schedule: SimpleSchedule, formatTime: (hour: number, minute: number) => string, schedulerTimezone: string): string {
   const { frequency, minute, hour, dayOfWeek, dayOfMonth } = schedule;
   const time = formatTime(hour, minute);
   const day = DAYS_OF_WEEK.find((d) => d.value === String(dayOfWeek))?.label ?? "";
+  const tz = ` (${schedulerTimezone})`;
   switch (frequency) {
     case "hourly":
       return `Runs every hour at minute :${String(minute).padStart(2, "0")}`;
     case "daily":
-      return `Runs every day at ${time}`;
+      return `Runs every day at ${time}${tz}`;
     case "weekly":
-      return `Runs every ${day} at ${time}`;
+      return `Runs every ${day} at ${time}${tz}`;
     case "monthly":
-      return `Runs on day ${dayOfMonth} of every month at ${time}`;
+      return `Runs on day ${dayOfMonth} of every month at ${time}${tz}`;
   }
 }
 
@@ -114,14 +115,27 @@ interface SchedulePickerProps {
 export function SchedulePicker({ value, onChange }: SchedulePickerProps) {
   const { data: session } = useSession();
   // @ts-expect-error - types might not be generated yet
-  const userTimezone = session?.user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-  // @ts-expect-error - types might not be generated yet
   const userTimeFormat: string = session?.user?.timeFormat || "p";
 
+  // Scheduler timezone: controls when cron jobs actually fire.
+  // This is the system.timezone setting, NOT the user profile timezone.
+  const [schedulerTimezone, setSchedulerTimezone] = useState("UTC");
+
+  useEffect(() => {
+    fetch("/api/system/timezone")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.schedulerTimezone) setSchedulerTimezone(data.schedulerTimezone);
+      })
+      .catch(() => { /* keep default UTC on error */ });
+  }, []);
+
+  // Format a cron hour/minute value in the scheduler timezone so the preview
+  // reflects the time the job will actually run.
   const formatTime = useCallback((hour: number, minute: number) => {
     const refDate = new Date(2000, 0, 1, hour, minute, 0);
-    return formatInTimeZone(refDate, userTimezone, userTimeFormat);
-  }, [userTimezone, userTimeFormat]);
+    return formatInTimeZone(refDate, schedulerTimezone, userTimeFormat);
+  }, [schedulerTimezone, userTimeFormat]);
 
   const parsed = useMemo(() => parseCron(value), [value]);
   const initialMode = parsed.mode === "simple" ? "simple" : "cron";
@@ -164,7 +178,7 @@ export function SchedulePicker({ value, onChange }: SchedulePickerProps) {
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <CalendarClock className="h-4 w-4" />
-          <span>{mode === "simple" ? describeSchedule(schedule, formatTime) : `Cron: ${value}`}</span>
+          <span>{mode === "simple" ? describeSchedule(schedule, formatTime, schedulerTimezone) : `Cron: ${value}`}</span>
         </div>
         <div className="flex items-center rounded-md border border-border bg-muted/50 p-0.5">
           <Button

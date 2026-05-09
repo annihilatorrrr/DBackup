@@ -175,6 +175,7 @@ export default defineConfig({
             { text: 'Notifications', link: '/user-guide/features/notifications' },
             { text: 'System Backup', link: '/user-guide/features/system-backup' },
             { text: 'Profile & Settings', link: '/user-guide/features/profile-settings' },
+            { text: 'Timezones', link: '/user-guide/features/timezones' },
             { text: 'Rate Limits', link: '/user-guide/features/rate-limits' },
             { text: 'API Keys', link: '/user-guide/features/api-keys' },
             { text: 'Webhook Triggers', link: '/user-guide/features/webhook-triggers' },

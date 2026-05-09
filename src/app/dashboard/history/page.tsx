@@ -151,7 +151,7 @@ function HistoryContent() {
         }
     }, [fetchHistory]);
 
-    const columns = useMemo(() => createColumns(setSelectedLog, systemTimezone), [systemTimezone]);
+    const columns = useMemo(() => createColumns(setSelectedLog), []);
     const notificationColumns = useMemo(
         () => createNotificationLogColumns(setSelectedNotification),
         []
