@@ -6,6 +6,13 @@ This page outlines planned features and improvements for DBackup. Features are s
 
 ## 🚀 Planned Features
 
+### Restic Storage Backend
+- Support Restic as a storage destination for database backups
+- Leverage Restic's block-level deduplication to minimize storage consumption (e.g. a 10 GB database growing by 100 MB/day needs ~10.9 GB instead of 104.5 GB with full dumps)
+- Combined with `--rsyncable` gzip compression for even better deduplication ratios
+- Requires a different backup and restore architecture compared to file-based storage adapters: separate repository management, backup browsing, and retention handling via Restic's own policies
+- ([#68](https://github.com/Skyfay/DBackup/issues/68))
+
 ### Runner Resilience
 - **Retry Logic**: Exponential backoff for transient errors (network timeouts, storage hiccups)
 - **Dead Letter Queue**: Move repeatedly failing jobs to a separate status for investigation

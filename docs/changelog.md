@@ -20,6 +20,7 @@ All notable changes to DBackup are documented here.
 
 ### 📝 Documentation
 
+- **Roadmap**: Added Restic storage backend as a planned feature. ([#68](https://github.com/Skyfay/DBackup/issues/68))
 - **Timezones guide**: Added a new [Timezones](https://docs.dbackup.app/user-guide/features/timezones) page explaining the two-timezone model (Scheduler Timezone vs. User Display Timezone), configuration, and troubleshooting.
 - **Scheduling guide**: Updated the Time Zone section to refer to the Scheduler Timezone UI setting instead of the `TZ` environment variable.
 
