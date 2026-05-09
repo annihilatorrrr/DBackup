@@ -2,7 +2,7 @@
 
 All notable changes to DBackup are documented here.
 
-## vNEXT
+## v2.2.1
 *Release: In Progress*
 
 ### ✨ Features
@@ -26,8 +26,8 @@ All notable changes to DBackup are documented here.
 
 ### 🐳 Docker
 
-- **Image**: `skyfay/dbackup:vNEXT`
-- **Also tagged as**: `latest`, `vNEXT`
+- **Image**: `skyfay/dbackup:v2.2.1`
+- **Also tagged as**: `latest`, `v2`
 - **Platforms**: linux/amd64, linux/arm64
 
 
