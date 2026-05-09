@@ -14,7 +14,7 @@ export function DateDisplay({ date, format = "Pp", className, timezone }: DateDi
   const { data: session } = useSession()
   // Use provided timezone (system), or fall back to user's timezone, or browser default
   // @ts-expect-error - types might not be generated yet
-  const userTimezone = timezone || session?.user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+  const userTimezone = timezone || session?.user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
   // @ts-expect-error - types might not be generated yet
   const dateFormat = session?.user?.dateFormat || "P";
   // @ts-expect-error - types might not be generated yet

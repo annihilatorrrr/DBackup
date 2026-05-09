@@ -80,7 +80,7 @@ export function ProfileForm({ user, canUpdateName, canUpdateEmail }: ProfileForm
         defaultValues: {
             name: user.name || "",
             email: user.email || "",
-            timezone: user.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+            timezone: user.timezone || "",
             dateFormat: user.dateFormat || "P",
             timeFormat: user.timeFormat || "p",
         },
@@ -262,14 +262,11 @@ export function ProfileForm({ user, canUpdateName, canUpdateEmail }: ProfileForm
                                                     variant="outline"
                                                     role="combobox"
                                                     aria-expanded={openTimezone}
-                                                    className={cn(
-                                                        "w-full justify-between",
-                                                        !field.value && "text-muted-foreground"
-                                                    )}
+                                                    className="w-full justify-between"
                                                 >
-                                                    {field.value
-                                                        ? (timezones.find((timezone) => timezone === field.value) || field.value)
-                                                        : "Select timezone"}
+                                                    {field.value === ""
+                                                        ? "Auto (Browser Timezone)"
+                                                        : (timezones.find((timezone) => timezone === field.value) || field.value)}
                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                 </Button>
                                             </FormControl>
@@ -280,6 +277,22 @@ export function ProfileForm({ user, canUpdateName, canUpdateEmail }: ProfileForm
                                                 <CommandList>
                                                     <CommandEmpty>No timezone found.</CommandEmpty>
                                                     <CommandGroup>
+                                                        <CommandItem
+                                                            value="auto"
+                                                            key="auto"
+                                                            onSelect={() => {
+                                                                form.setValue("timezone", "")
+                                                                setOpenTimezone(false)
+                                                            }}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    field.value === "" ? "opacity-100" : "opacity-0"
+                                                                )}
+                                                            />
+                                                            Auto (Browser Timezone)
+                                                        </CommandItem>
                                                         {timezones.map((timezone) => (
                                                             <CommandItem
                                                                 value={timezone}

@@ -236,6 +236,58 @@ describe('checkKeyCandidate (via resolveDecryptionKey)', () => {
         expect(result).toBe(correctKey);
     });
 
+    it('returns key when decrypted content is a PostgreSQL custom-format dump (PGDMP magic)', async () => {
+        // pg_dump -Fc always starts with the 5-byte ASCII magic "PGDMP" followed by version bytes.
+        // This applies to single-DB backups regardless of the -Z compression level.
+        const pgHeader = Buffer.alloc(512, 0x00);
+        Buffer.from('PGDMP').copy(pgHeader, 0);
+        pgHeader[5] = 0x01; // version major
+        pgHeader[6] = 0x0e; // version minor
+        const { ciphertext, authTag } = encryptBuffer(correctKey, pgHeader, iv);
+
+        setupSmartRecovery(correctKey);
+        mockCreateReadStream.mockReturnValue(makeReadStream(ciphertext));
+
+        const result = await resolveDecryptionKey(
+            makeEncryptionMeta(iv, authTag),
+            '/tmp/backup.dump.enc',
+            undefined,
+            noop,
+        );
+        expect(result).toBe(correctKey);
+    });
+
+    it('throws when decrypted PostgreSQL dump has wrong PGDMP magic (wrong key)', async () => {
+        const pgHeader = Buffer.alloc(512, 0x00);
+        Buffer.from('PGDMP').copy(pgHeader, 0);
+        const { ciphertext, authTag } = encryptBuffer(correctKey, pgHeader, iv);
+
+        setupSmartRecovery(wrongKey);
+        mockCreateReadStream.mockReturnValue(makeReadStream(ciphertext));
+
+        await expect(
+            resolveDecryptionKey(makeEncryptionMeta(iv, authTag), '/tmp/backup.dump.enc', undefined, noop),
+        ).rejects.toThrow('missing, and no other profile could decrypt this file');
+    });
+
+    it('returns key when decrypted content is a mongodump gzip archive (GZIP magic, no pipeline compression)', async () => {
+        // mongodump --archive --gzip produces a gzip stream regardless of the pipeline
+        // compression setting. compressionMeta is undefined in this scenario.
+        const plaintext = Buffer.concat([Buffer.from([0x1f, 0x8b, 0x08, 0x00]), Buffer.alloc(60)]);
+        const { ciphertext, authTag } = encryptBuffer(correctKey, plaintext, iv);
+
+        setupSmartRecovery(correctKey);
+        mockCreateReadStream.mockReturnValue(makeReadStream(ciphertext));
+
+        const result = await resolveDecryptionKey(
+            makeEncryptionMeta(iv, authTag),
+            '/tmp/backup.archive.enc',
+            undefined, // no pipeline compression - mongodump handles gzip internally
+            noop,
+        );
+        expect(result).toBe(correctKey);
+    });
+
     it('throws when createReadStream emits an error', async () => {
         const { authTag } = encryptBuffer(correctKey, Buffer.from('SELECT 1'), iv);
 
@@ -382,5 +434,40 @@ describe('Key Import Scenario (delete + re-import with new ID)', () => {
         expect(result).toBe(masterKey);
         // Original + 3 candidates = 4 calls total.
         expect(encryptionService.getProfileMasterKey).toHaveBeenCalledTimes(4);
+    });
+
+    it('recovers a single-DB PostgreSQL dump (.dump.enc, no pipeline compression)', async () => {
+        // pg_dump -Fc always starts with "PGDMP" regardless of the -Z compression setting.
+        // Single-DB PG backups fail the ASCII heuristic because the custom format is binary.
+        const pgHeader = Buffer.alloc(512, 0x00);
+        Buffer.from('PGDMP').copy(pgHeader, 0);
+        pgHeader[5] = 0x01; // version major
+        pgHeader[6] = 0x0e; // version minor
+        const { ciphertext, authTag } = encryptBuffer(masterKey, pgHeader, iv);
+        mockCreateReadStream.mockReturnValue(makeReadStream(ciphertext));
+
+        const result = await resolveDecryptionKey(
+            makeEncryptionMeta(iv, authTag, { profileId: originalId }),
+            '/tmp/backup.dump.enc',
+            undefined, // no pipeline compression
+            log,
+        );
+        expect(result).toBe(masterKey);
+    });
+
+    it('recovers a single-DB MongoDB archive (.archive.enc, no pipeline compression)', async () => {
+        // mongodump --archive --gzip produces a gzip stream stored directly as the backup file.
+        // compressionMeta is undefined because no pipeline compression is configured.
+        const plaintext = Buffer.concat([Buffer.from([0x1f, 0x8b, 0x08, 0x00]), Buffer.alloc(60)]);
+        const { ciphertext, authTag } = encryptBuffer(masterKey, plaintext, iv);
+        mockCreateReadStream.mockReturnValue(makeReadStream(ciphertext));
+
+        const result = await resolveDecryptionKey(
+            makeEncryptionMeta(iv, authTag, { profileId: originalId }),
+            '/tmp/backup.archive.enc',
+            undefined, // mongodump handles gzip internally, no pipeline compression
+            log,
+        );
+        expect(result).toBe(masterKey);
     });
 });

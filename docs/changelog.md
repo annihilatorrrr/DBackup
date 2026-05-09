@@ -2,6 +2,35 @@
 
 All notable changes to DBackup are documented here.
 
+## v2.2.1 - Scheduler Timezone Fixes, Smart Recovery Improvements, and more Bug Fixes
+*Released: May 9, 2026*
+
+### ✨ Features
+
+- **profile**: Added an "Auto (Browser Timezone)" option to the timezone selector in Profile. New users now default to Auto instead of UTC - timestamps automatically follow the browser's detected timezone without any manual configuration.
+
+### 🐛 Bug Fixes
+
+- **SQLite**: Fixed a silent data-loss bug where backup jobs produced SQL text files instead of valid binary databases. The dump command now uses the SQLite Online Backup API (`.backup`) producing a proper `.db` file, fixing WAL-mode databases that previously produced near-empty output. The restore pipeline now uses `.restore` instead of SQL-via-stdin.
+- **Timezone**: Schedule picker preview now shows the correct time in the Scheduler Timezone (from Settings - General). The timezone name is appended to the description (e.g. `Runs every day at 03:00 (Europe/Berlin)`). ([#66](https://github.com/Skyfay/DBackup/issues/66))
+- **Timezone**: Dashboard activity chart now groups executions by day using the Scheduler Timezone. Jobs running near midnight are now assigned to the correct day. ([#65](https://github.com/Skyfay/DBackup/issues/65))
+- **Timezone**: History table "Started At" column now displays timestamps in each user's own profile timezone instead of forcing the scheduler timezone on everyone.
+- **Timezone**: Health history tooltip now uses the user's profile timezone for timestamps.
+- **Smart Recovery**: Fixed Smart Recovery failing for single-DB backups after a key delete and re-import. The content heuristic now checks GZIP magic bytes unconditionally (catches pipeline GZIP and MongoDB `--gzip` archives without pipeline compression), and adds detection for the PostgreSQL custom dump format (`PGDMP` magic at offset 0). Previously, only multi-DB TAR archives and plain-text SQL were recognized - all PostgreSQL single-DB backups (which always use `pg_dump -Fc` binary format) and MongoDB single-DB gzip archives fell through with no match and Smart Recovery always failed. ([#58](https://github.com/Skyfay/DBackup/issues/58))
+
+### 📝 Documentation
+
+- **Roadmap**: Added Restic storage backend as a planned feature. ([#68](https://github.com/Skyfay/DBackup/issues/68))
+- **Timezones guide**: Added a new [Timezones](https://docs.dbackup.app/user-guide/features/timezones) page explaining the two-timezone model (Scheduler Timezone vs. User Display Timezone), configuration, and troubleshooting.
+- **Scheduling guide**: Updated the Time Zone section to refer to the Scheduler Timezone UI setting instead of the `TZ` environment variable.
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v2.2.1`
+- **Also tagged as**: `latest`, `v2`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v2.2.0 - Templates System, Docker Image Update and Bug Fixes
 *Released: May 7, 2026*
 

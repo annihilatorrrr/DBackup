@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
-import { format, subDays, startOfDay } from "date-fns";
+import { subDays, startOfDay } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { registry } from "@/lib/core/registry";
 import { StorageAdapter } from "@/lib/core/interfaces";
 import { resolveAdapterConfig } from "@/lib/adapters/config-resolver";
@@ -120,8 +121,13 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 /**
  * Fetches execution activity grouped by day for the last N days.
  * Used for the Jobs Activity stacked bar chart.
+ * Day boundaries are determined by the system scheduler timezone so the chart
+ * matches the timezone in which jobs are scheduled.
  */
 export async function getActivityData(days: number = 14): Promise<ActivityDataPoint[]> {
+  const tzSetting = await prisma.systemSetting.findUnique({ where: { key: "system.timezone" } });
+  const timezone = tzSetting?.value || "UTC";
+
   const now = new Date();
   const startDate = startOfDay(subDays(now, days - 1));
 
@@ -130,18 +136,20 @@ export async function getActivityData(days: number = 14): Promise<ActivityDataPo
     select: { status: true, startedAt: true },
   });
 
-  // Build a map of date -> status counts
+  // Build a map of date -> status counts.
+  // Dates are formatted in the scheduler timezone so day boundaries align with
+  // the timezone in which cron expressions are evaluated.
   const dateMap = new Map<string, ActivityDataPoint>();
 
   // Initialize all days with zeros
   for (let i = 0; i < days; i++) {
-    const date = format(subDays(now, days - 1 - i), "MMM d");
+    const date = formatInTimeZone(subDays(now, days - 1 - i), timezone, "MMM d");
     dateMap.set(date, { date, completed: 0, failed: 0, running: 0, pending: 0, cancelled: 0 });
   }
 
   // Count executions per day
   for (const exec of executions) {
-    const dateKey = format(exec.startedAt, "MMM d");
+    const dateKey = formatInTimeZone(exec.startedAt, timezone, "MMM d");
     const entry = dateMap.get(dateKey);
     if (!entry) continue;
 

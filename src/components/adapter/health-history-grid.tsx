@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Loader2, AlertCircle } from "lucide-react";
-import { format } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useDateFormatter } from "@/hooks/use-date-formatter";
 
 interface HealthLog {
     id: string;
@@ -91,6 +91,7 @@ export function HealthHistoryGrid({ adapterId }: HealthHistoryGridProps) {
 }
 
 function LogPoint({ log }: { log: HealthLog }) {
+    const { formatDate } = useDateFormatter();
     const color = {
         ONLINE: "bg-green-500 hover:bg-green-600",
         DEGRADED: "bg-orange-500 hover:bg-orange-600",
@@ -104,7 +105,7 @@ function LogPoint({ log }: { log: HealthLog }) {
                     <div className={cn("h-3 w-3 rounded-sm cursor-help transition-colors", color)} />
                 </TooltipTrigger>
                 <TooltipContent className="text-xs">
-                    <p className="font-semibold">{format(new Date(log.createdAt), "HH:mm:ss")}</p>
+                    <p className="font-semibold">{formatDate(new Date(log.createdAt), "HH:mm:ss")}</p>
                     <p>Status: {log.status}</p>
                     <p>Latency: {log.latencyMs}ms</p>
                     {log.error && <p className="text-red-400 max-w-50 wrap-break-word mt-1">{log.error}</p>}

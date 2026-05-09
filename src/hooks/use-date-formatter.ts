@@ -16,7 +16,7 @@ export function useDateFormatter() {
   const { data: session } = useSession()
 
   // @ts-expect-error - types might not be generated yet
-  const userTimezone = session?.user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+  const userTimezone = session?.user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
   // @ts-expect-error - types might not be generated yet
   const dateFormat = session?.user?.dateFormat || "P"
   // @ts-expect-error - types might not be generated yet

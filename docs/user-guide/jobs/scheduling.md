@@ -126,21 +126,17 @@ End of business day:
 
 ## Time Zone
 
-DBackup uses the server's time zone. In Docker:
+DBackup interprets all cron expressions in the **Scheduler Timezone** configured in **Settings - General**. For example, `0 3 * * *` means "3:00 AM in the configured scheduler timezone."
 
-```yaml
-services:
-  dbackup:
-    environment:
-      - TZ=Europe/Berlin
-```
+To change the scheduler timezone:
 
-Common time zones:
-- `UTC` - Coordinated Universal Time
-- `Europe/Berlin` - Central European Time
-- `America/New_York` - Eastern Time
-- `America/Los_Angeles` - Pacific Time
-- `Asia/Tokyo` - Japan Standard Time
+1. Open **Settings** in the sidebar.
+2. Go to the **General** tab.
+3. Select your timezone under **Scheduler Timezone**.
+
+The schedule picker preview in the job form always shows the time in the scheduler timezone with the timezone name in brackets so you know exactly when a job will fire.
+
+> For a full explanation of all timezone settings (scheduler timezone, per-user display timezone, and the optional `TZ` environment variable), see the [Timezones guide](../features/timezones.md).
 
 ## Scheduler Behavior
 

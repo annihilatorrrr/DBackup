@@ -95,19 +95,47 @@ function checkKeyCandidate(
 
 /**
  * Checks whether decrypted bytes look like valid backup content.
- * - GZIP: first two bytes must be the GZIP magic number (0x1f 0x8b).
- * - TAR: POSIX/GNU tar stores "ustar" at offset 257. Covers uncompressed TAR archives.
- * - BROTLI or no compression: >70% of bytes must be printable ASCII (plain SQL dumps).
+ *
+ * Supported format detection (in order):
+ * - GZIP magic (0x1f 0x8b): catches pipeline GZIP compression AND mongodump --gzip archives.
+ *   Checked unconditionally so that formats that are inherently gzip (e.g. MongoDB single-DB
+ *   archive) are matched even when no pipeline compression is configured (compressionMeta
+ *   is undefined).  When compressionMeta IS 'GZIP' and the magic does not match we return
+ *   false immediately (wrong key).
+ * - PostgreSQL custom format (pg_dump -Fc): file starts with the 5-byte magic "PGDMP".
+ *   Applies to all single-DB PostgreSQL backups regardless of the -Z compression level,
+ *   because the compression is internal to the custom format and does not change the header.
+ * - TAR: POSIX/GNU tar stores "ustar" at header offset 257.  Catches uncompressed .tar.enc
+ *   multi-DB archives.
+ * - BROTLI or plain SQL dumps: >70% of bytes must be printable ASCII.
  */
 function isValidDecryptedContent(chunk: Buffer, compressionMeta: CompressionType | undefined): boolean {
-    if (compressionMeta === 'GZIP') {
-        return chunk.length >= 2 && chunk[0] === 0x1f && chunk[1] === 0x8b;
+    if (chunk.length < 2) return false;
+
+    // GZIP magic - checked unconditionally so it matches both pipeline GZIP and any
+    // format that is inherently gzip (e.g. mongodump --archive --gzip single-DB files).
+    if (chunk[0] === 0x1f && chunk[1] === 0x8b) {
+        return true;
     }
+    // If we expected GZIP but magic is absent the key is wrong.
+    if (compressionMeta === 'GZIP') {
+        return false;
+    }
+
+    // PostgreSQL custom format (pg_dump -Fc): 5-byte ASCII header "PGDMP".
+    // This covers ALL single-DB PostgreSQL backups regardless of the -Z compression
+    // algorithm (NONE / GZIP / LZ4 / ZSTD / LEGACY) because the native compression is
+    // stored inside the custom format - the outer file header is always "PGDMP".
+    if (chunk.length >= 5 && chunk.subarray(0, 5).toString('ascii') === 'PGDMP') {
+        return true;
+    }
+
     // TAR magic: POSIX/GNU tar writes "ustar" at header offset 257.
     // This catches uncompressed .tar.enc backups (multi-db format).
     if (chunk.length >= 262 && chunk.subarray(257, 262).toString('ascii') === 'ustar') {
         return true;
     }
+
     // For BROTLI or plain SQL dumps, check for printable ASCII ratio.
     const printable = chunk.filter(b => b >= 0x20 && b <= 0x7e).length;
     return printable / chunk.length > 0.7;

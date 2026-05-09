@@ -9,11 +9,12 @@ applyTo: "**/changelog.md"
 Every changelog entry uses a **bold component prefix** followed by a description:
 
 ```
-- **component**: Description of the change (1-2 sentences max)
+- **component**: Description of the change (1-2 sentences max) ([#N](url))
 ```
 
-- **component**: Lowercase area/adapter name (e.g., `auth`, `MSSQL`, `dashboard`, `ui`, `backup`, `storage`, `SSO`, `Redis`)
+- **component**: Short, lowercase area/adapter name (e.g., `auth`, `MSSQL`, `dashboard`, `ui`, `backup`, `storage`, `SSO`, `Redis`). Must be a **name**, never a sentence or description.
 - **Description**: One sentence, max two. No file paths or function names.
+- **Issue links**: Always at the **end** of the entry in the format `([#N](url))`. Never embed issue numbers in the component name.
 
 ## Section Headings
 
