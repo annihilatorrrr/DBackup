@@ -114,7 +114,7 @@ describe("SQLite dump() - local mode", () => {
         expect(result.success).toBe(true);
         expect(mockSpawnProcess).toHaveBeenCalledWith(
             "sqlite3",
-            ["/data/db.sqlite", ".dump"],
+            ["/data/db.sqlite", ".backup /tmp/out.sql"],
         );
     });
 
@@ -220,6 +220,9 @@ describe("SQLite dump() - ssh mode", () => {
     it("returns success on successful SSH dump", async () => {
         mockExtractSqliteSshConfig.mockReturnValue({ host: "host.example", username: "user" });
         mockSshConnect.mockResolvedValue(undefined);
+        mockSshExec
+            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // remote backup
+            .mockResolvedValue({ code: 0, stdout: "", stderr: "" }); // cleanup rm -f
 
         const writeStream = new PassThrough() as any;
         mockFsCreateWriteStream.mockReturnValue(writeStream);
@@ -236,6 +239,9 @@ describe("SQLite dump() - ssh mode", () => {
     it("returns failure when SSH stream exits with non-zero code", async () => {
         mockExtractSqliteSshConfig.mockReturnValue({ host: "host.example", username: "user" });
         mockSshConnect.mockResolvedValue(undefined);
+        mockSshExec
+            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // remote backup
+            .mockResolvedValue({ code: 0, stdout: "", stderr: "" }); // cleanup rm -f
 
         const writeStream = new PassThrough() as any;
         mockFsCreateWriteStream.mockReturnValue(writeStream);
@@ -252,6 +258,9 @@ describe("SQLite dump() - ssh mode", () => {
     it("returns failure when SSH execStream returns an error", async () => {
         mockExtractSqliteSshConfig.mockReturnValue({ host: "host.example", username: "user" });
         mockSshConnect.mockResolvedValue(undefined);
+        mockSshExec
+            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // remote backup
+            .mockResolvedValue({ code: 0, stdout: "", stderr: "" }); // cleanup rm -f
 
         const writeStream = new PassThrough() as any;
         mockFsCreateWriteStream.mockReturnValue(writeStream);
@@ -269,6 +278,9 @@ describe("SQLite dump() - ssh mode", () => {
     it("includes signal in error message when SSH stream exits with signal", async () => {
         mockExtractSqliteSshConfig.mockReturnValue({ host: "host.example", username: "user" });
         mockSshConnect.mockResolvedValue(undefined);
+        mockSshExec
+            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" }) // remote backup
+            .mockResolvedValue({ code: 0, stdout: "", stderr: "" }); // cleanup rm -f
 
         const writeStream = new PassThrough() as any;
         mockFsCreateWriteStream.mockReturnValue(writeStream);

@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import { format, subDays, startOfDay } from "date-fns";
+import { subDays, startOfDay } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { registry } from "@/lib/core/registry";
 import { StorageAdapter } from "@/lib/core/interfaces";

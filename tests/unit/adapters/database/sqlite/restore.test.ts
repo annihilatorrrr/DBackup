@@ -147,13 +147,12 @@ describe("SQLite restore() - local mode", () => {
     }
 
     it("returns success when sqlite3 exits with code 0", async () => {
-        mockFsCreateReadStream.mockReturnValue(makeReadStream());
         mockSpawnProcess.mockReturnValue(makeSpawnProcess(0));
 
         const result = await restore(buildConfig(), "/tmp/backup.sql");
 
         expect(result.success).toBe(true);
-        expect(mockSpawnProcess).toHaveBeenCalledWith("sqlite3", ["/data/db.sqlite"]);
+        expect(mockSpawnProcess).toHaveBeenCalledWith("sqlite3", ["/data/db.sqlite", ".restore /tmp/backup.sql"]);
     });
 
     it("creates safety backup and removes existing DB file before restore", async () => {
@@ -329,12 +328,10 @@ describe("SQLite restore() - ssh mode", () => {
         mockSshConnect.mockResolvedValue(undefined);
         mockSshExec
             .mockResolvedValueOnce({ stdout: "", code: 0 }) // backup cmd
-            .mockResolvedValueOnce({ stdout: "1024", code: 0 }) // size check (matches mockFsStatPromise)
+            .mockResolvedValueOnce({ stdout: "1024", code: 0 }) // size check
+            .mockResolvedValueOnce({ stdout: "", stderr: "restore failed", code: 1 }) // restore cmd - fails
             .mockResolvedValue({ stdout: "", code: 0 }); // cleanup
         mockSshUploadFile.mockResolvedValue(undefined);
-
-        const stream = makeSshStream(1);
-        mockSshExecStream.mockImplementation((_cmd: string, cb: any) => cb(null, stream));
 
         const result = await restore(buildSshConfig(), "/tmp/backup.sql");
 
@@ -348,13 +345,9 @@ describe("SQLite restore() - ssh mode", () => {
         mockSshExec
             .mockResolvedValueOnce({ stdout: "", code: 0 }) // backup cmd
             .mockResolvedValueOnce({ stdout: "1024", code: 0 }) // size check
+            .mockResolvedValueOnce({ stdout: "", stderr: "process killed: SIGTERM", code: 1 }) // restore cmd - fails
             .mockResolvedValue({ stdout: "", code: 0 }); // cleanup
         mockSshUploadFile.mockResolvedValue(undefined);
-
-        const stream = new PassThrough() as any;
-        stream.stderr = new PassThrough();
-        process.nextTick(() => stream.emit("exit", 1, "SIGTERM"));
-        mockSshExecStream.mockImplementation((_cmd: string, cb: any) => cb(null, stream));
 
         const result = await restore(buildSshConfig(), "/tmp/backup.sql");
 
