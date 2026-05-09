@@ -16,6 +16,7 @@ All notable changes to DBackup are documented here.
 - **Timezone**: Dashboard activity chart now groups executions by day using the Scheduler Timezone. Jobs running near midnight are now assigned to the correct day. ([#65](https://github.com/Skyfay/DBackup/issues/65))
 - **Timezone**: History table "Started At" column now displays timestamps in each user's own profile timezone instead of forcing the scheduler timezone on everyone.
 - **Timezone**: Health history tooltip now uses the user's profile timezone for timestamps.
+- **Smart Recovery**: Fixed Smart Recovery failing for single-DB backups after a key delete and re-import. The content heuristic now checks GZIP magic bytes unconditionally (catches pipeline GZIP and MongoDB `--gzip` archives without pipeline compression), and adds detection for the PostgreSQL custom dump format (`PGDMP` magic at offset 0). Previously, only multi-DB TAR archives and plain-text SQL were recognized - all PostgreSQL single-DB backups (which always use `pg_dump -Fc` binary format) and MongoDB single-DB gzip archives fell through with no match and Smart Recovery always failed. ([#58](https://github.com/Skyfay/DBackup/issues/58))
 
 ### 📝 Documentation
 

@@ -235,7 +235,7 @@ function HistoryContent() {
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="activity">
+                <TabsContent value="activity" className="mt-4">
                     <Card>
                         <CardHeader>
                             <CardTitle>Activity Logs</CardTitle>
@@ -254,7 +254,7 @@ function HistoryContent() {
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="notifications">
+                <TabsContent value="notifications" className="mt-4">
                     <Card>
                         <CardHeader>
                             <CardTitle>Notification Logs</CardTitle>
