@@ -1,0 +1,20 @@
+trigger: none
+
+stages:
+  - stage: Backup
+    jobs:
+      - job: TriggerBackup
+        displayName: Trigger dbackup job
+        container: stewieoo/dbackup-ci:latest
+        pool:
+          name: "SelfHosted@Deploy"
+        variables:
+          JOB_ID: "2774a750-8b26-4b8e-90e5-5ec9d4e0a2bf" # Defined as pipeline variable. Same as DBACKUP_URL just in the file instead of the UI
+        steps:
+          - script: /backup/execute.sh
+            displayName: Trigger and wait for backup
+            env:
+              DBACKUP_URL: $(DBACKUP_URL) # Defined as a pipeline variable
+              JOB_ID: $(JOB_ID)
+              DBACKUP_API_KEY: $(DBACKUP_API_KEY) # Defined as a secret pipeline variable
+              DBACKUP_SKIP_TLS_VERIFY: 1

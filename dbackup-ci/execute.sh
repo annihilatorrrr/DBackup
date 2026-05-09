@@ -22,7 +22,7 @@ api_request() {
 
   echo "Request: ${method} ${url}" >&2
 
-  if [ "${DBACKUP_SKIP_TLS_VERIFY:-false}" = "true" ]; then
+  if [ "${DBACKUP_SKIP_TLS_VERIFY:-0}" = "1" ]; then
     echo "TLS certificate verification: disabled" >&2
     curl_args+=(--insecure)
   fi
