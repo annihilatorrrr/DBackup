@@ -3,7 +3,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText } from "lucide-react";
+import { Clock, FileText, KeyRound, MousePointerClick } from "lucide-react";
 import { formatDuration } from "@/lib/utils";
 import { DateDisplay } from "@/components/utils/date-display";
 
@@ -20,6 +20,8 @@ export interface Execution {
     logs: string; // JSON string
     path?: string;
     metadata?: string;
+    triggerType?: string | null;
+    triggerLabel?: string | null;
 }
 
 export const createColumns = (onViewLogs: (execution: Execution) => void): ColumnDef<Execution>[] => [
@@ -52,6 +54,44 @@ export const createColumns = (onViewLogs: (execution: Execution) => void): Colum
         },
         filterFn: (row, id, value) => {
             return value.includes(row.getValue(id))
+        },
+    },
+    {
+        id: "trigger",
+        accessorFn: (row) => row.triggerType ?? "",
+        header: "Trigger",
+        filterFn: (row, _id, value) => {
+            return value.includes(row.original.triggerType ?? "");
+        },
+        cell: ({ row }) => {
+            const triggerType = row.original.triggerType;
+            const triggerLabel = row.original.triggerLabel;
+
+            if (!triggerType) {
+                return <span className="text-muted-foreground">-</span>;
+            }
+
+            const iconClass = "h-3.5 w-3.5 shrink-0";
+            let icon: React.ReactNode;
+            let badgeClass: string;
+
+            if (triggerType === "Scheduler") {
+                icon = <Clock className={iconClass} />;
+                badgeClass = "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:border-violet-800";
+            } else if (triggerType === "Api") {
+                icon = <KeyRound className={iconClass} />;
+                badgeClass = "bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-950 dark:text-teal-300 dark:border-teal-800";
+            } else {
+                icon = <MousePointerClick className={iconClass} />;
+                badgeClass = "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800";
+            }
+
+            return (
+                <Badge variant="outline" className={`flex items-center gap-1.5 w-fit font-normal ${badgeClass}`}>
+                    {icon}
+                    <span>{triggerLabel || triggerType}</span>
+                </Badge>
+            );
         },
     },
     {

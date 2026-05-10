@@ -16,13 +16,14 @@ import {
 import { toast } from "sonner"
 import { updateSystemSettings } from "@/app/actions/settings/settings"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Shield, Cpu, Rocket, Database, ScrollText, HardDrive, Bell, Globe, Check, ChevronsUpDown } from "lucide-react"
+import { Shield, Cpu, Rocket, Database, ScrollText, HardDrive, Bell, Globe, Check, ChevronsUpDown, Tag } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 const formSchema = z.object({
@@ -36,6 +37,7 @@ const formSchema = z.object({
     showQuickSetup: z.boolean().default(false),
     systemTimezone: z.string().default("UTC"),
     filenamePattern: z.string().default("{name}_yyyy-MM-dd_HH-mm-ss"),
+    instanceName: z.string().max(50).optional(),
 })
 
 interface SystemSettingsFormProps {
@@ -49,9 +51,10 @@ interface SystemSettingsFormProps {
     initialShowQuickSetup?: boolean;
     initialSystemTimezone?: string;
     initialFilenamePattern?: string;
+    initialInstanceName?: string;
 }
 
-export function SystemSettingsForm({ initialMaxConcurrentJobs, initialDisablePasskeyLogin, initialSessionDuration = 604800, initialAuditLogRetentionDays = 90, initialStorageSnapshotRetentionDays = 90, initialNotificationLogRetentionDays = 90, initialCheckForUpdates = true, initialShowQuickSetup = false, initialSystemTimezone = "UTC", initialFilenamePattern = "{name}_yyyy-MM-dd_HH-mm-ss" }: SystemSettingsFormProps) {
+export function SystemSettingsForm({ initialMaxConcurrentJobs, initialDisablePasskeyLogin, initialSessionDuration = 604800, initialAuditLogRetentionDays = 90, initialStorageSnapshotRetentionDays = 90, initialNotificationLogRetentionDays = 90, initialCheckForUpdates = true, initialShowQuickSetup = false, initialSystemTimezone = "UTC", initialFilenamePattern = "{name}_yyyy-MM-dd_HH-mm-ss", initialInstanceName = "" }: SystemSettingsFormProps) {
     const [openTimezone, setOpenTimezone] = useState(false);
     const timezones = Intl.supportedValuesOf('timeZone');
     const form = useForm<z.infer<typeof formSchema>>({
@@ -67,6 +70,7 @@ export function SystemSettingsForm({ initialMaxConcurrentJobs, initialDisablePas
             showQuickSetup: initialShowQuickSetup === true,
             systemTimezone: initialSystemTimezone || "UTC",
             filenamePattern: initialFilenamePattern || "{name}_yyyy-MM-dd_HH-mm-ss",
+            instanceName: initialInstanceName || "",
         },
     })
 
@@ -106,6 +110,42 @@ export function SystemSettingsForm({ initialMaxConcurrentJobs, initialDisablePas
     return (
         <Form {...form}>
             <div className="space-y-6">
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center gap-2">
+                            <Tag className="h-5 w-5 text-muted-foreground" />
+                            <CardTitle>Instance Name</CardTitle>
+                        </div>
+                        <CardDescription>
+                            Optional name for this DBackup instance. If set, it appears in the browser tab as &quot;DBackup | {'{name}'}&quot; - useful when managing multiple instances.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <FormField
+                            control={form.control}
+                            name="instanceName"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Instance Name</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            {...field}
+                                            value={field.value ?? ""}
+                                            placeholder="e.g. Production, Staging"
+                                            maxLength={50}
+                                            onBlur={(e) => handleAutoSave("instanceName", e.target.value.trim())}
+                                        />
+                                    </FormControl>
+                                    <FormDescription>
+                                        Max 50 characters. Leave empty to show only &quot;DBackup&quot;.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </CardContent>
+                </Card>
+
                 <Card>
                     <CardHeader>
                         <div className="flex items-center gap-2">

@@ -40,19 +40,21 @@ SQLite in SSH mode requires an `SSH_KEY` [Credential Profile](/user-guide/securi
 
 ### Docker Configuration
 
-When running DBackup in Docker, mount the SQLite database:
+When running DBackup in Docker, mount the **directory** containing the SQLite database - not the file itself:
 
 ```yaml
 services:
   dbackup:
     volumes:
-      - /path/to/app/data.db:/data/app.db:ro
+      - /path/to/app/data:/data/app
 ```
 
-Then configure the source with path `/data/app.db`.
+Then configure the source with path `/data/app/data.db` (or whatever the filename is inside that directory).
 
-::: tip Read-Only Mount
-Use `:ro` for read-only access to prevent accidental modifications.
+::: warning Mount the directory, not the file
+DBackup uses the SQLite Online Backup API (`.backup`), which requires access to the WAL (`-wal`) and SHM (`-shm`) companion files that live alongside the database file. A file-level bind mount (`/host/data.db:/container/data.db`) only exposes the single `.db` file and causes **"attempt to write a readonly database"** errors when WAL/SHM files are needed.
+
+Always mount the parent directory so all companion files are accessible.
 :::
 
 ### File Permissions
@@ -76,23 +78,21 @@ The `SSH_KEY` profile supports Password, Private Key (PEM), and SSH Agent. Confi
 
 ## Backup Process
 
-DBackup uses the SQLite `.dump` command:
+DBackup uses the SQLite Online Backup API (`.backup` command):
 
 ```bash
-sqlite3 /path/to/database.db .dump > backup.sql
+sqlite3 /path/to/database.db ".backup /tmp/backup.db"
 ```
 
-This creates a text file with:
-- Schema definitions (`CREATE TABLE`)
-- Data as `INSERT` statements
-- Indexes and triggers
+This produces a proper binary `.db` file and is the correct way to back up SQLite databases, especially those using WAL mode. The old `.dump` approach (SQL text export) produced near-empty output for WAL-mode databases.
 
 ### Backup Safety
 
-The dump command is safe to run on a live database:
+The Online Backup API is safe to run on a live database:
 - Uses SQLite's built-in transaction handling
-- Consistent snapshot of data
-- No locking issues with WAL mode
+- Produces a consistent binary snapshot
+- Works correctly with WAL mode databases
+- No locking issues - reads are non-blocking
 
 ## SSH Remote Backup Flow
 

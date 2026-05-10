@@ -139,17 +139,19 @@ model JobDestination {
 }
 
 model Execution {
-  id        String    @id @default(uuid())
-  jobId     String?
-  type      String    @default("Backup")
-  status    String
-  logs      String
-  startedAt DateTime  @default(now())
-  endedAt   DateTime?
-  size      BigInt?
-  path      String?
-  metadata  String?
-  job       Job?      @relation(fields: [jobId], references: [id])
+  id           String    @id @default(uuid())
+  jobId        String?
+  type         String    @default("Backup")
+  status       String
+  logs         String
+  startedAt    DateTime  @default(now())
+  endedAt      DateTime?
+  size         BigInt?
+  path         String?
+  metadata     String?
+  triggerType  String?   // "Manual" | "Scheduler" | "Api"
+  triggerLabel String?   // e.g. user name, API key name, "Scheduler"
+  job          Job?      @relation(fields: [jobId], references: [id])
 }
 
 model User {

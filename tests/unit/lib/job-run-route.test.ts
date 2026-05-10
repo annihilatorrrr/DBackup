@@ -45,6 +45,24 @@ vi.mock("@/services/audit-service", () => ({
   },
 }));
 
+// Mock apiKeyService
+const mockApiKeyGetById = vi.fn();
+vi.mock("@/services/auth/api-key-service", () => ({
+  apiKeyService: {
+    getById: (...args: any[]) => mockApiKeyGetById(...args),
+  },
+}));
+
+// Mock prisma (used to look up user name for session-auth trigger label)
+const mockUserFindUnique = vi.fn();
+vi.mock("@/lib/prisma", () => ({
+  default: {
+    user: {
+      findUnique: (...args: any[]) => mockUserFindUnique(...args),
+    },
+  },
+}));
+
 vi.mock("@/lib/auth/permissions", () => ({
   PERMISSIONS: {
     JOBS: { EXECUTE: "jobs:execute" },
@@ -65,6 +83,8 @@ describe("POST /api/jobs/[id]/run", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockHeaders.mockReturnValue(fakeHeaders);
+    mockApiKeyGetById.mockResolvedValue({ name: "Test API Key" });
+    mockUserFindUnique.mockResolvedValue({ name: "Test User" });
   });
 
   function createRequest() {
@@ -151,8 +171,8 @@ describe("POST /api/jobs/[id]/run", () => {
     expect(body.success).toBe(true);
     expect(body.executionId).toBe("exec-123");
 
-    // Backup service was called with the correct job ID
-    expect(mockExecuteJob).toHaveBeenCalledWith("job-42");
+    // Backup service was called with the correct job ID and trigger info
+    expect(mockExecuteJob).toHaveBeenCalledWith("job-42", expect.objectContaining({ type: "Api" }));
   });
 
   it("should log audit event with trigger=api for API key auth", async () => {

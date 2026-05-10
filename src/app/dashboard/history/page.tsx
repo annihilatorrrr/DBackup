@@ -176,6 +176,15 @@ function HistoryContent() {
                 { label: "Cancelled", value: "Cancelled" },
             ]
         },
+        {
+            id: "trigger",
+            title: "Trigger",
+            options: [
+                { label: "Manual", value: "Manual" },
+                { label: "Scheduler", value: "Scheduler" },
+                { label: "API Key", value: "Api" },
+            ]
+        },
     ], []);
 
     const notificationFilterableColumns = useMemo(() => [

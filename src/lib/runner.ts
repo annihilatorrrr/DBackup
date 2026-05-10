@@ -14,12 +14,17 @@ import { formatDuration } from "@/lib/utils";
 
 const log = logger.child({ module: "Runner" });
 
+export interface TriggerInfo {
+    type: "Manual" | "Scheduler" | "Api";
+    label: string;
+}
+
 /**
  * Entry point for scheduling/running a job.
  * It now enqueues the job instead of running immediately.
  */
-export async function runJob(jobId: string) {
-    log.info("Enqueuing job", { jobId });
+export async function runJob(jobId: string, triggerInfo?: TriggerInfo) {
+    log.info("Enqueuing job", { jobId, triggerType: triggerInfo?.type });
 
     try {
         const initialLog: LogEntry = {
@@ -35,7 +40,9 @@ export async function runJob(jobId: string) {
                 jobId: jobId,
                 status: "Pending",
                 logs: JSON.stringify([initialLog]),
-                metadata: JSON.stringify({ progress: 0, stage: "Queued" })
+                metadata: JSON.stringify({ progress: 0, stage: "Queued" }),
+                triggerType: triggerInfo?.type ?? null,
+                triggerLabel: triggerInfo?.label ?? null,
             }
         });
 

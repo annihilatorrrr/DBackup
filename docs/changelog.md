@@ -2,17 +2,25 @@
 
 All notable changes to DBackup are documented here.
 
-## vNEXT
-*Release: In Progress*
+## v2.3.0 - CI Image, Activity Log Trigger and General Improvements
+*Released: May 10, 2026*
 
 ### ✨ Features
 
+- **Activity Logs**: Executions now record the trigger source. The history table shows a new "Trigger" column with a colored badge indicating how the job was started - "Manual" (Web UI, with the user's name), "Scheduler" (cron-based), or "Api" (with the API key name). Existing executions without trigger data gracefully show a dash. ([#72](https://github.com/Skyfay/DBackup/issues/72))
+- **Instance Name**: Added an optional "Instance Name" field under Settings - General. When set, the browser tab title changes to "DBackup | {name}" (e.g. "DBackup | Production"), making it easy to distinguish multiple instances at a glance. The sidebar branding remains unchanged. ([#73](https://github.com/Skyfay/DBackup/issues/73))
+- **Date Format**: Added "European (14/01/2026)" (`dd/MM/yyyy`) as a new date format option in Profile settings. The existing European dot format label was updated to "European (14.01.2026)" for clarity.
 - **CI Image**: Added `skyfay/dbackup:ci` - a lightweight Ubuntu-based helper image for triggering DBackup jobs from CI/CD pipelines (GitHub Actions, GitLab CI, Azure DevOps). The image contains only `bash`, `curl`, and `jq`. Thanks @stewieoO ([#71](https://github.com/Skyfay/DBackup/pull/71))
 - **API Trigger Dialog**: GitHub Actions, GitLab CI, and new Azure DevOps tabs now use the `skyfay/dbackup:ci` container image. Pipeline examples are simplified to a single `run: /backup/execute.sh` step.
+
+### 🔄 Changed
+
+- **Codecov**: Set `informational: true` on the patch coverage check so the Codecov status check never blocks a PR, even when patch coverage is below the target.
 
 ### 📝 Documentation
 
 - **webhook-triggers**: Replaced the old manual GitHub Actions curl/jq example with a full CI/CD section covering GitHub Actions, GitLab CI, and Azure DevOps using the `skyfay/dbackup:ci` container image.
+- **sqlite**: Fixed Docker mount instructions - changed from file-level bind mount to directory-level mount. The Online Backup API (`.backup`) requires access to WAL/SHM companion files; file-level mounts caused "attempt to write a readonly database" errors. Updated Backup Process section to document the `.backup` command instead of the old `.dump` approach.
 
 ### 🔧 CI/CD
 
@@ -20,8 +28,8 @@ All notable changes to DBackup are documented here.
 
 ### 🐳 Docker
 
-- **Image**: `skyfay/dbackup:vNEXT`
-- **Also tagged as**: `latest`, `vNEXT`
+- **Image**: `skyfay/dbackup:v2.3.0`
+- **Also tagged as**: `latest`, `v2`
 - **CI Image**: `skyfay/dbackup:ci`
 - **Platforms**: linux/amd64, linux/arm64
 
