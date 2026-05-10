@@ -5,6 +5,10 @@ All notable changes to DBackup are documented here.
 ## vNEXT
 *Release: In Progress*
 
+### ✨ Features
+
+- **Activity Logs**: Executions now record the trigger source. The history table shows a new "Trigger" column with a colored badge indicating how the job was started - "Manual" (Web UI, with the user's name), "Scheduler" (cron-based), or "Api" (with the API key name). Existing executions without trigger data gracefully show a dash. ([#72](https://github.com/Skyfay/DBackup/issues/72))
+
 ### 🔄 Changed
 
 - **Codecov**: Set `informational: true` on the patch coverage check so the Codecov status check never blocks a PR, even when patch coverage is below the target.

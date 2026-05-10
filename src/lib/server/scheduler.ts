@@ -78,7 +78,7 @@ export class BackupScheduler {
 
                     const task = cron.schedule(effectiveSchedule, () => {
                         log.debug("Triggering job", { jobName: job.name });
-                        runJob(job.id).catch((e) => log.error("Job failed", { jobId: job.id }, wrapError(e)));
+                        runJob(job.id, { type: "Scheduler", label: "Scheduler" }).catch((e) => log.error("Job failed", { jobId: job.id }, wrapError(e)));
                     }, { timezone });
 
                     this.tasks.set(job.id, task);
