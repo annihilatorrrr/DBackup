@@ -99,59 +99,130 @@ curl "https://your-instance.com/api/jobs" \
 
 ### Bash Script (Trigger + Wait)
 
-A complete script that triggers a backup and polls until completion:
+This is the same script used inside the `skyfay/dbackup:ci` container. It triggers a backup job and polls until completion, with retry logic and optional TLS skip support.
+
+**Environment variables:**
+
+| Variable | Required | Description |
+| :--- | :--- | :--- |
+| `DBACKUP_URL` | Yes | Base URL of your DBackup instance (no trailing slash) |
+| `JOB_ID` | Yes | ID of the backup job to trigger |
+| `DBACKUP_API_KEY` | Yes | API key with `jobs:execute` and `history:read` permissions |
+| `DBACKUP_SKIP_TLS_VERIFY` | No | Set to `1` to skip TLS certificate verification (self-signed certs) |
 
 ```bash
-#!/bin/bash
-set -euo pipefail
+#!/usr/bin/env bash
 
-API_KEY="dbackup_your_api_key"
-BASE_URL="https://your-instance.com"
-JOB_ID="your-job-id"
+set -o pipefail
 
-# Trigger the backup
-echo "Starting backup job..."
-RESPONSE=$(curl -s -X POST "${BASE_URL}/api/jobs/${JOB_ID}/run" \
-  -H "Authorization: Bearer ${API_KEY}")
+require_env() {
+  local name="$1"
+  if [ -z "${!name}" ]; then
+    echo "Missing required environment variable: ${name}" >&2
+    exit 1
+  fi
+}
 
-EXECUTION_ID=$(echo "${RESPONSE}" | jq -r '.executionId')
-if [ "${EXECUTION_ID}" = "null" ] || [ -z "${EXECUTION_ID}" ]; then
-  echo "Failed to start job: ${RESPONSE}"
-  exit 1
-fi
+api_request() {
+  local method="$1"
+  local url="$2"
+  local response_file
+  local http_code
+  local curl_exit
+  local curl_args=()
 
-echo "Execution started: ${EXECUTION_ID}"
+  response_file="$(mktemp)"
 
-# Poll until completion
-while true; do
-  STATUS_RESPONSE=$(curl -s "${BASE_URL}/api/executions/${EXECUTION_ID}" \
-    -H "Authorization: Bearer ${API_KEY}")
+  echo "Request: ${method} ${url}" >&2
 
-  STATUS=$(echo "${STATUS_RESPONSE}" | jq -r '.data.status')
-  PROGRESS=$(echo "${STATUS_RESPONSE}" | jq -r '.data.progress // "N/A"')
-  STAGE=$(echo "${STATUS_RESPONSE}" | jq -r '.data.stage // "N/A"')
+  if [ "${DBACKUP_SKIP_TLS_VERIFY:-0}" = "1" ]; then
+    echo "TLS certificate verification: disabled" >&2
+    curl_args+=(--insecure)
+  fi
 
-  echo "Status: ${STATUS} | Progress: ${PROGRESS} | Stage: ${STAGE}"
+  http_code=$(curl "${curl_args[@]}" \
+    --connect-timeout 10 \
+    --max-time 60 \
+    --retry 3 \
+    --retry-delay 2 \
+    --retry-all-errors \
+    -sS -o "${response_file}" -w "%{http_code}" -X "${method}" "${url}" \
+    -H "Authorization: Bearer ${DBACKUP_API_KEY}")
+  curl_exit=$?
 
-  case "${STATUS}" in
+  echo "Response HTTP status: ${http_code}" >&2
+
+  if [ "${curl_exit}" -ne 0 ]; then
+    echo "curl failed with exit code ${curl_exit}" >&2
+    echo "Response body:" >&2
+    cat "${response_file}" >&2
+    rm -f "${response_file}"
+    return "${curl_exit}"
+  fi
+
+  if [ "${http_code}" -lt 200 ] || [ "${http_code}" -ge 300 ]; then
+    echo "Request failed with HTTP status ${http_code}" >&2
+    echo "Response body:" >&2
+    cat "${response_file}" >&2
+    rm -f "${response_file}"
+    return 1
+  fi
+
+  cat "${response_file}"
+  rm -f "${response_file}"
+}
+
+json_value() {
+  local response="$1"
+  local filter="$2"
+  local description="$3"
+  local value
+
+  if ! value=$(echo "${response}" | jq -er "${filter}"); then
+    echo "Could not read ${description} from response JSON" >&2
+    echo "Response body:" >&2
+    echo "${response}" >&2
+    return 1
+  fi
+
+  echo "${value}"
+}
+
+require_env "DBACKUP_URL"
+require_env "JOB_ID"
+require_env "DBACKUP_API_KEY"
+
+RESPONSE=$(api_request "POST" "${DBACKUP_URL}/api/jobs/${JOB_ID}/run") || exit 1
+
+EXECUTION_ID=$(json_value "${RESPONSE}" '.executionId' "execution id") || exit 1
+echo "Execution started: $EXECUTION_ID"
+
+for i in $(seq 1 60); do
+  RESPONSE=$(api_request "GET" "${DBACKUP_URL}/api/executions/${EXECUTION_ID}") || exit 1
+
+  STATUS=$(json_value "${RESPONSE}" '.data.status' "execution status") || exit 1
+  echo "Attempt $i: Status=$STATUS"
+
+  case "$STATUS" in
     "Success")
-      echo "Backup completed successfully!"
+      echo "Backup completed!"
       exit 0
       ;;
     "Failed")
-      ERROR=$(echo "${STATUS_RESPONSE}" | jq -r '.data.error // "Unknown error"')
-      echo "Backup failed: ${ERROR}"
+      ERROR=$(echo "$RESPONSE" | jq -r '.data.error // "Unknown"')
+      echo "Backup failed: $ERROR"
+      echo "Response body:"
+      echo "$RESPONSE"
       exit 1
-      ;;
-    "Pending"|"Running")
-      sleep 5
       ;;
     *)
-      echo "Unknown status: ${STATUS}"
-      exit 1
+      sleep 10
       ;;
   esac
 done
+
+echo "Backup timed out"
+exit 1
 ```
 
 **Requirements:** `curl`, `jq`
