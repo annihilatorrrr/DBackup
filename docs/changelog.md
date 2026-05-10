@@ -2,6 +2,30 @@
 
 All notable changes to DBackup are documented here.
 
+## vNEXT
+*Release: In Progress*
+
+### ✨ Features
+
+- **CI Image**: Added `skyfay/dbackup:ci` - a lightweight Ubuntu-based helper image for triggering DBackup jobs from CI/CD pipelines (GitHub Actions, GitLab CI, Azure DevOps). The image contains only `bash`, `curl`, and `jq`. Thanks @stewieoO ([#71](https://github.com/Skyfay/DBackup/pull/71))
+- **API Trigger Dialog**: GitHub Actions, GitLab CI, and new Azure DevOps tabs now use the `skyfay/dbackup:ci` container image. Pipeline examples are simplified to a single `run: /backup/execute.sh` step.
+
+### 📝 Documentation
+
+- **webhook-triggers**: Replaced the old manual GitHub Actions curl/jq example with a full CI/CD section covering GitHub Actions, GitLab CI, and Azure DevOps using the `skyfay/dbackup:ci` container image.
+
+### 🔧 CI/CD
+
+- **release.yml**: Added `build-ci-image` job that builds and pushes `skyfay/dbackup:ci` (GHCR + Docker Hub) automatically on every release, running in parallel with the main image build.
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:vNEXT`
+- **Also tagged as**: `latest`, `vNEXT`
+- **CI Image**: `skyfay/dbackup:ci`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v2.2.1 - Scheduler Timezone Fixes, Smart Recovery Improvements, and more Bug Fixes
 *Released: May 9, 2026*
 
