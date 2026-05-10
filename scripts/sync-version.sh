@@ -73,6 +73,7 @@ insert_changelog_next() {
       '',
       '- **Image**: \\\`skyfay/dbackup:vNEXT\\\`',
       '- **Also tagged as**: \\\`latest\\\`, \\\`vNEXT\\\`',
+      '- **CI Image**: \\\`skyfay/dbackup:ci\\\`',
       '- **Platforms**: linux/amd64, linux/arm64',
       '',
     ].join('\n');
@@ -140,6 +141,7 @@ insert_changelog() {
       '',
       '- **Image**: \\\`skyfay/dbackup:v' + version + '\\\`',
       '- **Also tagged as**: ' + tagAliases,
+      '- **CI Image**: \\\`skyfay/dbackup:ci\\\`',
       '- **Platforms**: linux/amd64, linux/arm64',
       '',
     ].join('\n');

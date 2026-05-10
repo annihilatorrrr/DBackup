@@ -10,25 +10,12 @@ All notable changes to DBackup are documented here.
 - **Activity Logs**: Executions now record the trigger source. The history table shows a new "Trigger" column with a colored badge indicating how the job was started - "Manual" (Web UI, with the user's name), "Scheduler" (cron-based), or "Api" (with the API key name). Existing executions without trigger data gracefully show a dash. ([#72](https://github.com/Skyfay/DBackup/issues/72))
 - **Instance Name**: Added an optional "Instance Name" field under Settings - General. When set, the browser tab title changes to "DBackup | {name}" (e.g. "DBackup | Production"), making it easy to distinguish multiple instances at a glance. The sidebar branding remains unchanged. ([#73](https://github.com/Skyfay/DBackup/issues/73))
 - **Date Format**: Added "European (14/01/2026)" (`dd/MM/yyyy`) as a new date format option in Profile settings. The existing European dot format label was updated to "European (14.01.2026)" for clarity.
+- **CI Image**: Added `skyfay/dbackup:ci` - a lightweight Ubuntu-based helper image for triggering DBackup jobs from CI/CD pipelines (GitHub Actions, GitLab CI, Azure DevOps). The image contains only `bash`, `curl`, and `jq`. Thanks @stewieoO ([#71](https://github.com/Skyfay/DBackup/pull/71))
+- **API Trigger Dialog**: GitHub Actions, GitLab CI, and new Azure DevOps tabs now use the `skyfay/dbackup:ci` container image. Pipeline examples are simplified to a single `run: /backup/execute.sh` step.
 
 ### 🔄 Changed
 
 - **Codecov**: Set `informational: true` on the patch coverage check so the Codecov status check never blocks a PR, even when patch coverage is below the target.
-
-### 🐳 Docker
-
-- **Image**: `skyfay/dbackup:vNEXT`
-- **Also tagged as**: `latest`, `vNEXT`
-- **Platforms**: linux/amd64, linux/arm64
-
-
-## vNEXT
-*Release: In Progress*
-
-### ✨ Features
-
-- **CI Image**: Added `skyfay/dbackup:ci` - a lightweight Ubuntu-based helper image for triggering DBackup jobs from CI/CD pipelines (GitHub Actions, GitLab CI, Azure DevOps). The image contains only `bash`, `curl`, and `jq`. Thanks @stewieoO ([#71](https://github.com/Skyfay/DBackup/pull/71))
-- **API Trigger Dialog**: GitHub Actions, GitLab CI, and new Azure DevOps tabs now use the `skyfay/dbackup:ci` container image. Pipeline examples are simplified to a single `run: /backup/execute.sh` step.
 
 ### 📝 Documentation
 
