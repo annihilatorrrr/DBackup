@@ -59,6 +59,9 @@ export default async function SettingsPage() {
     const patternSetting = await prisma.systemSetting.findUnique({ where: { key: "system.filenamePattern" } });
     const filenamePattern = patternSetting?.value || "{name}_yyyy-MM-dd_HH-mm-ss";
 
+    const instanceNameSetting = await prisma.systemSetting.findUnique({ where: { key: "general.instanceName" } });
+    const instanceName = instanceNameSetting?.value || "";
+
     // Load Config Backup Settings
     const configEnabled = await prisma.systemSetting.findUnique({ where: { key: "config.backup.enabled" } });
     const configSchedule = await prisma.systemSetting.findUnique({ where: { key: "config.backup.schedule" } });
@@ -122,6 +125,7 @@ export default async function SettingsPage() {
                         initialShowQuickSetup={showQuickSetup}
                         initialSystemTimezone={systemTimezone}
                         initialFilenamePattern={filenamePattern}
+                        initialInstanceName={instanceName}
                     />
                 </TabsContent>
                 <TabsContent value="notifications" className="space-y-4">

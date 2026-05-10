@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme/theme-provider";
+import prisma from "@/lib/prisma";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,16 +16,20 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "DBackup",
-  description: "Manage your database backups easily.",
-  icons: {
-    icon: [
-      { url: '/logo.svg', type: 'image/svg+xml' },
-    ],
-    apple: '/logo.svg',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const setting = await prisma.systemSetting.findUnique({ where: { key: "general.instanceName" } });
+  const instanceName = setting?.value?.trim();
+  return {
+    title: instanceName ? `DBackup | ${instanceName}` : "DBackup",
+    description: "Manage your database backups easily.",
+    icons: {
+      icon: [
+        { url: '/logo.svg', type: 'image/svg+xml' },
+      ],
+      apple: '/logo.svg',
+    },
+  };
+}
 
 export default function RootLayout({
   children,

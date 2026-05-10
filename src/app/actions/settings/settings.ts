@@ -27,6 +27,7 @@ const settingsSchema = z.object({
         }, { message: "Invalid IANA timezone" })
         .optional(),
     filenamePattern: z.string().min(1).optional(),
+    instanceName: z.string().max(50).optional(),
 });
 
 export async function updateSystemSettings(data: z.infer<typeof settingsSchema>) {
@@ -125,6 +126,15 @@ export async function updateSystemSettings(data: z.infer<typeof settingsSchema>)
                 where: { key: "system.filenamePattern" },
                 update: { value: result.data.filenamePattern },
                 create: { key: "system.filenamePattern", value: result.data.filenamePattern, description: "Template pattern for backup file names" },
+            });
+        }
+
+        // Instance Name Setting
+        if (result.data.instanceName !== undefined) {
+            await prisma.systemSetting.upsert({
+                where: { key: "general.instanceName" },
+                update: { value: result.data.instanceName },
+                create: { key: "general.instanceName", value: result.data.instanceName, description: "Custom instance name shown in the browser tab title" },
             });
         }
 
