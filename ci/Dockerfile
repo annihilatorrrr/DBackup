@@ -9,3 +9,5 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --chmod=0555 ./execute.sh /backup/execute.sh
+
+CMD ["/backup/execute.sh"]

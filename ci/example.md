@@ -1,0 +1,1 @@
+If you need more information about how to use webhook triggers in CI/CD pipelines, please refer to the official documentation: [Webhook Triggers in CI/CD Pipelines](https://docs.dbackup.app/user-guide/features/webhook-triggers#ci-cd-pipelines).

@@ -192,43 +192,106 @@ done
       when: poll_result.json.data.status == 'Failed'
 ```
 
-### CI/CD (GitHub Actions)
+### CI/CD Pipelines
+
+DBackup provides a lightweight helper container image - `skyfay/dbackup:ci` - that bundles everything needed to trigger a job and wait for its completion. No manual curl/jq scripting required in your pipeline.
+
+The image is available on Docker Hub and GHCR:
+- `skyfay/dbackup:ci`
+- `ghcr.io/skyfay/dbackup:ci`
+
+**Environment variables:**
+
+| Variable | Required | Description |
+| :--- | :--- | :--- |
+| `DBACKUP_URL` | Yes | Base URL of your DBackup instance (no trailing slash) |
+| `JOB_ID` | Yes | ID of the backup job to trigger |
+| `DBACKUP_API_KEY` | Yes | API key with `jobs:execute` and `history:read` permissions |
+| `DBACKUP_SKIP_TLS_VERIFY` | No | Set to `1` to skip TLS certificate verification (self-signed certs) |
+
+---
+
+#### GitHub Actions
+
+Add `DBACKUP_URL` and `DBACKUP_API_KEY` as repository secrets under **Settings → Secrets and variables → Actions**. Add `DBACKUP_JOB_ID` as a repository variable.
 
 ```yaml
-name: Post-Deploy Backup
+# .github/workflows/backup.yml
+name: Trigger Database Backup
+
 on:
-  workflow_dispatch:
-  push:
-    branches: [main]
+  schedule:
+    - cron: "0 2 * * *" # Daily at 2:00 AM UTC
+  workflow_dispatch: # Allow manual trigger
 
 jobs:
   backup:
     runs-on: ubuntu-latest
+    container: skyfay/dbackup:ci
     steps:
-      - name: Trigger backup
-        id: trigger
-        run: |
-          RESPONSE=$(curl -s -X POST "${{ secrets.DBACKUP_URL }}/api/jobs/${{ secrets.DBACKUP_JOB_ID }}/run" \
-            -H "Authorization: Bearer ${{ secrets.DBACKUP_API_KEY }}")
-          EXECUTION_ID=$(echo "$RESPONSE" | jq -r '.executionId')
-          echo "execution_id=$EXECUTION_ID" >> "$GITHUB_OUTPUT"
+      - name: Trigger and wait for backup
+        run: /backup/execute.sh
+        env:
+          DBACKUP_URL: ${{ secrets.DBACKUP_URL }}
+          JOB_ID: ${{ vars.DBACKUP_JOB_ID }}
+          DBACKUP_API_KEY: ${{ secrets.DBACKUP_API_KEY }}
+          # DBACKUP_SKIP_TLS_VERIFY: "1" # Uncomment if using self-signed certificates
+```
 
-      - name: Wait for backup
-        run: |
-          for i in $(seq 1 60); do
-            RESPONSE=$(curl -s "${{ secrets.DBACKUP_URL }}/api/executions/${{ steps.trigger.outputs.execution_id }}" \
-              -H "Authorization: Bearer ${{ secrets.DBACKUP_API_KEY }}")
-            STATUS=$(echo "$RESPONSE" | jq -r '.data.status')
-            echo "Attempt $i: Status=$STATUS"
-            if [ "$STATUS" = "Success" ]; then exit 0; fi
-            if [ "$STATUS" = "Failed" ]; then
-              echo "::error::Backup failed: $(echo "$RESPONSE" | jq -r '.data.error')"
-              exit 1
-            fi
-            sleep 10
-          done
-          echo "::error::Backup timed out"
-          exit 1
+---
+
+#### GitLab CI
+
+Add `DBACKUP_URL` and `DBACKUP_API_KEY` as CI/CD variables under **Settings → CI/CD → Variables** (mark `DBACKUP_API_KEY` as masked).
+
+```yaml
+# .gitlab-ci.yml
+trigger-backup:
+  image: skyfay/dbackup:ci
+  script:
+    - /backup/execute.sh
+  variables:
+    DBACKUP_URL: $DBACKUP_URL
+    JOB_ID: $DBACKUP_JOB_ID
+    DBACKUP_API_KEY: $DBACKUP_API_KEY
+    # DBACKUP_SKIP_TLS_VERIFY: "1" # Uncomment if using self-signed certificates
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web" # Allow manual trigger from GitLab UI
+```
+
+---
+
+#### Azure DevOps
+
+Add `DBACKUP_URL` and `DBACKUP_API_KEY` as pipeline variables under **Pipelines → Edit → Variables** (mark `DBACKUP_API_KEY` as secret). Requires a self-hosted agent pool with Docker support.
+
+```yaml
+# azure-pipelines.yml
+trigger: none
+
+schedules:
+  - cron: "0 2 * * *" # Daily at 2:00 AM UTC
+    displayName: Daily backup
+    branches:
+      include:
+        - main
+    always: true
+
+stages:
+  - stage: Backup
+    jobs:
+      - job: TriggerBackup
+        displayName: Trigger dbackup job
+        container: skyfay/dbackup:ci
+        steps:
+          - script: /backup/execute.sh
+            displayName: Trigger and wait for backup
+            env:
+              DBACKUP_URL: $(DBACKUP_URL)
+              JOB_ID: $(DBACKUP_JOB_ID)
+              DBACKUP_API_KEY: $(DBACKUP_API_KEY)
+              # DBACKUP_SKIP_TLS_VERIFY: "1" # Uncomment if using self-signed certificates
 ```
 
 ### Docker Compose Healthcheck Integration
