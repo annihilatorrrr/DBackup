@@ -20,6 +20,7 @@ All notable changes to DBackup are documented here.
 ### 📝 Documentation
 
 - **webhook-triggers**: Replaced the old manual GitHub Actions curl/jq example with a full CI/CD section covering GitHub Actions, GitLab CI, and Azure DevOps using the `skyfay/dbackup:ci` container image.
+- **sqlite**: Fixed Docker mount instructions - changed from file-level bind mount to directory-level mount. The Online Backup API (`.backup`) requires access to WAL/SHM companion files; file-level mounts caused "attempt to write a readonly database" errors. Updated Backup Process section to document the `.backup` command instead of the old `.dump` approach.
 
 ### 🔧 CI/CD
 

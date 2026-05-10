@@ -95,7 +95,7 @@ describe('BackupScheduler', () => {
         // @ts-expect-error -- Mock setup
         const callback = cron.schedule.mock.calls[0][1];
         callback();
-        expect(runJob).toHaveBeenCalledWith('job1');
+        expect(runJob).toHaveBeenCalledWith('job1', { type: "Scheduler", label: "Scheduler" });
     });
 
     it('should not schedule job if cron expression is invalid', async () => {
