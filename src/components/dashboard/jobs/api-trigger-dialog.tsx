@@ -448,40 +448,15 @@ on:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    container: skyfay/dbackup:ci
     steps:
-      - name: Trigger backup
-        id: trigger
-        run: |
-          RESPONSE=$(curl -s -f -X POST "\${DBACKUP_URL}/api/jobs/\${JOB_ID}/run" \\
-            -H "Authorization: Bearer \${API_KEY}")
-          EXECUTION_ID=$(echo "\$RESPONSE" | jq -r '.executionId')
-          echo "execution_id=\$EXECUTION_ID" >> "\$GITHUB_OUTPUT"
-          echo "Execution started: \$EXECUTION_ID"
+      - name: Trigger and wait for backup
+        run: /backup/execute.sh
         env:
           DBACKUP_URL: \${{ secrets.DBACKUP_URL }}
-          API_KEY: \${{ secrets.DBACKUP_API_KEY }}
           JOB_ID: "${jobId}"
-
-      - name: Wait for completion
-        run: |
-          EXECUTION_ID="\${{ steps.trigger.outputs.execution_id }}"
-          for i in $(seq 1 60); do
-            RESPONSE=$(curl -s "\${DBACKUP_URL}/api/executions/\${EXECUTION_ID}" \\
-              -H "Authorization: Bearer \${API_KEY}")
-            STATUS=$(echo "\$RESPONSE" | jq -r '.data.status')
-            echo "Attempt \$i: Status=\$STATUS"
-            case "\$STATUS" in
-              "Success") echo "Backup completed!"; exit 0 ;;
-              "Failed")
-                ERROR=$(echo "\$RESPONSE" | jq -r '.data.error // "Unknown"')
-                echo "::error::Backup failed: \$ERROR"; exit 1 ;;
-              *) sleep 10 ;;
-            esac
-          done
-          echo "::error::Backup timed out"; exit 1
-        env:
-          DBACKUP_URL: \${{ secrets.DBACKUP_URL }}
-          API_KEY: \${{ secrets.DBACKUP_API_KEY }}`
+          DBACKUP_API_KEY: \${{ secrets.DBACKUP_API_KEY }}
+          # DBACKUP_SKIP_TLS_VERIFY: "1"  # Uncomment if using self-signed certificates`
 
     // ── GitLab CI ──
     const gitlabCiPipeline = `# .gitlab-ci.yml
@@ -490,7 +465,7 @@ stages:
 
 trigger_backup:
   stage: backup
-  image: curlimages/curl:latest
+  image: skyfay/dbackup:ci
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"  # Triggered by GitLab schedule
     - if: $CI_PIPELINE_SOURCE == "web"       # Allow manual trigger
@@ -498,31 +473,36 @@ trigger_backup:
     DBACKUP_URL: \${DBACKUP_URL}             # Set in CI/CD Settings → Variables
     DBACKUP_API_KEY: \${DBACKUP_API_KEY}     # Set as masked variable
     JOB_ID: "${jobId}"
-  before_script:
-    - apk add --no-cache jq
+    # DBACKUP_SKIP_TLS_VERIFY: "1"          # Uncomment if using self-signed certificates
   script:
-    - |
-      # Trigger the backup
-      RESPONSE=$(curl -s -f -X POST "\${DBACKUP_URL}/api/jobs/\${JOB_ID}/run" \\
-        -H "Authorization: Bearer \${DBACKUP_API_KEY}")
-      EXECUTION_ID=$(echo "\$RESPONSE" | jq -r '.executionId')
-      echo "Execution started: \$EXECUTION_ID"
+    - /backup/execute.sh`
 
-      # Poll until completion
-      for i in $(seq 1 60); do
-        RESPONSE=$(curl -s "\${DBACKUP_URL}/api/executions/\${EXECUTION_ID}" \\
-          -H "Authorization: Bearer \${DBACKUP_API_KEY}")
-        STATUS=$(echo "\$RESPONSE" | jq -r '.data.status')
-        echo "Attempt \$i: Status=\$STATUS"
-        case "\$STATUS" in
-          "Success") echo "Backup completed!"; exit 0 ;;
-          "Failed")
-            ERROR=$(echo "\$RESPONSE" | jq -r '.data.error // "Unknown"')
-            echo "Backup failed: \$ERROR"; exit 1 ;;
-          *) sleep 10 ;;
-        esac
-      done
-      echo "Backup timed out"; exit 1`
+    // ── Azure DevOps ──
+    const azureDevOpsPipeline = `# azure-pipelines.yml
+trigger: none
+
+schedules:
+  - cron: "0 2 * * *"  # Daily at 2:00 AM UTC
+    displayName: Daily backup
+    branches:
+      include:
+        - main
+    always: true
+
+stages:
+  - stage: Backup
+    jobs:
+      - job: TriggerBackup
+        displayName: Trigger dbackup job
+        container: skyfay/dbackup:ci
+        steps:
+          - script: /backup/execute.sh
+            displayName: Trigger and wait for backup
+            env:
+              DBACKUP_URL: \$(DBACKUP_URL)          # Defined as a pipeline variable
+              JOB_ID: "${jobId}"
+              DBACKUP_API_KEY: \$(DBACKUP_API_KEY)  # Defined as a secret pipeline variable
+              # DBACKUP_SKIP_TLS_VERIFY: "1"        # Uncomment if using self-signed certificates`
 
     // ── Ansible ──
     const ansiblePlaybook = `# Ansible playbook example
@@ -585,6 +565,7 @@ trigger_backup:
                         <div className="w-px h-4 bg-border shrink-0" />
                         <TabsTrigger value="github">GitHub Actions</TabsTrigger>
                         <TabsTrigger value="gitlab">GitLab CI</TabsTrigger>
+                        <TabsTrigger value="azuredevops">Azure DevOps</TabsTrigger>
                         <TabsTrigger value="ansible">Ansible</TabsTrigger>
                     </TabsList>
 
@@ -697,7 +678,7 @@ trigger_backup:
                     {/* ── GitHub Actions ── */}
                     <TabsContent value="github" className="space-y-3 mt-4">
                         <p className="text-sm text-muted-foreground">
-                            GitHub Actions workflow with schedule and manual trigger. Add <code className="bg-muted px-1 rounded">DBACKUP_URL</code> and <code className="bg-muted px-1 rounded">DBACKUP_API_KEY</code> as repository secrets under Settings → Secrets and variables → Actions.
+                            GitHub Actions workflow with schedule and manual trigger. Uses the <code className="bg-muted px-1 rounded">skyfay/dbackup:ci</code> container. Add <code className="bg-muted px-1 rounded">DBACKUP_URL</code> and <code className="bg-muted px-1 rounded">DBACKUP_API_KEY</code> as repository secrets under Settings → Secrets and variables → Actions.
                         </p>
                         <CopyBlock code={githubActionsWorkflow} language="yaml" label=".github/workflows/backup.yml" />
                     </TabsContent>
@@ -705,9 +686,17 @@ trigger_backup:
                     {/* ── GitLab CI ── */}
                     <TabsContent value="gitlab" className="space-y-3 mt-4">
                         <p className="text-sm text-muted-foreground">
-                            GitLab CI pipeline with schedule and manual trigger. Add <code className="bg-muted px-1 rounded">DBACKUP_URL</code> and <code className="bg-muted px-1 rounded">DBACKUP_API_KEY</code> as CI/CD variables under Settings → CI/CD → Variables (mark as masked).
+                            GitLab CI pipeline with schedule and manual trigger. Uses the <code className="bg-muted px-1 rounded">skyfay/dbackup:ci</code> container. Add <code className="bg-muted px-1 rounded">DBACKUP_URL</code> and <code className="bg-muted px-1 rounded">DBACKUP_API_KEY</code> as CI/CD variables under Settings → CI/CD → Variables (mark as masked).
                         </p>
                         <CopyBlock code={gitlabCiPipeline} language="yaml" label=".gitlab-ci.yml" />
+                    </TabsContent>
+
+                    {/* ── Azure DevOps ── */}
+                    <TabsContent value="azuredevops" className="space-y-3 mt-4">
+                        <p className="text-sm text-muted-foreground">
+                            Azure Pipelines workflow with schedule and manual trigger. Uses the <code className="bg-muted px-1 rounded">skyfay/dbackup:ci</code> container. Add <code className="bg-muted px-1 rounded">DBACKUP_URL</code> and <code className="bg-muted px-1 rounded">DBACKUP_API_KEY</code> as pipeline variables under Pipelines → Edit → Variables (mark as secret).
+                        </p>
+                        <CopyBlock code={azureDevOpsPipeline} language="yaml" label="azure-pipelines.yml" />
                     </TabsContent>
 
                     {/* ── Ansible ── */}
