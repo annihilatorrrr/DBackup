@@ -17,8 +17,13 @@ const geistMono = Geist_Mono({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const setting = await prisma.systemSetting.findUnique({ where: { key: "general.instanceName" } });
-  const instanceName = setting?.value?.trim();
+  let instanceName: string | undefined;
+  try {
+    const setting = await prisma.systemSetting.findUnique({ where: { key: "general.instanceName" } });
+    instanceName = setting?.value?.trim();
+  } catch {
+    // DB not available at build time.
+  }
   return {
     title: instanceName ? `DBackup | ${instanceName}` : "DBackup",
     description: "Manage your database backups easily.",
