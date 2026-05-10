@@ -9,6 +9,7 @@ All notable changes to DBackup are documented here.
 
 - **Activity Logs**: Executions now record the trigger source. The history table shows a new "Trigger" column with a colored badge indicating how the job was started - "Manual" (Web UI, with the user's name), "Scheduler" (cron-based), or "Api" (with the API key name). Existing executions without trigger data gracefully show a dash. ([#72](https://github.com/Skyfay/DBackup/issues/72))
 - **Instance Name**: Added an optional "Instance Name" field under Settings - General. When set, the browser tab title changes to "DBackup | {name}" (e.g. "DBackup | Production"), making it easy to distinguish multiple instances at a glance. The sidebar branding remains unchanged. ([#73](https://github.com/Skyfay/DBackup/issues/73))
+- **Date Format**: Added "European (14/01/2026)" (`dd/MM/yyyy`) as a new date format option in Profile settings. The existing European dot format label was updated to "European (14.01.2026)" for clarity.
 
 ### 🔄 Changed
 

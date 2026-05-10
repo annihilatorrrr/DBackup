@@ -343,6 +343,7 @@ export function ProfileForm({ user, canUpdateName, canUpdateEmail }: ProfileForm
                                                 <SelectItem value="PP">Medium (Jan 14, 2026)</SelectItem>
                                                 <SelectItem value="PPP">Long (January 14th, 2026)</SelectItem>
                                                 <SelectItem value="yyyy-MM-dd">ISO (2026-01-14)</SelectItem>
+                                                <SelectItem value="dd/MM/yyyy">European (14/01/2026)</SelectItem>
                                                 <SelectItem value="dd.MM.yyyy">European (14.01.2026)</SelectItem>
                                             </SelectContent>
                                         </Select>
