@@ -21,6 +21,10 @@ All notable changes to DBackup are documented here.
 - **MySQL/MariaDB SSH mode**: Passwords are no longer passed via `MYSQL_PWD` (silently ignored by MariaDB 11.4+). Credentials are now written to a temporary `.my.cnf` file locally, uploaded to the remote server via SFTP binary transfer (never visible in process lists or shell history), used with `--defaults-file` (which reads only the temp file, bypassing any system-level `/etc/mysql/my.cnf` or `~/.my.cnf` that could conflict), and deleted immediately after the command completes.
 - **MySQL/MariaDB Direct mode**: Passwords are no longer passed via `MYSQL_PWD` for consistency and to support MariaDB 11.4+ client binaries. A temporary `.my.cnf` file (mode 0600) is now written locally and passed via `--defaults-file`, then deleted in a `finally` block.
 
+### 📝 Documentation
+
+- **MySQL/MariaDB source guide**: Updated SSH mode description to reflect the SFTP-based password delivery. Added SFTP requirement note (enabled by default on OpenSSH, no extra config needed), clarified SSH user permissions (write to `/tmp`, no `sudo` required), added troubleshooting entries for HestiaCP `unix_socket` auth and disabled SFTP subsystem.
+
 ### 🐳 Docker
 
 - **Image**: `skyfay/dbackup:vNEXT`
