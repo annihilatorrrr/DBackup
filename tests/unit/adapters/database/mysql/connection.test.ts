@@ -38,10 +38,17 @@ vi.mock("@/lib/ssh", () => ({
         connect = (...args: any[]) => mockSshConnect(...args);
         exec = (...args: any[]) => mockSshExec(...args);
         end = (...args: any[]) => mockSshEnd(...args);
+        uploadFile = vi.fn().mockResolvedValue(undefined);
     },
     isSSHMode: (...args: any[]) => mockIsSSHMode(...args),
     extractSshConfig: (...args: any[]) => (mockExtractSshConfig as any)(...args),
     buildMysqlArgs: (...args: any[]) => (mockBuildMysqlArgs as any)(...args),
+    withLocalMyCnf: vi.fn(async (password: any, callback: any) =>
+        password ? callback('/tmp/mock-local.cnf') : callback(undefined)
+    ),
+    withRemoteMyCnf: vi.fn(async (_ssh: any, password: any, callback: any) =>
+        password ? callback('/tmp/mock.cnf') : callback(undefined)
+    ),
     remoteEnv: vi.fn((_env: any, cmd: string) => cmd),
     remoteBinaryCheck: (...args: any[]) => (mockRemoteBinaryCheck as any)(...args),
     shellEscape: vi.fn((s: string) => s),
@@ -416,8 +423,9 @@ describe("MySQL Connection - test() SSH path", () => {
 
     it("returns success with version via SSH", async () => {
         mockSshExec
-            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-            .mockResolvedValueOnce({ code: 0, stdout: "8.0.35-MySQL Community Server\n", stderr: "" });
+            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })  // ping
+            .mockResolvedValueOnce({ code: 0, stdout: "1", stderr: "" })  // SELECT 1
+            .mockResolvedValueOnce({ code: 0, stdout: "8.0.35-MySQL Community Server\n", stderr: "" }); // version
 
         const result = await test(buildConfig());
 
@@ -435,10 +443,22 @@ describe("MySQL Connection - test() SSH path", () => {
         expect(result.message).toContain("SSH ping failed");
     });
 
+    it("returns failure when auth check (SELECT 1) fails via SSH", async () => {
+        mockSshExec
+            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })  // ping
+            .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "ERROR 1045 (28000): Access denied for user" }); // SELECT 1
+
+        const result = await test(buildConfig());
+
+        expect(result.success).toBe(false);
+        expect(result.message).toContain("Connection failed");
+    });
+
     it("returns success with version unknown when version query fails via SSH", async () => {
         mockSshExec
-            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-            .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "Permission denied" });
+            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })  // ping
+            .mockResolvedValueOnce({ code: 0, stdout: "1", stderr: "" })  // SELECT 1
+            .mockResolvedValueOnce({ code: 1, stdout: "", stderr: "Permission denied" }); // version fails
 
         const result = await test(buildConfig());
 
@@ -448,8 +468,9 @@ describe("MySQL Connection - test() SSH path", () => {
 
     it("returns raw version string when regex does not match via SSH", async () => {
         mockSshExec
-            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-            .mockResolvedValueOnce({ code: 0, stdout: "custom-build\n", stderr: "" });
+            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })  // ping
+            .mockResolvedValueOnce({ code: 0, stdout: "1", stderr: "" })  // SELECT 1
+            .mockResolvedValueOnce({ code: 0, stdout: "custom-build\n", stderr: "" }); // version
 
         const result = await test(buildConfig());
 
@@ -469,8 +490,9 @@ describe("MySQL Connection - test() SSH path", () => {
 
     it("does not set MYSQL_PWD when password is not set via SSH", async () => {
         mockSshExec
-            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })
-            .mockResolvedValueOnce({ code: 0, stdout: "8.0.35\n", stderr: "" });
+            .mockResolvedValueOnce({ code: 0, stdout: "", stderr: "" })  // ping
+            .mockResolvedValueOnce({ code: 0, stdout: "1", stderr: "" })  // SELECT 1
+            .mockResolvedValueOnce({ code: 0, stdout: "8.0.35\n", stderr: "" }); // version
 
         const result = await test(buildConfig({ password: undefined }));
 
@@ -542,9 +564,10 @@ describe("MySQL Connection - getDatabasesWithStats() SSH path", () => {
     });
 
     it("throws when SSH exec returns non-zero code", async () => {
+        // Both the stats query and the SHOW DATABASES fallback fail.
         mockSshExec.mockResolvedValue({ code: 1, stdout: "", stderr: "Permission denied" });
 
-        await expect(getDatabasesWithStats(buildConfig())).rejects.toThrow("Failed to get database stats");
+        await expect(getDatabasesWithStats(buildConfig())).rejects.toThrow("Failed to list databases");
         expect(mockSshEnd).toHaveBeenCalled();
     });
 

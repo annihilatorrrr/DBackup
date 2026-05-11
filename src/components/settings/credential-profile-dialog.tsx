@@ -325,6 +325,11 @@ function TypeFields({
                                 placeholder="-----BEGIN RSA PRIVATE KEY-----"
                                 style={!showSecrets ? { WebkitTextSecurity: "disc", textSecurity: "disc" } as React.CSSProperties : undefined}
                             />
+                            {(data.privateKey ?? "").includes("BEGIN ENCRYPTED PRIVATE KEY") && (
+                                <p className="text-xs text-amber-500">
+                                    PKCS#8 encrypted key detected. Make sure to fill in the passphrase field below.
+                                </p>
+                            )}
                         </div>
                         <Field label="Key passphrase (optional)" type={secret} value={data.passphrase ?? ""} onChange={(v) => update("passphrase", v)} />
                     </>

@@ -25,7 +25,8 @@ import {
     isSSHMode,
     extractSshConfig,
     buildMysqlArgs,
-    remoteEnv,
+    withLocalMyCnf,
+    withRemoteMyCnf,
     remoteBinaryCheck,
     shellEscape,
 } from "@/lib/ssh";
@@ -201,42 +202,42 @@ async function restoreSingleFile(
     const dialect = getDialect(config.type === 'mariadb' ? 'mariadb' : 'mysql', config.detectedVersion);
     const args = dialect.getRestoreArgs(config, targetDb);
 
-    const env = { ...process.env };
-    if (config.password) env.MYSQL_PWD = config.password;
-
     onLog(`Restoring to database: ${targetDb}`, 'info', 'command', `${getMysqlCommand()} ${args.join(' ')}`);
 
-    const mysqlProc = spawn(getMysqlCommand(), args, { stdio: ['pipe', 'pipe', 'pipe'], env });
-    const fileStream = createReadStream(sourcePath, { highWaterMark: 64 * 1024 });
+    await withLocalMyCnf(config.password, async (cnfPath) => {
+        const finalArgs = cnfPath ? [`--defaults-file=${cnfPath}`, ...args] : args;
+        const mysqlProc = spawn(getMysqlCommand(), finalArgs, { stdio: ['pipe', 'pipe', 'pipe'] });
+        const fileStream = createReadStream(sourcePath, { highWaterMark: 64 * 1024 });
 
-    fileStream.on('data', (chunk) => {
-        if (onProgress && totalSize > 0) {
-            processedSize += chunk.length;
-            const p = Math.round((processedSize / totalSize) * 100);
-            if (p > lastProgress) {
-                lastProgress = p;
-                onProgress(p);
+        fileStream.on('data', (chunk) => {
+            if (onProgress && totalSize > 0) {
+                processedSize += chunk.length;
+                const p = Math.round((processedSize / totalSize) * 100);
+                if (p > lastProgress) {
+                    lastProgress = p;
+                    onProgress(p);
+                }
             }
+        });
+
+        fileStream.on('error', () => mysqlProc.kill());
+        mysqlProc.stdin.on('error', () => { /* ignore broken pipe */ });
+
+        const needsRename = originalDb && originalDb !== targetDb;
+        if (needsRename) {
+            fileStream
+                .pipe(createDatabaseRenameStream(originalDb!, targetDb))
+                .pipe(mysqlProc.stdin);
+        } else {
+            fileStream.pipe(mysqlProc.stdin);
         }
+
+        const stderr = createStderrHandler(onLog);
+        await waitForProcess(mysqlProc, 'mysql', (d) => {
+            stderr.handle(d.toString());
+        });
+        stderr.flush();
     });
-
-    fileStream.on('error', () => mysqlProc.kill());
-    mysqlProc.stdin.on('error', () => { /* ignore broken pipe */ });
-
-    const needsRename = originalDb && originalDb !== targetDb;
-    if (needsRename) {
-        fileStream
-            .pipe(createDatabaseRenameStream(originalDb!, targetDb))
-            .pipe(mysqlProc.stdin);
-    } else {
-        fileStream.pipe(mysqlProc.stdin);
-    }
-
-    const stderr = createStderrHandler(onLog);
-    await waitForProcess(mysqlProc, 'mysql', (d) => {
-        stderr.handle(d.toString());
-    });
-    stderr.flush();
 }
 
 /**
@@ -266,16 +267,17 @@ async function restoreSingleFileSSH(
         args.push("--max-allowed-packet=64M");
         args.push(shellEscape(targetDb));
 
-        const env: Record<string, string | undefined> = {};
-        if (config.password) env.MYSQL_PWD = config.password;
-
         // Pre-restore diagnostics: query server settings
         try {
-            const diagCmd = remoteEnv(env, `${mysqlBin} ${buildMysqlArgs(config).join(" ")} -N -e "SELECT CONCAT('max_allowed_packet=', @@global.max_allowed_packet, ' innodb_buffer_pool_size=', @@global.innodb_buffer_pool_size, ' log_bin=', @@global.log_bin, ' innodb_flush_log_at_trx_commit=', @@global.innodb_flush_log_at_trx_commit)"`);
-            const diagResult = await ssh.exec(diagCmd);
-            if (diagResult.code === 0 && diagResult.stdout.trim()) {
-                onLog(`Server settings: ${diagResult.stdout.trim()}`);
-            }
+            const diagArgs = buildMysqlArgs(config);
+            await withRemoteMyCnf(ssh, config.password, async (cnfPath) => {
+                const cnfPrefix = cnfPath ? `--defaults-file=${shellEscape(cnfPath)} ` : "";
+                const diagCmd = `${mysqlBin} ${cnfPrefix}${diagArgs.join(" ")} -N -e "SELECT CONCAT('max_allowed_packet=', @@global.max_allowed_packet, ' innodb_buffer_pool_size=', @@global.innodb_buffer_pool_size, ' log_bin=', @@global.log_bin, ' innodb_flush_log_at_trx_commit=', @@global.innodb_flush_log_at_trx_commit)"`;
+                const diagResult = await ssh.exec(diagCmd);
+                if (diagResult.code === 0 && diagResult.stdout.trim()) {
+                    onLog(`Server settings: ${diagResult.stdout.trim()}`);
+                }
+            });
         } catch {
             // Diagnostics are non-critical
         }
@@ -330,52 +332,57 @@ async function restoreSingleFileSSH(
         } else {
             catPart = `cat ${shellEscape(remoteTempFile)}`;
         }
-        const restoreCmd = remoteEnv(env,
-            `${catPart} | ${mysqlBin} ${args.join(" ")}`
-        );
+        const _restoreCmd = `${catPart} | ${mysqlBin} ${args.join(" ")}`;
         onLog(`Restoring to database (SSH): ${targetDb}`, 'info', 'command', `${mysqlBin} ${args.join(" ")}`);
         onProgress?.(95, 'Executing restore command...');
 
-        await new Promise<void>((resolve, reject) => {
-            const secrets = [config.password, config.privilegedAuth?.password].filter(Boolean) as string[];
-            const stderr = createStderrHandler(onLog, secrets);
+        await withRemoteMyCnf(ssh, config.password, async (cnfPath) => {
+            const cnfPrefix = cnfPath ? `--defaults-file=${shellEscape(cnfPath)} ` : "";
+            const cmdWithCnf = `${catPart} | ${mysqlBin} ${cnfPrefix}${args.join(" ")}`;
 
-            ssh.execStream(restoreCmd, (err, stream) => {
-                if (err) return reject(err);
+            await new Promise<void>((resolve, reject) => {
+                const secrets = [config.password, config.privilegedAuth?.password].filter(Boolean) as string[];
+                const stderr = createStderrHandler(onLog, secrets);
 
-                stream.on('data', () => {});
+                ssh.execStream(cmdWithCnf, (err, stream) => {
+                    if (err) return reject(err);
 
-                stream.stderr.on('data', (data: any) => {
-                    stderr.handle(data.toString());
+                    stream.on('data', () => {});
+
+                    stream.stderr.on('data', (data: any) => {
+                        stderr.handle(data.toString());
+                    });
+
+                    stream.on('exit', (code: number | null, signal?: string) => {
+                        stderr.flush();
+                        if (code === 0) {
+                            onProgress?.(100, '');
+                            resolve();
+                        } else {
+                            reject(new Error(`Remote mysql exited with code ${code ?? 'null'}${signal ? ` (signal: ${signal})` : ''}`));
+                        }
+                    });
+
+                    stream.on('error', (err: Error) => reject(err));
                 });
-
-                stream.on('exit', (code: number | null, signal?: string) => {
-                    stderr.flush();
-                    if (code === 0) {
-                        onProgress?.(100, '');
-                        resolve();
-                    } else {
-                        reject(new Error(`Remote mysql exited with code ${code ?? 'null'}${signal ? ` (signal: ${signal})` : ''}`));
-                    }
-                });
-
-                stream.on('error', (err: Error) => reject(err));
             });
         });
     } catch (error) {
         // Post-failure diagnostics: check if MySQL server is still alive
         try {
-            const aliveCheck = await ssh.exec(
-                remoteEnv(
-                    { MYSQL_PWD: config.password },
-                    `${(await remoteBinaryCheck(ssh, "mariadb", "mysql").catch(() => "mysql"))} ${buildMysqlArgs(config).join(" ")} -N -e "SELECT 'alive'" 2>&1`
-                )
-            );
-            if (aliveCheck.stdout.includes('alive')) {
-                onLog(`Post-failure check: MySQL server is still running`, 'warning');
-            } else {
-                onLog(`Post-failure check: MySQL server NOT responding - ${aliveCheck.stderr.trim() || aliveCheck.stdout.trim()}`, 'error');
-            }
+            const mysqlBinFallback = await remoteBinaryCheck(ssh, "mariadb", "mysql").catch(() => "mysql");
+            const aliveArgs = buildMysqlArgs(config);
+            await withRemoteMyCnf(ssh, config.password, async (cnfPath) => {
+                const cnfPrefix = cnfPath ? `--defaults-file=${shellEscape(cnfPath)} ` : "";
+                const aliveCheck = await ssh.exec(
+                    `${mysqlBinFallback} ${cnfPrefix}${aliveArgs.join(" ")} -N -e "SELECT 'alive'" 2>&1`
+                );
+                if (aliveCheck.stdout.includes('alive')) {
+                    onLog(`Post-failure check: MySQL server is still running`, 'warning');
+                } else {
+                    onLog(`Post-failure check: MySQL server NOT responding - ${aliveCheck.stderr.trim() || aliveCheck.stdout.trim()}`, 'error');
+                }
+            });
         } catch {
             onLog(`Post-failure check: Could not reach MySQL server (likely crashed/OOM-killed)`, 'error');
         }

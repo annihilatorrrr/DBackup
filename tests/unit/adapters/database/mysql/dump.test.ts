@@ -82,10 +82,17 @@ vi.mock("@/lib/ssh", () => ({
         connect = (...args: any[]) => mockSshConnect(...args);
         execStream = (...args: any[]) => mockSshExecStream(...args);
         end = (...args: any[]) => mockSshEnd(...args);
+        uploadFile = vi.fn().mockResolvedValue(undefined);
     },
     isSSHMode: (...args: any[]) => mockIsSSHMode(...args),
     extractSshConfig: (...args: any[]) => (mockExtractSshConfig as any)(...args),
     buildMysqlArgs: (...args: any[]) => (mockBuildMysqlArgs as any)(...args),
+    withLocalMyCnf: vi.fn(async (password: any, callback: any) =>
+        password ? callback('/tmp/mock-local.cnf') : callback(undefined)
+    ),
+    withRemoteMyCnf: vi.fn(async (_ssh: any, password: any, callback: any) =>
+        password ? callback('/tmp/mock.cnf') : callback(undefined)
+    ),
     remoteEnv: vi.fn((_env: any, cmd: string) => cmd),
     remoteBinaryCheck: (...args: any[]) => (mockRemoteBinaryCheck as any)(...args),
     shellEscape: vi.fn((s: string) => s),
@@ -160,15 +167,14 @@ describe("MySQL Dump - dump()", () => {
         expect(result.size).toBe(1024 * 100);
         expect(mockSpawnProcess).toHaveBeenCalledWith(
             "mysqldump",
-            expect.arrayContaining(["mydb"]),
-            expect.any(Object)
+            expect.arrayContaining(["mydb"])
         );
     });
 
     it("uses mysqldump command from tools module", async () => {
         await dump(buildConfig({ database: "mydb" }), "/tmp/output.sql");
 
-        expect(mockSpawnProcess).toHaveBeenCalledWith("mysqldump", expect.any(Array), expect.any(Object));
+        expect(mockSpawnProcess).toHaveBeenCalledWith("mysqldump", expect.any(Array));
     });
 
     it("returns failure when dump file is empty after process exit", async () => {

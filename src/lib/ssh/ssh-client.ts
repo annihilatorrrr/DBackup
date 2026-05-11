@@ -1,4 +1,5 @@
 import { Client, ConnectConfig } from "ssh2";
+import { normalizeSshPrivateKey } from "./pkcs8-compat";
 
 /**
  * Generic SSH connection configuration used across all adapters.
@@ -36,9 +37,25 @@ export class SshClient {
             };
 
             if (config.authType === "privateKey") {
-                sshConfig.privateKey = config.privateKey;
-                if (config.passphrase) {
-                    sshConfig.passphrase = config.passphrase;
+                // PKCS#8 encrypted keys (BEGIN ENCRYPTED PRIVATE KEY) are not
+                // supported by ssh2. Decrypt them in-memory via Node.js crypto
+                // so they work transparently without any manual conversion.
+                if (config.privateKey?.includes("BEGIN ENCRYPTED PRIVATE KEY")) {
+                    if (!config.passphrase) {
+                        reject(new Error("This private key is passphrase-protected. Please provide the passphrase."));
+                        return;
+                    }
+                    try {
+                        sshConfig.privateKey = normalizeSshPrivateKey(config.privateKey, config.passphrase);
+                    } catch (e: unknown) {
+                        reject(e instanceof Error ? e : new Error("Failed to decrypt private key."));
+                        return;
+                    }
+                } else {
+                    sshConfig.privateKey = config.privateKey;
+                    if (config.passphrase) {
+                        sshConfig.passphrase = config.passphrase;
+                    }
                 }
             } else if (config.authType === "agent") {
                 sshConfig.agent = process.env.SSH_AUTH_SOCK;

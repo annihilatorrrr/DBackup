@@ -7,7 +7,8 @@ import {
     isSSHMode,
     extractSshConfig,
     buildMysqlArgs,
-    remoteEnv,
+    withLocalMyCnf,
+    withRemoteMyCnf,
     remoteBinaryCheck,
     shellEscape,
 } from "@/lib/ssh";
@@ -22,27 +23,28 @@ export async function ensureDatabase(config: MySQLConfig, dbName: string, user: 
             await ssh.connect(sshConfig);
             const mysqlBin = await remoteBinaryCheck(ssh, "mariadb", "mysql");
             const args = buildMysqlArgs(config, user);
-            const env: Record<string, string | undefined> = {};
-            if (pass) env.MYSQL_PWD = pass;
 
-            const createCmd = remoteEnv(env, `${mysqlBin} ${args.join(" ")} -e ${shellEscape(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``)}`);
-            const result = await ssh.exec(createCmd);
-            if (result.code !== 0) {
-                logs.push(`Warning ensures DB '${dbName}': ${result.stderr}`);
-                return;
-            }
-            logs.push(`Database '${dbName}' ensured.`);
-
-            if (privileged) {
-                const grantQuery = `GRANT ALL PRIVILEGES ON \`${dbName}\`.* TO '${config.user}'@'%'; GRANT ALL PRIVILEGES ON \`${dbName}\`.* TO '${config.user}'@'localhost'; FLUSH PRIVILEGES;`;
-                const grantCmd = remoteEnv(env, `${mysqlBin} ${args.join(" ")} -e ${shellEscape(grantQuery)}`);
-                const grantResult = await ssh.exec(grantCmd);
-                if (grantResult.code === 0) {
-                    logs.push(`Permissions granted for '${dbName}'.`);
-                } else {
-                    logs.push(`Warning grants for '${dbName}': ${grantResult.stderr}`);
+            await withRemoteMyCnf(ssh, pass, async (cnfPath) => {
+                const cnfPrefix = cnfPath ? `--defaults-file=${shellEscape(cnfPath)} ` : "";
+                const createCmd = `${mysqlBin} ${cnfPrefix}${args.join(" ")} -e ${shellEscape(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``)}` ;
+                const result = await ssh.exec(createCmd);
+                if (result.code !== 0) {
+                    logs.push(`Warning ensures DB '${dbName}': ${result.stderr}`);
+                    return;
                 }
-            }
+                logs.push(`Database '${dbName}' ensured.`);
+
+                if (privileged) {
+                    const grantQuery = `GRANT ALL PRIVILEGES ON \`${dbName}\`.* TO '${config.user}'@'%'; GRANT ALL PRIVILEGES ON \`${dbName}\`.* TO '${config.user}'@'localhost'; FLUSH PRIVILEGES;`;
+                    const grantCmd = `${mysqlBin} ${cnfPrefix}${args.join(" ")} -e ${shellEscape(grantQuery)}`;
+                    const grantResult = await ssh.exec(grantCmd);
+                    if (grantResult.code === 0) {
+                        logs.push(`Permissions granted for '${dbName}'.`);
+                    } else {
+                        logs.push(`Warning grants for '${dbName}': ${grantResult.stderr}`);
+                    }
+                }
+            });
         } catch (e: unknown) {
             const message = e instanceof Error ? e.message : String(e);
             logs.push(`Warning ensures DB '${dbName}': ${message}`);
@@ -56,17 +58,18 @@ export async function ensureDatabase(config: MySQLConfig, dbName: string, user: 
     if (config.disableSsl) {
         args.push('--skip-ssl');
     }
-    const env = { ...process.env };
-    if (pass) env.MYSQL_PWD = pass;
 
     try {
-       await execFileAsync(getMysqlCommand(), [...args, '-e', `CREATE DATABASE IF NOT EXISTS \`${dbName}\``], { env });
-       logs.push(`Database '${dbName}' ensured.`);
-       if (privileged) {
-            const grantQuery = `GRANT ALL PRIVILEGES ON \`${dbName}\`.* TO '${config.user}'@'%'; GRANT ALL PRIVILEGES ON \`${dbName}\`.* TO '${config.user}'@'localhost'; FLUSH PRIVILEGES;`;
-            await execFileAsync(getMysqlCommand(), [...args, '-e', grantQuery], { env });
-            logs.push(`Permissions granted for '${dbName}'.`);
-       }
+        await withLocalMyCnf(pass, async (cnfPath) => {
+            const cnfArgs = cnfPath ? [`--defaults-file=${cnfPath}`, ...args] : args;
+            await execFileAsync(getMysqlCommand(), [...cnfArgs, '-e', `CREATE DATABASE IF NOT EXISTS \`${dbName}\``]);
+            logs.push(`Database '${dbName}' ensured.`);
+            if (privileged) {
+                const grantQuery = `GRANT ALL PRIVILEGES ON \`${dbName}\`.* TO '${config.user}'@'%'; GRANT ALL PRIVILEGES ON \`${dbName}\`.* TO '${config.user}'@'localhost'; FLUSH PRIVILEGES;`;
+                await execFileAsync(getMysqlCommand(), [...cnfArgs, '-e', grantQuery]);
+                logs.push(`Permissions granted for '${dbName}'.`);
+            }
+        });
     } catch(e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
         logs.push(`Warning ensures DB '${dbName}': ${message}`);
@@ -85,28 +88,38 @@ export async function test(config: MySQLConfig): Promise<{ success: boolean; mes
             const mysqladminBin = await remoteBinaryCheck(ssh, "mariadb-admin", "mysqladmin");
 
             const args = buildMysqlArgs(config);
-            const env: Record<string, string | undefined> = {};
-            if (config.password) env.MYSQL_PWD = config.password;
 
-            // 1. Ping test
-            const pingCmd = remoteEnv(env, `${mysqladminBin} ping ${args.join(" ")} --connect-timeout=10`);
-            const pingResult = await ssh.exec(pingCmd);
-            if (pingResult.code !== 0) {
-                return { success: false, message: `SSH ping failed: ${pingResult.stderr}` };
-            }
+            return await withRemoteMyCnf(ssh, config.password, async (cnfPath) => {
+                const cnfPrefix = cnfPath ? `--defaults-file=${shellEscape(cnfPath)} ` : "";
 
-            // 2. Version check
-            const versionCmd = remoteEnv(env, `${mysqlBin} ${args.join(" ")} -N -s -e 'SELECT VERSION()'`);
-            const versionResult = await ssh.exec(versionCmd);
-            if (versionResult.code !== 0) {
-                return { success: true, message: "Connection successful (via SSH, version unknown)" };
-            }
+                // 1. Ping test
+                const pingCmd = `${mysqladminBin} ${cnfPrefix}ping ${args.join(" ")} --connect-timeout=10`;
+                const pingResult = await ssh.exec(pingCmd);
+                if (pingResult.code !== 0) {
+                    return { success: false, message: `SSH ping failed: ${pingResult.stderr}` };
+                }
 
-            const rawVersion = versionResult.stdout.trim();
-            const versionMatch = rawVersion.match(/^([\d.]+)/);
-            const version = versionMatch ? versionMatch[1] : rawVersion;
+                // 2. Auth check - verify credentials actually work
+                // mysqladmin ping can succeed even when query auth fails on some MariaDB builds
+                const connectCheckCmd = `${mysqlBin} ${cnfPrefix}${args.join(" ")} -N -s -e 'SELECT 1'`;
+                const connectCheckResult = await ssh.exec(connectCheckCmd);
+                if (connectCheckResult.code !== 0) {
+                    return { success: false, message: `Connection failed: ${connectCheckResult.stderr}` };
+                }
 
-            return { success: true, message: "Connection successful (via SSH)", version };
+                // 3. Version check
+                const versionCmd = `${mysqlBin} ${cnfPrefix}${args.join(" ")} -N -s -e 'SELECT VERSION()'`;
+                const versionResult = await ssh.exec(versionCmd);
+                if (versionResult.code !== 0) {
+                    return { success: true, message: "Connection successful (via SSH, version unknown)" };
+                }
+
+                const rawVersion = versionResult.stdout.trim();
+                const versionMatch = rawVersion.match(/^([\d.]+)/);
+                const version = versionMatch ? versionMatch[1] : rawVersion;
+
+                return { success: true, message: "Connection successful (via SSH)", version };
+            });
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : String(error);
             return { success: false, message: `SSH connection failed: ${msg}` };
@@ -116,37 +129,33 @@ export async function test(config: MySQLConfig): Promise<{ success: boolean; mes
     }
 
     try {
-        // 1. Basic Ping Test
-        // Increased timeout to 10s to handle heavy load during integration tests
-        const pingArgs = ['ping', '-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp', '--connect-timeout=10'];
+        return await withLocalMyCnf(config.password, async (cnfPath) => {
+            // 1. Basic Ping Test
+            // Increased timeout to 10s to handle heavy load during integration tests
+            const pingArgs = cnfPath
+                ? [`--defaults-file=${cnfPath}`, 'ping', '-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp', '--connect-timeout=10']
+                : ['ping', '-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp', '--connect-timeout=10'];
 
-        // Use MYSQL_PWD env var for password to avoid leaking it in process list
-        const env = { ...process.env };
-        if (config.password) {
-            env.MYSQL_PWD = config.password;
-        }
+            if (config.disableSsl) pingArgs.push('--skip-ssl');
 
-        if (config.disableSsl) {
-            pingArgs.push('--skip-ssl');
-        }
+            await execFileAsync(getMysqladminCommand(), pingArgs);
 
-        await execFileAsync(getMysqladminCommand(), pingArgs, { env });
+            // 2. Version Check (if ping successful)
+            const versionArgs = cnfPath
+                ? [`--defaults-file=${cnfPath}`, '-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp', '-N', '-s', '-e', 'SELECT VERSION()']
+                : ['-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp', '-N', '-s', '-e', 'SELECT VERSION()'];
 
-        // 2. Version Check (if ping successful)
-        const versionArgs = ['-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp', '-N', '-s', '-e', 'SELECT VERSION()'];
+            if (config.disableSsl) versionArgs.push('--skip-ssl');
 
-        if (config.disableSsl) {
-            versionArgs.push('--skip-ssl');
-        }
+            const { stdout } = await execFileAsync(getMysqlCommand(), versionArgs);
+            const rawVersion = stdout.trim();
 
-        const { stdout } = await execFileAsync(getMysqlCommand(), versionArgs, { env });
-        const rawVersion = stdout.trim();
+            // Extract version number only (e.g. "11.4.9-MariaDB-ubu2404" → "11.4.9" or "8.0.44" → "8.0.44")
+            const versionMatch = rawVersion.match(/^([\d.]+)/);
+            const version = versionMatch ? versionMatch[1] : rawVersion;
 
-        // Extract version number only (e.g. "11.4.9-MariaDB-ubu2404" → "11.4.9" or "8.0.44" → "8.0.44")
-        const versionMatch = rawVersion.match(/^([\d.]+)/);
-        const version = versionMatch ? versionMatch[1] : rawVersion;
-
-        return { success: true, message: "Connection successful", version };
+            return { success: true, message: "Connection successful", version };
+        });
     } catch (error: unknown) {
         const err = error as { stderr?: string; message?: string };
         return { success: false, message: "Connection failed: " + (err.stderr || err.message) };
@@ -163,35 +172,30 @@ export async function getDatabases(config: MySQLConfig): Promise<string[]> {
             await ssh.connect(sshConfig);
             const mysqlBin = await remoteBinaryCheck(ssh, "mariadb", "mysql");
             const args = buildMysqlArgs(config);
-            const env: Record<string, string | undefined> = {};
-            if (config.password) env.MYSQL_PWD = config.password;
 
-            const cmd = remoteEnv(env, `${mysqlBin} ${args.join(" ")} -e 'SHOW DATABASES' --skip-column-names`);
-            const result = await ssh.exec(cmd);
-            if (result.code !== 0) {
-                throw new Error(`Failed to list databases: ${result.stderr}`);
-            }
-            return result.stdout.split('\n').map(s => s.trim()).filter(s => s && !sysDbs.includes(s));
+            return await withRemoteMyCnf(ssh, config.password, async (cnfPath) => {
+                const cnfPrefix = cnfPath ? `--defaults-file=${shellEscape(cnfPath)} ` : "";
+                const cmd = `${mysqlBin} ${cnfPrefix}${args.join(" ")} -e 'SHOW DATABASES' --skip-column-names`;
+                const result = await ssh.exec(cmd);
+                if (result.code !== 0) {
+                    throw new Error(`Failed to list databases: ${result.stderr}`);
+                }
+                return result.stdout.split('\n').map(s => s.trim()).filter(s => s && !sysDbs.includes(s));
+            });
         } finally {
             ssh.end();
         }
     }
 
-    const args = ['-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp'];
-    if (config.disableSsl) {
-        args.push('--skip-ssl');
-    }
+    const baseArgs = ['-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp'];
+    if (config.disableSsl) baseArgs.push('--skip-ssl');
+    baseArgs.push('-e', 'SHOW DATABASES', '--skip-column-names');
 
-    // Use MYSQL_PWD env var for password
-    const env = { ...process.env };
-    if (config.password) {
-        env.MYSQL_PWD = config.password;
-    }
-
-    args.push('-e', 'SHOW DATABASES', '--skip-column-names');
-
-    const { stdout } = await execFileAsync(getMysqlCommand(), args, { env });
-    return stdout.split('\n').map(s => s.trim()).filter(s => s && !sysDbs.includes(s));
+    return withLocalMyCnf(config.password, async (cnfPath) => {
+        const args = cnfPath ? [`--defaults-file=${cnfPath}`, ...baseArgs] : baseArgs;
+        const { stdout } = await execFileAsync(getMysqlCommand(), args);
+        return stdout.split('\n').map(s => s.trim()).filter(s => s && !sysDbs.includes(s));
+    });
 }
 
 import { DatabaseInfo } from "@/lib/core/interfaces";
@@ -231,32 +235,39 @@ export async function getDatabasesWithStats(config: MySQLConfig): Promise<Databa
             await ssh.connect(sshConfig);
             const mysqlBin = await remoteBinaryCheck(ssh, "mariadb", "mysql");
             const args = buildMysqlArgs(config);
-            const env: Record<string, string | undefined> = {};
-            if (config.password) env.MYSQL_PWD = config.password;
 
-            const cmd = remoteEnv(env, `${mysqlBin} ${args.join(" ")} -e ${shellEscape(statsQuery)} --skip-column-names --batch`);
-            const result = await ssh.exec(cmd);
-            if (result.code !== 0) {
-                throw new Error(`Failed to get database stats: ${result.stderr}`);
-            }
-            return parseStatsOutput(result.stdout);
+            return await withRemoteMyCnf(ssh, config.password, async (cnfPath) => {
+                const cnfPrefix = cnfPath ? `--defaults-file=${shellEscape(cnfPath)} ` : "";
+                const cmd = `${mysqlBin} ${cnfPrefix}${args.join(" ")} -e ${shellEscape(statsQuery)} --skip-column-names --batch`;
+                const result = await ssh.exec(cmd);
+                if (result.code !== 0) {
+                    // Fallback to SHOW DATABASES when information_schema query fails (e.g. restricted permissions)
+                    const fallbackCmd = `${mysqlBin} ${cnfPrefix}${args.join(" ")} -e 'SHOW DATABASES' --skip-column-names`;
+                    const fallbackResult = await ssh.exec(fallbackCmd);
+                    if (fallbackResult.code !== 0) {
+                        throw new Error(`Failed to list databases: ${fallbackResult.stderr}`);
+                    }
+                    const sysDbs = ['information_schema', 'mysql', 'performance_schema', 'sys'];
+                    return fallbackResult.stdout
+                        .split('\n')
+                        .map(s => s.trim())
+                        .filter(s => s && !sysDbs.includes(s))
+                        .map(name => ({ name, sizeInBytes: 0, tableCount: 0 }));
+                }
+                return parseStatsOutput(result.stdout);
+            });
         } finally {
             ssh.end();
         }
     }
 
-    const args = ['-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp'];
-    if (config.disableSsl) {
-        args.push('--skip-ssl');
-    }
+    const baseArgs = ['-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp'];
+    if (config.disableSsl) baseArgs.push('--skip-ssl');
+    baseArgs.push('-e', statsQuery, '--skip-column-names', '--batch');
 
-    const env = { ...process.env };
-    if (config.password) {
-        env.MYSQL_PWD = config.password;
-    }
-
-    args.push('-e', statsQuery, '--skip-column-names', '--batch');
-
-    const { stdout } = await execFileAsync(getMysqlCommand(), args, { env });
-    return parseStatsOutput(stdout);
+    return withLocalMyCnf(config.password, async (cnfPath) => {
+        const args = cnfPath ? [`--defaults-file=${cnfPath}`, ...baseArgs] : baseArgs;
+        const { stdout } = await execFileAsync(getMysqlCommand(), args);
+        return parseStatsOutput(stdout);
+    });
 }

@@ -1,3 +1,5 @@
+import type { TriggerInfo } from "@/lib/runner";
+
 export interface RestoreInput {
     storageConfigId: string;
     file: string;
@@ -8,4 +10,5 @@ export interface RestoreInput {
         user?: string;
         password?: string;
     };
+    triggerInfo?: TriggerInfo;
 }

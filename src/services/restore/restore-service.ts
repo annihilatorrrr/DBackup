@@ -46,7 +46,9 @@ export class RestoreService {
                 logs: JSON.stringify([initialLog]),
                 startedAt: new Date(),
                 path: file,
-                metadata: JSON.stringify({ progress: 0, stage: 'Initializing' })
+                metadata: JSON.stringify({ progress: 0, stage: 'Initializing' }),
+                triggerType: input.triggerInfo?.type ?? null,
+                triggerLabel: input.triggerInfo?.label ?? null,
             }
         });
         const executionId = execution.id;

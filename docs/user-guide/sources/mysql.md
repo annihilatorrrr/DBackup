@@ -64,6 +64,21 @@ mysql        # or mariadb (MariaDB)
 
 DBackup auto-detects which binary is available (`mysqldump` vs `mariadb-dump`, `mysql` vs `mariadb`).
 
+::: info SFTP required
+DBackup uses SFTP to securely transfer the database password to the remote server. SFTP is part of OpenSSH and is **enabled by default** on all standard Linux distributions. No extra configuration is needed unless SFTP was explicitly disabled in `/etc/ssh/sshd_config`.
+
+To verify SFTP is available on the remote server:
+```bash
+grep -i sftp /etc/ssh/sshd_config
+# Should show: Subsystem sftp /usr/lib/openssh/sftp-server
+```
+:::
+
+**The SSH user needs:**
+- Permission to write to `/tmp` on the remote server (standard on all Linux systems - `/tmp` is world-writable by default)
+- Execute permission for `mysql`/`mariadb` and `mysqldump`/`mariadb-dump` (standard - binaries in `/usr/bin/` are world-executable)
+- No elevated privileges or `sudo` required
+
 **Install on the remote host:**
 ```bash
 # Debian/Ubuntu (MySQL client)
@@ -189,7 +204,14 @@ In SSH mode, DBackup:
 5. Applies compression and encryption locally on the DBackup server
 6. Uploads the processed backup to the configured storage destination
 
-The database password is passed securely via the `MYSQL_PWD` environment variable in the remote session - it does not appear in the process arguments or shell history.
+The database password is delivered securely via a temporary `.my.cnf` file:
+
+1. DBackup writes the password to a temp file (`/tmp/dbackup_<uuid>.cnf`) on the **local** DBackup server (mode `0600`)
+2. The file is uploaded to `/tmp/dbackup_<uuid>.cnf` on the **remote** SSH server via SFTP binary transfer - it never appears in process arguments or shell history
+3. MySQL/MariaDB is invoked with `--defaults-file=<path>` pointing to that file
+4. Both files are deleted in a `finally` block regardless of success or failure
+
+This approach is compatible with all MariaDB versions including 11.4+, which removed `MYSQL_PWD` support.
 
 ### Multi-Database Backups
 
@@ -256,6 +278,36 @@ bind-address = 0.0.0.0
 ```bash
 --ssl-mode=REQUIRED --ssl-ca=/path/to/ca.pem
 ```
+
+### SSH: HestiaCP / unix_socket Authentication
+
+```
+ERROR 1698 (28000): Access denied for user 'dbackup'@'localhost'
+```
+
+HestiaCP installs MariaDB with the `unix_socket` auth plugin. The database user must be created with `IDENTIFIED BY` explicitly:
+
+```sql
+CREATE USER 'dbackup'@'localhost' IDENTIFIED BY 'your_password';
+GRANT SELECT, LOCK TABLES, SHOW VIEW, TRIGGER, EVENT, RELOAD, PROCESS ON *.* TO 'dbackup'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+Note: Use `'dbackup'@'localhost'` (not `'dbackup'@'%'`) since DBackup connects via the local SSH session.
+
+### SSH: SFTP Subsystem Disabled
+
+```
+SFTP session failed: ...
+```
+
+If SFTP was explicitly disabled on the remote server, re-enable it in `/etc/ssh/sshd_config`:
+
+```ini
+Subsystem sftp /usr/lib/openssh/sftp-server
+```
+
+Then restart SSH: `systemctl restart sshd`
 
 ### SSH: Binary Not Found
 

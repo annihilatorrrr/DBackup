@@ -2,6 +2,37 @@
 
 All notable changes to DBackup are documented here.
 
+## v2.3.1 - General Improvements, MySQL/MariaDB SSH Mode Fixes and SSH Key Conversion
+*Released: May 11, 2026*
+
+### 🎨 Improvements
+
+- **Activity Logs**: Restore executions now record the initiating user in the "Trigger" column, showing a "Manual" badge with the user's name - the same badge style used for manually triggered backup jobs.
+
+### 🐛 Bug Fixes
+
+- **SSH**: Passphrase-protected private keys in PKCS#8 encrypted format (`-----BEGIN ENCRYPTED PRIVATE KEY-----`) now work natively without any manual conversion. The keys are transparently decrypted in-memory via Node.js `crypto` before being passed to the SSH library, which means Ed25519 and other key types with a passphrase are fully supported. This covers the SSH tunnel path (all database adapters), the SFTP storage adapter, and the MSSQL SSH transfer. The Vault credential dialog now shows a helpful amber hint when this format is detected, indicating that the passphrase field must be filled in.
+- **MySQL/MariaDB SSH mode**: Removed `--protocol=tcp` from remote command arguments. On HestiaCP and other setups where MariaDB uses the `unix_socket` auth plugin, forcing TCP caused ERROR 1698 ("Access denied") even with correct credentials. Remote commands now let MariaDB choose the connection method.
+- **MySQL/MariaDB SSH mode**: Fixed a false positive in the "Test Connection" check. A `SELECT 1` step is now run after `mysqladmin ping` - if authentication actually fails (e.g. ERROR 1045), the test correctly returns failure with the error message instead of a misleading "version unknown" success.
+- **MySQL/MariaDB SSH mode**: `getDatabasesWithStats` now falls back to a plain `SHOW DATABASES` query (returning 0 for size/table count) when the `information_schema` stats query fails due to restricted permissions. This prevents a hard error in the Database Explorer on restricted setups.
+
+### 🔄 Changed
+
+- **MySQL/MariaDB SSH mode**: Passwords are no longer passed via `MYSQL_PWD` (silently ignored by MariaDB 11.4+). Credentials are now written to a temporary `.my.cnf` file locally, uploaded to the remote server via SFTP binary transfer (never visible in process lists or shell history), used with `--defaults-file` (which reads only the temp file, bypassing any system-level `/etc/mysql/my.cnf` or `~/.my.cnf` that could conflict), and deleted immediately after the command completes.
+- **MySQL/MariaDB Direct mode**: Passwords are no longer passed via `MYSQL_PWD` for consistency and to support MariaDB 11.4+ client binaries. A temporary `.my.cnf` file (mode 0600) is now written locally and passed via `--defaults-file`, then deleted in a `finally` block.
+
+### 📝 Documentation
+
+- **MySQL/MariaDB source guide**: Updated SSH mode description to reflect the SFTP-based password delivery. Added SFTP requirement note (enabled by default on OpenSSH, no extra config needed), clarified SSH user permissions (write to `/tmp`, no `sudo` required), added troubleshooting entries for HestiaCP `unix_socket` auth and disabled SFTP subsystem.
+
+### 🐳 Docker
+
+- **Image**: `skyfay/dbackup:v2.3.1`
+- **Also tagged as**: `latest`, `v2`
+- **CI Image**: `skyfay/dbackup:ci`
+- **Platforms**: linux/amd64, linux/arm64
+
+
 ## v2.3.0 - CI Image, Activity Log Trigger and General Improvements
 *Released: May 10, 2026*
 
