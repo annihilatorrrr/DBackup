@@ -7,6 +7,7 @@ import {
     isSSHMode,
     extractSshConfig,
     buildMysqlArgs,
+    withLocalMyCnf,
     withRemoteMyCnf,
     remoteBinaryCheck,
     shellEscape,
@@ -57,17 +58,18 @@ export async function ensureDatabase(config: MySQLConfig, dbName: string, user: 
     if (config.disableSsl) {
         args.push('--skip-ssl');
     }
-    const env = { ...process.env };
-    if (pass) env.MYSQL_PWD = pass;
 
     try {
-       await execFileAsync(getMysqlCommand(), [...args, '-e', `CREATE DATABASE IF NOT EXISTS \`${dbName}\``], { env });
-       logs.push(`Database '${dbName}' ensured.`);
-       if (privileged) {
-            const grantQuery = `GRANT ALL PRIVILEGES ON \`${dbName}\`.* TO '${config.user}'@'%'; GRANT ALL PRIVILEGES ON \`${dbName}\`.* TO '${config.user}'@'localhost'; FLUSH PRIVILEGES;`;
-            await execFileAsync(getMysqlCommand(), [...args, '-e', grantQuery], { env });
-            logs.push(`Permissions granted for '${dbName}'.`);
-       }
+        await withLocalMyCnf(pass, async (cnfPath) => {
+            const cnfArgs = cnfPath ? [`--defaults-file=${cnfPath}`, ...args] : args;
+            await execFileAsync(getMysqlCommand(), [...cnfArgs, '-e', `CREATE DATABASE IF NOT EXISTS \`${dbName}\``]);
+            logs.push(`Database '${dbName}' ensured.`);
+            if (privileged) {
+                const grantQuery = `GRANT ALL PRIVILEGES ON \`${dbName}\`.* TO '${config.user}'@'%'; GRANT ALL PRIVILEGES ON \`${dbName}\`.* TO '${config.user}'@'localhost'; FLUSH PRIVILEGES;`;
+                await execFileAsync(getMysqlCommand(), [...cnfArgs, '-e', grantQuery]);
+                logs.push(`Permissions granted for '${dbName}'.`);
+            }
+        });
     } catch(e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
         logs.push(`Warning ensures DB '${dbName}': ${message}`);
@@ -127,37 +129,33 @@ export async function test(config: MySQLConfig): Promise<{ success: boolean; mes
     }
 
     try {
-        // 1. Basic Ping Test
-        // Increased timeout to 10s to handle heavy load during integration tests
-        const pingArgs = ['ping', '-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp', '--connect-timeout=10'];
+        return await withLocalMyCnf(config.password, async (cnfPath) => {
+            // 1. Basic Ping Test
+            // Increased timeout to 10s to handle heavy load during integration tests
+            const pingArgs = cnfPath
+                ? [`--defaults-file=${cnfPath}`, 'ping', '-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp', '--connect-timeout=10']
+                : ['ping', '-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp', '--connect-timeout=10'];
 
-        // Use MYSQL_PWD env var for password to avoid leaking it in process list
-        const env = { ...process.env };
-        if (config.password) {
-            env.MYSQL_PWD = config.password;
-        }
+            if (config.disableSsl) pingArgs.push('--skip-ssl');
 
-        if (config.disableSsl) {
-            pingArgs.push('--skip-ssl');
-        }
+            await execFileAsync(getMysqladminCommand(), pingArgs);
 
-        await execFileAsync(getMysqladminCommand(), pingArgs, { env });
+            // 2. Version Check (if ping successful)
+            const versionArgs = cnfPath
+                ? [`--defaults-file=${cnfPath}`, '-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp', '-N', '-s', '-e', 'SELECT VERSION()']
+                : ['-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp', '-N', '-s', '-e', 'SELECT VERSION()'];
 
-        // 2. Version Check (if ping successful)
-        const versionArgs = ['-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp', '-N', '-s', '-e', 'SELECT VERSION()'];
+            if (config.disableSsl) versionArgs.push('--skip-ssl');
 
-        if (config.disableSsl) {
-            versionArgs.push('--skip-ssl');
-        }
+            const { stdout } = await execFileAsync(getMysqlCommand(), versionArgs);
+            const rawVersion = stdout.trim();
 
-        const { stdout } = await execFileAsync(getMysqlCommand(), versionArgs, { env });
-        const rawVersion = stdout.trim();
+            // Extract version number only (e.g. "11.4.9-MariaDB-ubu2404" → "11.4.9" or "8.0.44" → "8.0.44")
+            const versionMatch = rawVersion.match(/^([\d.]+)/);
+            const version = versionMatch ? versionMatch[1] : rawVersion;
 
-        // Extract version number only (e.g. "11.4.9-MariaDB-ubu2404" → "11.4.9" or "8.0.44" → "8.0.44")
-        const versionMatch = rawVersion.match(/^([\d.]+)/);
-        const version = versionMatch ? versionMatch[1] : rawVersion;
-
-        return { success: true, message: "Connection successful", version };
+            return { success: true, message: "Connection successful", version };
+        });
     } catch (error: unknown) {
         const err = error as { stderr?: string; message?: string };
         return { success: false, message: "Connection failed: " + (err.stderr || err.message) };
@@ -189,21 +187,15 @@ export async function getDatabases(config: MySQLConfig): Promise<string[]> {
         }
     }
 
-    const args = ['-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp'];
-    if (config.disableSsl) {
-        args.push('--skip-ssl');
-    }
+    const baseArgs = ['-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp'];
+    if (config.disableSsl) baseArgs.push('--skip-ssl');
+    baseArgs.push('-e', 'SHOW DATABASES', '--skip-column-names');
 
-    // Use MYSQL_PWD env var for password
-    const env = { ...process.env };
-    if (config.password) {
-        env.MYSQL_PWD = config.password;
-    }
-
-    args.push('-e', 'SHOW DATABASES', '--skip-column-names');
-
-    const { stdout } = await execFileAsync(getMysqlCommand(), args, { env });
-    return stdout.split('\n').map(s => s.trim()).filter(s => s && !sysDbs.includes(s));
+    return withLocalMyCnf(config.password, async (cnfPath) => {
+        const args = cnfPath ? [`--defaults-file=${cnfPath}`, ...baseArgs] : baseArgs;
+        const { stdout } = await execFileAsync(getMysqlCommand(), args);
+        return stdout.split('\n').map(s => s.trim()).filter(s => s && !sysDbs.includes(s));
+    });
 }
 
 import { DatabaseInfo } from "@/lib/core/interfaces";
@@ -269,18 +261,13 @@ export async function getDatabasesWithStats(config: MySQLConfig): Promise<Databa
         }
     }
 
-    const args = ['-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp'];
-    if (config.disableSsl) {
-        args.push('--skip-ssl');
-    }
+    const baseArgs = ['-h', config.host, '-P', String(config.port), '-u', config.user, '--protocol=tcp'];
+    if (config.disableSsl) baseArgs.push('--skip-ssl');
+    baseArgs.push('-e', statsQuery, '--skip-column-names', '--batch');
 
-    const env = { ...process.env };
-    if (config.password) {
-        env.MYSQL_PWD = config.password;
-    }
-
-    args.push('-e', statsQuery, '--skip-column-names', '--batch');
-
-    const { stdout } = await execFileAsync(getMysqlCommand(), args, { env });
-    return parseStatsOutput(stdout);
+    return withLocalMyCnf(config.password, async (cnfPath) => {
+        const args = cnfPath ? [`--defaults-file=${cnfPath}`, ...baseArgs] : baseArgs;
+        const { stdout } = await execFileAsync(getMysqlCommand(), args);
+        return parseStatsOutput(stdout);
+    });
 }

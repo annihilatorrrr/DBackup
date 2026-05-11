@@ -25,6 +25,7 @@ import {
     isSSHMode,
     extractSshConfig,
     buildMysqlArgs,
+    withLocalMyCnf,
     withRemoteMyCnf,
     remoteBinaryCheck,
     shellEscape,
@@ -201,42 +202,42 @@ async function restoreSingleFile(
     const dialect = getDialect(config.type === 'mariadb' ? 'mariadb' : 'mysql', config.detectedVersion);
     const args = dialect.getRestoreArgs(config, targetDb);
 
-    const env = { ...process.env };
-    if (config.password) env.MYSQL_PWD = config.password;
-
     onLog(`Restoring to database: ${targetDb}`, 'info', 'command', `${getMysqlCommand()} ${args.join(' ')}`);
 
-    const mysqlProc = spawn(getMysqlCommand(), args, { stdio: ['pipe', 'pipe', 'pipe'], env });
-    const fileStream = createReadStream(sourcePath, { highWaterMark: 64 * 1024 });
+    await withLocalMyCnf(config.password, async (cnfPath) => {
+        const finalArgs = cnfPath ? [`--defaults-file=${cnfPath}`, ...args] : args;
+        const mysqlProc = spawn(getMysqlCommand(), finalArgs, { stdio: ['pipe', 'pipe', 'pipe'] });
+        const fileStream = createReadStream(sourcePath, { highWaterMark: 64 * 1024 });
 
-    fileStream.on('data', (chunk) => {
-        if (onProgress && totalSize > 0) {
-            processedSize += chunk.length;
-            const p = Math.round((processedSize / totalSize) * 100);
-            if (p > lastProgress) {
-                lastProgress = p;
-                onProgress(p);
+        fileStream.on('data', (chunk) => {
+            if (onProgress && totalSize > 0) {
+                processedSize += chunk.length;
+                const p = Math.round((processedSize / totalSize) * 100);
+                if (p > lastProgress) {
+                    lastProgress = p;
+                    onProgress(p);
+                }
             }
+        });
+
+        fileStream.on('error', () => mysqlProc.kill());
+        mysqlProc.stdin.on('error', () => { /* ignore broken pipe */ });
+
+        const needsRename = originalDb && originalDb !== targetDb;
+        if (needsRename) {
+            fileStream
+                .pipe(createDatabaseRenameStream(originalDb!, targetDb))
+                .pipe(mysqlProc.stdin);
+        } else {
+            fileStream.pipe(mysqlProc.stdin);
         }
+
+        const stderr = createStderrHandler(onLog);
+        await waitForProcess(mysqlProc, 'mysql', (d) => {
+            stderr.handle(d.toString());
+        });
+        stderr.flush();
     });
-
-    fileStream.on('error', () => mysqlProc.kill());
-    mysqlProc.stdin.on('error', () => { /* ignore broken pipe */ });
-
-    const needsRename = originalDb && originalDb !== targetDb;
-    if (needsRename) {
-        fileStream
-            .pipe(createDatabaseRenameStream(originalDb!, targetDb))
-            .pipe(mysqlProc.stdin);
-    } else {
-        fileStream.pipe(mysqlProc.stdin);
-    }
-
-    const stderr = createStderrHandler(onLog);
-    await waitForProcess(mysqlProc, 'mysql', (d) => {
-        stderr.handle(d.toString());
-    });
-    stderr.flush();
 }
 
 /**
@@ -265,9 +266,6 @@ async function restoreSingleFileSSH(
         const args = buildMysqlArgs(config);
         args.push("--max-allowed-packet=64M");
         args.push(shellEscape(targetDb));
-
-        const env: Record<string, string | undefined> = {};
-        if (config.password) env.MYSQL_PWD = config.password;
 
         // Pre-restore diagnostics: query server settings
         try {

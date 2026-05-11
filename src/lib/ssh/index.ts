@@ -8,6 +8,7 @@ export {
     extractSshConfig,
     extractSqliteSshConfig,
     buildMysqlArgs,
+    withLocalMyCnf,
     withRemoteMyCnf,
     buildPsqlArgs,
     buildMongoArgs,

@@ -19,6 +19,7 @@ import {
     isSSHMode,
     extractSshConfig,
     buildMysqlArgs,
+    withLocalMyCnf,
     withRemoteMyCnf,
     remoteBinaryCheck,
     shellEscape,
@@ -46,41 +47,39 @@ async function dumpSingleDatabase(
     const dialect = getDialect(config.type === 'mariadb' ? 'mariadb' : 'mysql', config.detectedVersion);
     const args = dialect.getDumpArgs(config, [dbName]);
 
-    const env = { ...process.env };
-    if (config.password) {
-        env.MYSQL_PWD = config.password;
-    }
-
     const safeCmd = `${getMysqldumpCommand()} ${args.join(' ').replace(config.password || '___NONE___', '******')}`;
     onLog(`Dumping database: ${dbName}`, 'info', 'command', safeCmd);
 
-    const dumpProcess = spawn(getMysqldumpCommand(), args, { env });
-    const writeStream = createWriteStream(destinationPath);
+    return withLocalMyCnf(config.password, async (cnfPath) => {
+        const finalArgs = cnfPath ? [`--defaults-file=${cnfPath}`, ...args] : args;
+        const dumpProcess = spawn(getMysqldumpCommand(), finalArgs);
+        const writeStream = createWriteStream(destinationPath);
 
-    dumpProcess.stdout.pipe(writeStream);
+        dumpProcess.stdout.pipe(writeStream);
 
-    dumpProcess.stderr.on('data', (data) => {
-        const msg = data.toString().trim();
-        // Filter benign warnings from MariaDB tools
-        if (msg.includes("Using a password") || msg.includes("Deprecated program name")) return;
-        onLog(msg);
-    });
-
-    await new Promise<void>((resolve, reject) => {
-        dumpProcess.on('close', (code) => {
-            if (code === 0) resolve();
-            else reject(new Error(`${getMysqldumpCommand()} exited with code ${code}`));
+        dumpProcess.stderr.on('data', (data) => {
+            const msg = data.toString().trim();
+            // Filter benign warnings from MariaDB tools
+            if (msg.includes("Using a password") || msg.includes("Deprecated program name")) return;
+            onLog(msg);
         });
-        dumpProcess.on('error', (err) => reject(err));
-        writeStream.on('error', (err: Error) => reject(err));
+
+        await new Promise<void>((resolve, reject) => {
+            dumpProcess.on('close', (code) => {
+                if (code === 0) resolve();
+                else reject(new Error(`${getMysqldumpCommand()} exited with code ${code}`));
+            });
+            dumpProcess.on('error', (err) => reject(err));
+            writeStream.on('error', (err: Error) => reject(err));
+        });
+
+        const stats = await fs.stat(destinationPath);
+        if (stats.size === 0) {
+            throw new Error(`Dump file for ${dbName} is empty. Check logs/permissions.`);
+        }
+
+        return { success: true, size: stats.size };
     });
-
-    const stats = await fs.stat(destinationPath);
-    if (stats.size === 0) {
-        throw new Error(`Dump file for ${dbName} is empty. Check logs/permissions.`);
-    }
-
-    return { success: true, size: stats.size };
 }
 
 /**

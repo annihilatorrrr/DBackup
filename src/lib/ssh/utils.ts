@@ -114,6 +114,35 @@ export function buildMysqlArgs(config: Record<string, any>, user?: string): stri
 }
 
 /**
+ * Securely passes a MySQL/MariaDB password to local commands via a temporary .my.cnf file.
+ *
+ * Use this for Direct-mode connections where execFileAsync runs the MySQL client locally.
+ * The password is written to a temp file (mode 0600) and passed via --defaults-file so it
+ * never appears in process arguments. The file is deleted in a finally block.
+ *
+ * When password is undefined the callback is called with undefined and no file is created.
+ */
+export async function withLocalMyCnf<T>(
+    password: string | undefined,
+    callback: (cnfPath: string | undefined) => Promise<T>
+): Promise<T> {
+    if (!password) {
+        return callback(undefined);
+    }
+
+    const escapedPw = password.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    const content = `[client]\npassword="${escapedPw}"\n`;
+
+    const localPath = path.join(os.tmpdir(), `dbackup_${randomUUID()}.cnf`);
+    await writeFile(localPath, content, { mode: 0o600 });
+    try {
+        return await callback(localPath);
+    } finally {
+        await unlink(localPath).catch(() => {});
+    }
+}
+
+/**
  * Securely passes a MySQL/MariaDB password to remote commands via a temporary .my.cnf file.
  *
  * The flow mirrors the Databasus approach:
