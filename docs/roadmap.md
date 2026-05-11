@@ -36,6 +36,14 @@ This page outlines planned features and improvements for DBackup. Features are s
 - Alert if backup size deviates significantly from previous runs
 - Periodic "test restore" as a scheduled task
 
+### Stream-based Backup Pipeline (Large DB Mode)
+- Opt-in mode that pipes the database dump directly to storage without writing to `/tmp` first
+- Eliminates local disk space requirements for large databases (100 GB+)
+- Parallel upload to multiple destinations via "Tee" stream logic
+- Inline checksum and metadata computation via Transform streams
+- Primarily aimed at environments with limited local storage (small VMs, Raspberry Pi, low-disk VPS)
+- ([#76](https://github.com/Skyfay/DBackup/issues/76))
+
 
 
 ## 📊 Dashboard & Monitoring
