@@ -1,4 +1,5 @@
 import { Client, ConnectConfig, SFTPWrapper } from "ssh2";
+import { normalizeSshPrivateKey } from "@/lib/ssh/pkcs8-compat";
 import { createReadStream, createWriteStream } from "fs";
 import { logger } from "@/lib/logging/logger";
 import { wrapError } from "@/lib/logging/errors";
@@ -39,9 +40,22 @@ export class MssqlSshTransfer {
             const authType = config.sshAuthType || "password";
 
             if (authType === "privateKey" && config.sshPrivateKey) {
-                sshConfig.privateKey = config.sshPrivateKey;
-                if (config.sshPassphrase) {
-                    sshConfig.passphrase = config.sshPassphrase;
+                if (config.sshPrivateKey.includes("BEGIN ENCRYPTED PRIVATE KEY")) {
+                    if (!config.sshPassphrase) {
+                        reject(new Error("This private key is passphrase-protected. Please provide the passphrase."));
+                        return;
+                    }
+                    try {
+                        sshConfig.privateKey = normalizeSshPrivateKey(config.sshPrivateKey, config.sshPassphrase);
+                    } catch (e: unknown) {
+                        reject(e instanceof Error ? e : new Error("Failed to decrypt private key."));
+                        return;
+                    }
+                } else {
+                    sshConfig.privateKey = config.sshPrivateKey;
+                    if (config.sshPassphrase) {
+                        sshConfig.passphrase = config.sshPassphrase;
+                    }
                 }
             } else if (authType === "agent") {
                 sshConfig.agent = process.env.SSH_AUTH_SOCK;

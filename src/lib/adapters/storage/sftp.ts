@@ -1,4 +1,5 @@
 import { StorageAdapter, FileInfo } from "@/lib/core/interfaces";
+import { normalizeSshPrivateKey } from "@/lib/ssh/pkcs8-compat";
 import { SFTPSchema } from "@/lib/adapters/definitions";
 import Client from "ssh2-sftp-client";
 import { createReadStream } from "fs";
@@ -20,14 +21,24 @@ interface SFTPConfig {
 }
 
 const connectSFTP = async (config: SFTPConfig): Promise<Client> => {
+    // PKCS#8 encrypted keys (BEGIN ENCRYPTED PRIVATE KEY) are not supported by
+    // ssh2-sftp-client. Decrypt them in-memory via Node.js crypto first.
+    let privateKey = config.privateKey;
+    if (privateKey?.includes("BEGIN ENCRYPTED PRIVATE KEY")) {
+        if (!config.passphrase) {
+            throw new Error("This private key is passphrase-protected. Please provide the passphrase.");
+        }
+        privateKey = normalizeSshPrivateKey(privateKey, config.passphrase);
+    }
     const sftp = new Client();
     await sftp.connect({
         host: config.host,
         port: config.port,
         username: config.username,
         password: config.password,
-        privateKey: config.privateKey,
-        passphrase: config.passphrase,
+        privateKey,
+        // passphrase only needed for non-PKCS#8-encrypted keys
+        passphrase: privateKey !== config.privateKey ? undefined : config.passphrase,
     });
     return sftp;
 };
