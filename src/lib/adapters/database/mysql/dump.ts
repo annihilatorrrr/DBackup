@@ -112,7 +112,7 @@ async function dumpSingleDatabaseSSH(
         const writeStream = createWriteStream(destinationPath);
 
         await withRemoteMyCnf(ssh, config.password, async (cnfPath) => {
-            const cnfPrefix = cnfPath ? `--defaults-extra-file=${shellEscape(cnfPath)} ` : "";
+            const cnfPrefix = cnfPath ? `--defaults-file=${shellEscape(cnfPath)} ` : "";
             const cmd = `${dumpBin} ${cnfPrefix}${args.join(" ")}`;
             onLog(`Dumping database (SSH): ${dbName}`, 'info', 'command', `${dumpBin} ${args.join(" ")}`);
 

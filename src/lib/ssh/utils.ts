@@ -120,7 +120,7 @@ export function buildMysqlArgs(config: Record<string, any>, user?: string): stri
  *   1. Write a .my.cnf with the password locally (mode 0600).
  *   2. Upload the file to the remote server via SFTP (binary transfer - never visible in ps aux).
  *   3. chmod 600 on the remote file.
- *   4. Invoke the callback with the remote file path so callers can prepend --defaults-extra-file.
+ *   4. Invoke the callback with the remote file path so callers can prepend --defaults-file.
  *   5. Delete both the local and remote temp files in a finally block (runs even on errors).
  *
  * When password is undefined the callback is called with undefined and no files are created.

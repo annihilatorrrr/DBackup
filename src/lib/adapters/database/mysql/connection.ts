@@ -24,7 +24,7 @@ export async function ensureDatabase(config: MySQLConfig, dbName: string, user: 
             const args = buildMysqlArgs(config, user);
 
             await withRemoteMyCnf(ssh, pass, async (cnfPath) => {
-                const cnfPrefix = cnfPath ? `--defaults-extra-file=${shellEscape(cnfPath)} ` : "";
+                const cnfPrefix = cnfPath ? `--defaults-file=${shellEscape(cnfPath)} ` : "";
                 const createCmd = `${mysqlBin} ${cnfPrefix}${args.join(" ")} -e ${shellEscape(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``)}` ;
                 const result = await ssh.exec(createCmd);
                 if (result.code !== 0) {
@@ -88,7 +88,7 @@ export async function test(config: MySQLConfig): Promise<{ success: boolean; mes
             const args = buildMysqlArgs(config);
 
             return await withRemoteMyCnf(ssh, config.password, async (cnfPath) => {
-                const cnfPrefix = cnfPath ? `--defaults-extra-file=${shellEscape(cnfPath)} ` : "";
+                const cnfPrefix = cnfPath ? `--defaults-file=${shellEscape(cnfPath)} ` : "";
 
                 // 1. Ping test
                 const pingCmd = `${mysqladminBin} ${cnfPrefix}ping ${args.join(" ")} --connect-timeout=10`;
@@ -176,7 +176,7 @@ export async function getDatabases(config: MySQLConfig): Promise<string[]> {
             const args = buildMysqlArgs(config);
 
             return await withRemoteMyCnf(ssh, config.password, async (cnfPath) => {
-                const cnfPrefix = cnfPath ? `--defaults-extra-file=${shellEscape(cnfPath)} ` : "";
+                const cnfPrefix = cnfPath ? `--defaults-file=${shellEscape(cnfPath)} ` : "";
                 const cmd = `${mysqlBin} ${cnfPrefix}${args.join(" ")} -e 'SHOW DATABASES' --skip-column-names`;
                 const result = await ssh.exec(cmd);
                 if (result.code !== 0) {
@@ -245,7 +245,7 @@ export async function getDatabasesWithStats(config: MySQLConfig): Promise<Databa
             const args = buildMysqlArgs(config);
 
             return await withRemoteMyCnf(ssh, config.password, async (cnfPath) => {
-                const cnfPrefix = cnfPath ? `--defaults-extra-file=${shellEscape(cnfPath)} ` : "";
+                const cnfPrefix = cnfPath ? `--defaults-file=${shellEscape(cnfPath)} ` : "";
                 const cmd = `${mysqlBin} ${cnfPrefix}${args.join(" ")} -e ${shellEscape(statsQuery)} --skip-column-names --batch`;
                 const result = await ssh.exec(cmd);
                 if (result.code !== 0) {

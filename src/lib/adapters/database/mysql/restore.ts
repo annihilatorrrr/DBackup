@@ -273,7 +273,7 @@ async function restoreSingleFileSSH(
         try {
             const diagArgs = buildMysqlArgs(config);
             await withRemoteMyCnf(ssh, config.password, async (cnfPath) => {
-                const cnfPrefix = cnfPath ? `--defaults-extra-file=${shellEscape(cnfPath)} ` : "";
+                const cnfPrefix = cnfPath ? `--defaults-file=${shellEscape(cnfPath)} ` : "";
                 const diagCmd = `${mysqlBin} ${cnfPrefix}${diagArgs.join(" ")} -N -e "SELECT CONCAT('max_allowed_packet=', @@global.max_allowed_packet, ' innodb_buffer_pool_size=', @@global.innodb_buffer_pool_size, ' log_bin=', @@global.log_bin, ' innodb_flush_log_at_trx_commit=', @@global.innodb_flush_log_at_trx_commit)"`;
                 const diagResult = await ssh.exec(diagCmd);
                 if (diagResult.code === 0 && diagResult.stdout.trim()) {
@@ -339,7 +339,7 @@ async function restoreSingleFileSSH(
         onProgress?.(95, 'Executing restore command...');
 
         await withRemoteMyCnf(ssh, config.password, async (cnfPath) => {
-            const cnfPrefix = cnfPath ? `--defaults-extra-file=${shellEscape(cnfPath)} ` : "";
+            const cnfPrefix = cnfPath ? `--defaults-file=${shellEscape(cnfPath)} ` : "";
             const cmdWithCnf = `${catPart} | ${mysqlBin} ${cnfPrefix}${args.join(" ")}`;
 
             await new Promise<void>((resolve, reject) => {
@@ -375,7 +375,7 @@ async function restoreSingleFileSSH(
             const mysqlBinFallback = await remoteBinaryCheck(ssh, "mariadb", "mysql").catch(() => "mysql");
             const aliveArgs = buildMysqlArgs(config);
             await withRemoteMyCnf(ssh, config.password, async (cnfPath) => {
-                const cnfPrefix = cnfPath ? `--defaults-extra-file=${shellEscape(cnfPath)} ` : "";
+                const cnfPrefix = cnfPath ? `--defaults-file=${shellEscape(cnfPath)} ` : "";
                 const aliveCheck = await ssh.exec(
                     `${mysqlBinFallback} ${cnfPrefix}${aliveArgs.join(" ")} -N -e "SELECT 'alive'" 2>&1`
                 );
