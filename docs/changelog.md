@@ -8,6 +8,10 @@ All notable changes to DBackup are documented here.
 ### 🐛 Bug Fixes
 
 - **SSH**: Passphrase-protected private keys in PKCS#8 encrypted format (`-----BEGIN ENCRYPTED PRIVATE KEY-----`) now work natively without any manual conversion. The keys are transparently decrypted in-memory via Node.js `crypto` before being passed to the SSH library, which means Ed25519 and other key types with a passphrase are fully supported. This covers the SSH tunnel path (all database adapters), the SFTP storage adapter, and the MSSQL SSH transfer. The Vault credential dialog now shows a helpful amber hint when this format is detected, indicating that the passphrase field must be filled in.
+- **MySQL/MariaDB SSH mode**: Removed `--protocol=tcp` from remote command arguments. On HestiaCP and other setups where MariaDB uses the `unix_socket` auth plugin, forcing TCP caused ERROR 1698 ("Access denied") even with correct credentials. Remote commands now let MariaDB choose the connection method.
+- **MySQL/MariaDB SSH mode**: Fixed a false positive in the "Test Connection" check. A `SELECT 1` step is now run after `mysqladmin ping` - if authentication actually fails (e.g. ERROR 1045), the test correctly returns failure with the error message instead of a misleading "version unknown" success.
+- **MySQL/MariaDB SSH mode**: `getDatabasesWithStats` now falls back to a plain `SHOW DATABASES` query (returning 0 for size/table count) when the `information_schema` stats query fails due to restricted permissions. This prevents a hard error in the Database Explorer on restricted setups.
+- **MySQL/MariaDB SSH mode**: Passwords are no longer passed via `MYSQL_PWD` (silently ignored by MariaDB 11.4+) or via `-p<password>` flag (visible in `ps aux`). Credentials are now written to a temporary `.my.cnf` file locally, uploaded to the remote server via SFTP binary transfer (never visible in process lists or shell history), used with `--defaults-extra-file`, and deleted immediately after the command completes - matching the approach used by Databasus and other security-focused backup tools.
 
 ### 🐳 Docker
 

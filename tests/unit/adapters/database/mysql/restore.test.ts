@@ -101,6 +101,9 @@ vi.mock("@/lib/ssh", () => ({
     isSSHMode: (...args: any[]) => mockIsSSHMode(...args),
     extractSshConfig: (...args: any[]) => (mockExtractSshConfig as any)(...args),
     buildMysqlArgs: (...args: any[]) => (mockBuildMysqlArgs as any)(...args),
+    withRemoteMyCnf: vi.fn(async (_ssh: any, password: any, callback: any) =>
+        password ? callback('/tmp/mock.cnf') : callback(undefined)
+    ),
     remoteEnv: vi.fn((_env: any, cmd: string) => cmd),
     remoteBinaryCheck: (...args: any[]) => (mockRemoteBinaryCheck as any)(...args),
     shellEscape: vi.fn((s: string) => s),

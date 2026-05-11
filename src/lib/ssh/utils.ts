@@ -1,4 +1,8 @@
 import { SshClient, SshConnectionConfig } from "./ssh-client";
+import os from "os";
+import path from "path";
+import { writeFile, unlink } from "fs/promises";
+import { randomUUID } from "crypto";
 
 /**
  * Escapes a value for safe inclusion in a single-quoted shell string.
@@ -102,12 +106,51 @@ export function buildMysqlArgs(config: Record<string, any>, user?: string): stri
         "-h", shellEscape(config.host || "127.0.0.1"),
         "-P", String(config.port || 3306),
         "-u", shellEscape(user || config.user),
-        "--protocol=tcp",
     ];
     if (config.disableSsl) {
         args.push("--skip-ssl");
     }
     return args;
+}
+
+/**
+ * Securely passes a MySQL/MariaDB password to remote commands via a temporary .my.cnf file.
+ *
+ * The flow mirrors the Databasus approach:
+ *   1. Write a .my.cnf with the password locally (mode 0600).
+ *   2. Upload the file to the remote server via SFTP (binary transfer - never visible in ps aux).
+ *   3. chmod 600 on the remote file.
+ *   4. Invoke the callback with the remote file path so callers can prepend --defaults-extra-file.
+ *   5. Delete both the local and remote temp files in a finally block (runs even on errors).
+ *
+ * When password is undefined the callback is called with undefined and no files are created.
+ */
+export async function withRemoteMyCnf<T>(
+    ssh: SshClient,
+    password: string | undefined,
+    callback: (cnfPath: string | undefined) => Promise<T>
+): Promise<T> {
+    if (!password) {
+        return callback(undefined);
+    }
+
+    // Escape for .my.cnf file format: backslashes and double quotes must be escaped.
+    const escapedPw = password.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    const content = `[client]\npassword="${escapedPw}"\n`;
+
+    const localPath = path.join(os.tmpdir(), `dbackup_${randomUUID()}.cnf`);
+    const remotePath = `/tmp/dbackup_${randomUUID()}.cnf`;
+
+    await writeFile(localPath, content, { mode: 0o600 });
+    try {
+        await ssh.uploadFile(localPath, remotePath);
+        // Ensure the file is only readable by the remote user (in case SFTP inherited a loose umask).
+        await ssh.exec(`chmod 600 ${shellEscape(remotePath)}`);
+        return await callback(remotePath);
+    } finally {
+        await ssh.exec(`rm -f ${shellEscape(remotePath)}`).catch(() => {});
+        await unlink(localPath).catch(() => {});
+    }
 }
 
 /**

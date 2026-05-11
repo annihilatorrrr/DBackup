@@ -19,7 +19,7 @@ import {
     isSSHMode,
     extractSshConfig,
     buildMysqlArgs,
-    remoteEnv,
+    withRemoteMyCnf,
     remoteBinaryCheck,
     shellEscape,
 } from "@/lib/ssh";
@@ -109,34 +109,33 @@ async function dumpSingleDatabaseSSH(
         }
         args.push("--databases", shellEscape(dbName));
 
-        const env: Record<string, string | undefined> = {};
-        if (config.password) env.MYSQL_PWD = config.password;
-
-        const cmd = remoteEnv(env, `${dumpBin} ${args.join(" ")}`);
-        const safeCmd = cmd.replace(config.password || '___NONE___', '******');
-        onLog(`Dumping database (SSH): ${dbName}`, 'info', 'command', safeCmd);
-
         const writeStream = createWriteStream(destinationPath);
 
-        await new Promise<void>((resolve, reject) => {
-            ssh.execStream(cmd, (err, stream) => {
-                if (err) return reject(err);
+        await withRemoteMyCnf(ssh, config.password, async (cnfPath) => {
+            const cnfPrefix = cnfPath ? `--defaults-extra-file=${shellEscape(cnfPath)} ` : "";
+            const cmd = `${dumpBin} ${cnfPrefix}${args.join(" ")}`;
+            onLog(`Dumping database (SSH): ${dbName}`, 'info', 'command', `${dumpBin} ${args.join(" ")}`);
 
-                stream.pipe(writeStream);
+            await new Promise<void>((resolve, reject) => {
+                ssh.execStream(cmd, (err, stream) => {
+                    if (err) return reject(err);
 
-                stream.stderr.on('data', (data: any) => {
-                    const msg = data.toString().trim();
-                    if (msg.includes("Using a password") || msg.includes("Deprecated program name")) return;
-                    onLog(msg);
+                    stream.pipe(writeStream);
+
+                    stream.stderr.on('data', (data: any) => {
+                        const msg = data.toString().trim();
+                        if (msg.includes("Using a password") || msg.includes("Deprecated program name")) return;
+                        onLog(msg);
+                    });
+
+                    stream.on('exit', (code: number | null, signal?: string) => {
+                        if (code === 0) resolve();
+                        else reject(new Error(`Remote mysqldump exited with code ${code ?? 'null'}${signal ? ` (signal: ${signal})` : ''}`));
+                    });
+
+                    stream.on('error', (err: Error) => reject(err));
+                    writeStream.on('error', (err: Error) => reject(err));
                 });
-
-                stream.on('exit', (code: number | null, signal?: string) => {
-                    if (code === 0) resolve();
-                    else reject(new Error(`Remote mysqldump exited with code ${code ?? 'null'}${signal ? ` (signal: ${signal})` : ''}`));
-                });
-
-                stream.on('error', (err: Error) => reject(err));
-                writeStream.on('error', (err: Error) => reject(err));
             });
         });
 

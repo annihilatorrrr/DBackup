@@ -7,6 +7,7 @@ import {
     extractSshConfig,
     extractSqliteSshConfig,
     buildMysqlArgs,
+    withRemoteMyCnf,
     buildPsqlArgs,
     buildMongoArgs,
     buildRedisArgs,
@@ -274,7 +275,6 @@ describe("buildMysqlArgs", () => {
             "-h", "'db.local'",
             "-P", "3307",
             "-u", "'root'",
-            "--protocol=tcp",
         ]);
     });
 
@@ -303,9 +303,68 @@ describe("buildMysqlArgs", () => {
         expect(args2).not.toContain("--skip-ssl");
     });
 
-    it("should always include --protocol=tcp", () => {
+    it("should not include --protocol=tcp for SSH mode", () => {
         const args = buildMysqlArgs({ user: "root" });
-        expect(args).toContain("--protocol=tcp");
+        expect(args).not.toContain("--protocol=tcp");
+    });
+});
+
+// ─── withRemoteMyCnf ─────────────────────────────────────────────────
+
+describe("withRemoteMyCnf", () => {
+    function makeMockSsh() {
+        return {
+            uploadFile: vi.fn().mockResolvedValue(undefined),
+            exec: vi.fn().mockResolvedValue({ code: 0, stdout: "", stderr: "" }),
+        } as unknown as SshClient;
+    }
+
+    it("calls callback with a remote cnf path when password is set", async () => {
+        const ssh = makeMockSsh();
+        let receivedPath: string | undefined;
+        await withRemoteMyCnf(ssh, "secret", async (p) => { receivedPath = p; });
+
+        expect(receivedPath).toMatch(/^\/tmp\/dbackup_.*\.cnf$/);
+        expect(ssh.uploadFile).toHaveBeenCalledTimes(1);
+    });
+
+    it("calls callback with undefined and skips upload when password is undefined", async () => {
+        const ssh = makeMockSsh();
+        let receivedPath: string | undefined = "NOT_CALLED";
+        await withRemoteMyCnf(ssh, undefined, async (p) => { receivedPath = p; });
+
+        expect(receivedPath).toBeUndefined();
+        expect(ssh.uploadFile).not.toHaveBeenCalled();
+    });
+
+    it("deletes the remote file after callback completes", async () => {
+        const ssh = makeMockSsh();
+        let remotePath: string | undefined;
+        await withRemoteMyCnf(ssh, "secret", async (p) => { remotePath = p; });
+
+        const execCalls = (ssh.exec as ReturnType<typeof vi.fn>).mock.calls.map((c: any[]) => c[0] as string);
+        expect(execCalls.some((cmd: string) => cmd.startsWith("rm -f") && cmd.includes(remotePath!))).toBe(true);
+    });
+
+    it("deletes the remote file even when the callback throws", async () => {
+        const ssh = makeMockSsh();
+        let remotePath: string | undefined;
+        await withRemoteMyCnf(ssh, "secret", async (p) => {
+            remotePath = p;
+            throw new Error("backup failed");
+        }).catch(() => {});
+
+        const execCalls = (ssh.exec as ReturnType<typeof vi.fn>).mock.calls.map((c: any[]) => c[0] as string);
+        expect(execCalls.some((cmd: string) => cmd.startsWith("rm -f") && cmd.includes(remotePath!))).toBe(true);
+    });
+
+    it("writes password into the .my.cnf content (not as a command argument)", async () => {
+        const ssh = makeMockSsh();
+        await withRemoteMyCnf(ssh, "s3cr3t!", async () => {});
+
+        // The password must NOT appear in any exec() call (it travels via SFTP binary transfer only)
+        const execCalls = (ssh.exec as ReturnType<typeof vi.fn>).mock.calls.map((c: any[]) => c[0] as string);
+        expect(execCalls.every((cmd: string) => !cmd.includes("s3cr3t!"))).toBe(true);
     });
 });
 
