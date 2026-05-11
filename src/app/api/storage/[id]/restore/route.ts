@@ -6,6 +6,7 @@ import { getAuthContext, checkPermissionWithContext } from "@/lib/auth/access-co
 import { PERMISSIONS } from "@/lib/auth/permissions";
 import { logger } from "@/lib/logging/logger";
 import { wrapError, getErrorMessage } from "@/lib/logging/errors";
+import prisma from "@/lib/prisma";
 
 const log = logger.child({ route: "storage/restore" });
 
@@ -28,13 +29,16 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
             return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
         }
 
+        const user = await prisma.user.findUnique({ where: { id: ctx.userId }, select: { name: true } });
+
         const result = await restoreService.restore({
             storageConfigId: params.id,
             file,
             targetSourceId,
             targetDatabaseName,
             databaseMapping,
-            privilegedAuth
+            privilegedAuth,
+            triggerInfo: { type: "Manual", label: user?.name ?? "Unknown" },
         });
 
         // result contains { success: true, executionId: string, message: "Restore started" }

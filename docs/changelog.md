@@ -5,6 +5,10 @@ All notable changes to DBackup are documented here.
 ## vNEXT
 *Release: In Progress*
 
+### 🎨 Improvements
+
+- **Activity Logs**: Restore executions now record the initiating user in the "Trigger" column, showing a "Manual" badge with the user's name - the same badge style used for manually triggered backup jobs.
+
 ### 🐛 Bug Fixes
 
 - **SSH**: Passphrase-protected private keys in PKCS#8 encrypted format (`-----BEGIN ENCRYPTED PRIVATE KEY-----`) now work natively without any manual conversion. The keys are transparently decrypted in-memory via Node.js `crypto` before being passed to the SSH library, which means Ed25519 and other key types with a passphrase are fully supported. This covers the SSH tunnel path (all database adapters), the SFTP storage adapter, and the MSSQL SSH transfer. The Vault credential dialog now shows a helpful amber hint when this format is detected, indicating that the passphrase field must be filled in.
