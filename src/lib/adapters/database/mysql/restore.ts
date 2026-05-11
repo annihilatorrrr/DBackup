@@ -332,7 +332,7 @@ async function restoreSingleFileSSH(
         } else {
             catPart = `cat ${shellEscape(remoteTempFile)}`;
         }
-        const restoreCmd = `${catPart} | ${mysqlBin} ${args.join(" ")}`;
+        const _restoreCmd = `${catPart} | ${mysqlBin} ${args.join(" ")}`;
         onLog(`Restoring to database (SSH): ${targetDb}`, 'info', 'command', `${mysqlBin} ${args.join(" ")}`);
         onProgress?.(95, 'Executing restore command...');
 
